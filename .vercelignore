@@ -1,0 +1,3 @@
+# Don't ignore Prisma binaries
+!lib/generated/prisma/*.so.node
+
