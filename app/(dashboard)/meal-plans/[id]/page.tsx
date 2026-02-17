@@ -992,8 +992,10 @@ export default function MealPlanViewPage() {
                               <td colSpan={2} className="px-6 py-3 text-sm text-gray-700 text-left">
                                 Daily Total:
                               </td>
-                              <td className="px-6 py-3 text-sm text-gray-900 font-bold text-left">
-                                {dayTotal.calories} kcal
+                              <td className="px-6 py-3 text-left">
+                                <span className="px-3 py-1.5 bg-gray-800 text-white font-bold rounded-md text-sm">
+                                  {dayTotal.calories} kcal
+                                </span>
                               </td>
                               <td className="px-6 py-3 text-sm text-gray-600 text-left">
                                 P: {dayTotal.protein.toFixed(1)}g | C: {dayTotal.carbs.toFixed(1)}g | F: {dayTotal.fats.toFixed(1)}g

@@ -63,6 +63,7 @@ export default function NewMealPlanPage() {
   const [creatingDish, setCreatingDish] = useState(false)
   const [selectedMealForDish, setSelectedMealForDish] = useState<{ date: string; timeSlot: string } | null>(null)
   const [expandedMealFields, setExpandedMealFields] = useState<Set<string>>(new Set())
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set())
   const [dishSearchQueries, setDishSearchQueries] = useState<Record<string, string>>({})
   const [openDishDropdowns, setOpenDishDropdowns] = useState<Set<string>>(new Set())
   const [visibleWeeks, setVisibleWeeks] = useState<number[]>([1]) // Start with only week 1 visible
@@ -1454,7 +1455,7 @@ export default function NewMealPlanPage() {
                                         if (macros.calories > 0) {
                                           return (
                                             <div className="flex items-center gap-3 text-sm">
-                                              <span className="font-bold text-base text-nutrafi-primary bg-nutrafi-primary/10 px-3 py-1.5 rounded">
+                                              <span className="font-bold text-base text-white px-3 py-1.5 rounded" style={{ backgroundColor: '#728d53' }}>
                                                 {macros.calories} kcal
                                               </span>
                                               <span className="font-bold text-gray-700">
@@ -1628,29 +1629,86 @@ export default function NewMealPlanPage() {
                                                 )}
                                               </div>
                                               
-                                              {/* Notes Field - Always Visible */}
-                                              <div>
-                                                <label className="block text-xs text-gray-600 mb-1">Notes</label>
-                                                <textarea
-                                                  value={meal.customNote || ''}
-                                                  onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value)}
-                                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                                                  rows={2}
-                                                  placeholder="Add any notes for this meal..."
-                                                />
-                                              </div>
-                                              
-                                              {/* Show/Hide Details Button */}
-                                              <div className="flex items-center gap-2">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
-                                                  className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
-                                                  title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
-                                                >
-                                                  {isExpanded ? 'Hide Details' : 'Show Details'}
-                                                </button>
-                                              </div>
+                                              {/* Notes and Show Details Buttons */}
+                                              {(() => {
+                                                const mealKey = `${meal.date}-${meal.timeSlot}`
+                                                const hasNote = meal.customNote && meal.customNote.trim() !== ''
+                                                const isNotesExpanded = expandedNotes.has(mealKey) || hasNote
+                                                const hasDish = meal.dishId || meal.dishName
+                                                
+                                                // If notes are expanded, show textarea and move Show Details below
+                                                if (isNotesExpanded) {
+                                                  return (
+                                                    <div className="space-y-3">
+                                                      <div>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                          <label className="block text-xs text-gray-600">Notes</label>
+                                                          {!hasNote && (
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => {
+                                                                const newExpanded = new Set(expandedNotes)
+                                                                newExpanded.delete(mealKey)
+                                                                setExpandedNotes(newExpanded)
+                                                              }}
+                                                              className="text-xs text-gray-500 hover:text-gray-700"
+                                                            >
+                                                              Remove
+                                                            </button>
+                                                          )}
+                                                        </div>
+                                                        <textarea
+                                                          value={meal.customNote || ''}
+                                                          onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value)}
+                                                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                                                          rows={2}
+                                                          placeholder="Add any notes for this meal..."
+                                                        />
+                                                      </div>
+                                                      {/* Show Details Button - moved below notes when notes are expanded */}
+                                                      {hasDish && (
+                                                        <div className="flex items-center gap-2">
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
+                                                            className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                                                            title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
+                                                          >
+                                                            {isExpanded ? 'Hide Details' : 'Show Details'}
+                                                          </button>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  )
+                                                }
+                                                
+                                                // If notes are not expanded, show buttons in one row
+                                                return (
+                                                  <div className="flex items-center gap-2">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        const newExpanded = new Set(expandedNotes)
+                                                        newExpanded.add(mealKey)
+                                                        setExpandedNotes(newExpanded)
+                                                      }}
+                                                      className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 whitespace-nowrap"
+                                                    >
+                                                      + Add Notes
+                                                    </button>
+                                                    {hasDish && (
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
+                                                        className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                                                        title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
+                                                      >
+                                                        {isExpanded ? 'Hide Details' : 'Show Details'}
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                )
+                                              })()}
                                             </div>
                                             
                                             {/* Inline Dish Fields */}
@@ -1816,7 +1874,7 @@ export default function NewMealPlanPage() {
                               if (macros.calories > 0) {
                                 return (
                                   <div className="flex items-center gap-2 text-xs">
-                                    <span className="font-semibold text-nutrafi-primary bg-nutrafi-primary/10 px-2 py-1 rounded">
+                                    <span className="font-semibold text-white px-2 py-1 rounded" style={{ backgroundColor: '#728d53' }}>
                                       {macros.calories} kcal
                                     </span>
                                     <span className="text-gray-600">
@@ -1990,29 +2048,86 @@ export default function NewMealPlanPage() {
                                                 )}
                                               </div>
                                               
-                                              {/* Notes Field - Always Visible */}
-                                              <div>
-                                                <label className="block text-xs text-gray-600 mb-1">Notes</label>
-                                                <textarea
-                                                  value={meal.customNote || ''}
-                                                  onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value)}
-                                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                                                  rows={2}
-                                                  placeholder="Add any notes for this meal..."
-                                                />
-                                              </div>
-                                              
-                                              {/* Show/Hide Details Button */}
-                                              <div className="flex items-center gap-2">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
-                                                  className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
-                                                  title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
-                                                >
-                                                  {isExpanded ? 'Hide Details' : 'Show Details'}
-                                                </button>
-                                              </div>
+                                              {/* Notes and Show Details Buttons */}
+                                              {(() => {
+                                                const mealKey = `${meal.date}-${meal.timeSlot}`
+                                                const hasNote = meal.customNote && meal.customNote.trim() !== ''
+                                                const isNotesExpanded = expandedNotes.has(mealKey) || hasNote
+                                                const hasDish = meal.dishId || meal.dishName
+                                                
+                                                // If notes are expanded, show textarea and move Show Details below
+                                                if (isNotesExpanded) {
+                                                  return (
+                                                    <div className="space-y-3">
+                                                      <div>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                          <label className="block text-xs text-gray-600">Notes</label>
+                                                          {!hasNote && (
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => {
+                                                                const newExpanded = new Set(expandedNotes)
+                                                                newExpanded.delete(mealKey)
+                                                                setExpandedNotes(newExpanded)
+                                                              }}
+                                                              className="text-xs text-gray-500 hover:text-gray-700"
+                                                            >
+                                                              Remove
+                                                            </button>
+                                                          )}
+                                                        </div>
+                                                        <textarea
+                                                          value={meal.customNote || ''}
+                                                          onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value)}
+                                                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                                                          rows={2}
+                                                          placeholder="Add any notes for this meal..."
+                                                        />
+                                                      </div>
+                                                      {/* Show Details Button - moved below notes when notes are expanded */}
+                                                      {hasDish && (
+                                                        <div className="flex items-center gap-2">
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
+                                                            className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                                                            title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
+                                                          >
+                                                            {isExpanded ? 'Hide Details' : 'Show Details'}
+                                                          </button>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  )
+                                                }
+                                                
+                                                // If notes are not expanded, show buttons in one row
+                                                return (
+                                                  <div className="flex items-center gap-2">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        const newExpanded = new Set(expandedNotes)
+                                                        newExpanded.add(mealKey)
+                                                        setExpandedNotes(newExpanded)
+                                                      }}
+                                                      className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 whitespace-nowrap"
+                                                    >
+                                                      + Add Notes
+                                                    </button>
+                                                    {hasDish && (
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
+                                                        className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                                                        title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
+                                                      >
+                                                        {isExpanded ? 'Hide Details' : 'Show Details'}
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                )
+                                              })()}
                                             </div>
                                   
                                   {/* Inline Dish Fields */}
