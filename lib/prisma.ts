@@ -1,3 +1,6 @@
+// Initialize Prisma binary location before importing client
+import './prisma-init'
+
 import { PrismaClient } from './generated/prisma/client'
 
 const globalForPrisma = globalThis as unknown as {

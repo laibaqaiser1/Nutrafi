@@ -6,6 +6,7 @@
     "dev": "next dev",
     "postinstall": "prisma generate && node scripts/setup-prisma-runtime.js",
     "build": "prisma generate && node scripts/setup-prisma-runtime.js && next build",
+    "postbuild": "node scripts/copy-prisma-to-next.js",
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx scripts/seed-admin.ts",

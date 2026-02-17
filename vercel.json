@@ -1,5 +1,5 @@
 {
-  "buildCommand": "prisma generate && node scripts/setup-prisma-runtime.js && next build",
+  "buildCommand": "prisma generate && node scripts/setup-prisma-runtime.js && next build && node scripts/copy-prisma-to-next.js",
   "installCommand": "npm install",
   "framework": "nextjs"
 }
