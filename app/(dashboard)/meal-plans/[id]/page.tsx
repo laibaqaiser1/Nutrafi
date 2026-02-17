@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { format, addDays, eachDayOfInterval } from 'date-fns'
 import { formatCategory } from '@/lib/utils'
 
 interface MealPlan {
@@ -92,6 +92,9 @@ export default function MealPlanViewPage() {
   const [savingTimeSlot, setSavingTimeSlot] = useState(false)
   const [dishes, setDishes] = useState<Dish[]>([])
   const [editingDish, setEditingDish] = useState(false)
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set())
+  const [visibleWeeks, setVisibleWeeks] = useState<number[]>([])
+  const [addingWeek, setAddingWeek] = useState(false)
   const [dishFormData, setDishFormData] = useState({
     dishId: '',
     dishName: '',
@@ -110,6 +113,9 @@ export default function MealPlanViewPage() {
     customNote: '',
   })
   const [savingDish, setSavingDish] = useState(false)
+  const [dishDropdownOpen, setDishDropdownOpen] = useState(false)
+  const [dishSearchQuery, setDishSearchQuery] = useState('')
+  const [showDishDetails, setShowDishDetails] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -117,6 +123,22 @@ export default function MealPlanViewPage() {
       fetchDishes()
     }
   }, [params.id])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (dishDropdownOpen) {
+      const handleClickOutside = (event: MouseEvent) => {
+        const target = event.target as HTMLElement
+        if (!target.closest('.dish-dropdown-container')) {
+          setDishDropdownOpen(false)
+        }
+      }
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [dishDropdownOpen])
 
   const fetchDishes = async () => {
     try {
@@ -130,12 +152,45 @@ export default function MealPlanViewPage() {
     }
   }
 
+  // Helper function to calculate week number from start date
+  const getWeekNumber = (date: string, startDate: string | null): number => {
+    if (!startDate) return 1
+    const mealDate = new Date(date)
+    const start = new Date(startDate)
+    const daysDiff = Math.floor((mealDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    // Ensure week number is always >= 1 (no Week 0)
+    return Math.max(1, Math.floor(daysDiff / 7) + 1)
+  }
+
   const fetchMealPlan = async (id: string) => {
     try {
       const response = await fetch(`/api/meal-plans/${id}`)
       if (response.ok) {
         const data = await response.json()
         setMealPlan(data)
+        
+        // Initialize visible weeks based on existing meal items
+        if (data.mealPlanItems && data.mealPlanItems.length > 0) {
+          const weeks = new Set<number>()
+          data.mealPlanItems.forEach((item: MealPlan['mealPlanItems'][0]) => {
+            const week = getWeekNumber(item.date, data.startDate)
+            if (week > 0) {
+              weeks.add(week)
+            }
+          })
+          const weeksArray = Array.from(weeks).sort((a, b) => a - b)
+          setVisibleWeeks(weeksArray)
+          
+          // Only expand the last week by default
+          if (weeksArray.length > 0) {
+            const lastWeek = Math.max(...weeksArray)
+            setExpandedWeeks(new Set([lastWeek]))
+          }
+        } else {
+          // If no items, start with week 1
+          setVisibleWeeks([1])
+          setExpandedWeeks(new Set([1]))
+        }
       } else {
         alert('Failed to fetch meal plan')
         router.push('/meal-plans')
@@ -274,6 +329,9 @@ export default function MealPlanViewPage() {
     setEditingTimeSlot(false)
     setTimeSlotValue(item.timeSlot)
     setEditingDish(false)
+    setDishDropdownOpen(false)
+    setDishSearchQuery('')
+    setShowDishDetails(false) // Hide details by default
     // Initialize dish form data from item
     const customNote = parseCustomNote(item.customNote)
     setDishFormData({
@@ -293,8 +351,6 @@ export default function MealPlanViewPage() {
       location: customNote?.location || mealPlan?.customer.deliveryArea || '',
       customNote: customNote?.note || '',
     })
-    setEditingTimeSlot(false)
-    setShowModal(true)
   }
 
   if (loading) {
@@ -363,6 +419,9 @@ export default function MealPlanViewPage() {
         fats: dish.fats?.toString() || '',
         price: dish.price?.toString() || '',
       })
+      // Don't auto-show details - let user click "Show Details" button
+      setDishDropdownOpen(false)
+      setDishSearchQuery('')
     } else {
       setDishFormData({ ...dishFormData, dishId: '', dishName: '' })
     }
@@ -426,14 +485,98 @@ export default function MealPlanViewPage() {
     }
   }
 
-  // Helper function to calculate week number from start date
-  const getWeekNumber = (date: string, startDate: string | null): number => {
-    if (!startDate) return 1
-    const mealDate = new Date(date)
-    const start = new Date(startDate)
-    const daysDiff = Math.floor((mealDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    // Ensure week number is always >= 1 (no Week 0)
-    return Math.max(1, Math.floor(daysDiff / 7) + 1)
+  // Function to add another week
+  const addAnotherWeek = async () => {
+    if (!mealPlan) return
+    
+    setAddingWeek(true)
+    try {
+      const maxWeek = Math.ceil(mealPlan.days / 7)
+      const nextWeek = Math.max(...visibleWeeks, 0) + 1
+      
+      // Check if adding this week would exceed plan days
+      if (nextWeek > maxWeek) {
+        alert('Cannot add more weeks. Maximum weeks for this plan reached.')
+        setAddingWeek(false)
+        return
+      }
+      
+      // Check if adding this week would exceed total meals allowed
+      const currentMealsCount = mealPlan.mealPlanItems.length
+      const mealsPerWeek = 7 * mealPlan.mealsPerDay
+      const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
+      
+      if (currentMealsCount + mealsPerWeek > totalMealsAllowed) {
+        alert(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+        setAddingWeek(false)
+        return
+      }
+      
+      // Calculate dates for the new week
+      const startDate = new Date(mealPlan.startDate)
+      const weekStartDay = (nextWeek - 1) * 7
+      const weekStartDate = addDays(startDate, weekStartDay)
+      const weekEndDate = addDays(weekStartDate, 6) // 7 days in a week
+      const dates = eachDayOfInterval({ start: weekStartDate, end: weekEndDate })
+      
+      // Generate default time slots (you may want to get these from the plan or use defaults)
+      const defaultTimeSlots = ['08:00', '13:00', '18:00'].slice(0, mealPlan.mealsPerDay)
+      
+      // Create meal items for the new week
+      const mealItemPromises = dates.map(date => {
+        return defaultTimeSlots.map((timeSlot, idx) => {
+          // Convert timeSlot to 24-hour format for deliveryTime
+          const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
+          let deliveryTime = ''
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1])
+            const minutes = timeMatch[2]
+            deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
+          } else {
+            deliveryTime = timeSlot
+          }
+          
+          return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: format(date, 'yyyy-MM-dd'),
+              timeSlot: timeSlot,
+              deliveryType: 'delivery',
+              deliveryTime: deliveryTime,
+              location: mealPlan.customer.deliveryArea || '',
+              isSkipped: false,
+            }),
+          })
+        })
+      }).flat()
+      
+      await Promise.all(mealItemPromises)
+      
+      // Add the new week to visible weeks
+      setVisibleWeeks(prev => [...prev, nextWeek].sort((a, b) => a - b))
+      
+      // Expand the new week
+      setExpandedWeeks(prev => {
+        const newSet = new Set(prev)
+        newSet.add(nextWeek)
+        return newSet
+      })
+      
+      // Refresh meal plan to get new items
+      await fetchMealPlan(mealPlan.id)
+      
+      alert(`Week ${nextWeek} added successfully!`)
+    } catch (error) {
+      console.error('Error adding week:', error)
+      alert('Failed to add week')
+    } finally {
+      setAddingWeek(false)
+    }
+  }
+
+  if (!mealPlan) {
+    return <div>Loading...</div>
   }
 
   // Group meal plan items by week, then by date
@@ -708,22 +851,73 @@ export default function MealPlanViewPage() {
 
       {/* Meal Plan Items */}
       <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Meal Schedule</h2>
-        <div className="space-y-6">
-          {Object.keys(itemsByWeek)
-            .filter(weekStr => parseInt(weekStr) > 0) // Filter out Week 0
-            .sort((a, b) => parseInt(a) - parseInt(b))
-            .map((weekStr) => {
-            const week = parseInt(weekStr)
-            const weekDates = itemsByWeek[week]
-            const weekTotal = weeklyTotals[week]
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Meal Schedule</h2>
+          {(() => {
+            if (!mealPlan) return null
+            const maxWeek = Math.ceil(mealPlan.days / 7)
+            const currentMealsCount = mealPlan.mealPlanItems.length
+            const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
+            const mealsPerWeek = 7 * mealPlan.mealsPerDay
+            const canAddMoreWeeks = Math.max(...visibleWeeks, 0) < maxWeek && currentMealsCount + mealsPerWeek <= totalMealsAllowed
             
-            return (
+            return canAddMoreWeeks ? (
+              <button
+                onClick={addAnotherWeek}
+                disabled={addingWeek}
+                className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 disabled:opacity-50"
+              >
+                {addingWeek ? 'Adding...' : (
+                  <>
+                    <span>+</span>
+                    <span>Add Another Week</span>
+                  </>
+                )}
+              </button>
+            ) : null
+          })()}
+        </div>
+        <div className="space-y-6">
+          {visibleWeeks.length > 0 ? (
+            visibleWeeks
+              .filter(week => week > 0) // Filter out Week 0
+              .sort((a, b) => a - b)
+              .map((week) => {
+                const weekDates = itemsByWeek[week] || {}
+                const weekTotal = weeklyTotals[week] || { calories: 0, protein: 0, carbs: 0, fats: 0 }
+                const isExpanded = expandedWeeks.has(week)
+                
+                const toggleWeek = () => {
+                  setExpandedWeeks(prev => {
+                    const newSet = new Set(prev)
+                    if (newSet.has(week)) {
+                      newSet.delete(week)
+                    } else {
+                      newSet.add(week)
+                    }
+                    return newSet
+                  })
+                }
+                
+                return (
               <div key={week} className="border border-gray-200 rounded-lg overflow-hidden">
                 {/* Week Header */}
-                <div className="bg-nutrafi-primary bg-opacity-10 px-6 py-3 border-b border-gray-200">
+                <div 
+                  className="bg-nutrafi-primary bg-opacity-10 px-6 py-3 border-b border-gray-200 cursor-pointer hover:bg-opacity-20 transition-colors"
+                  onClick={toggleWeek}
+                >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-md font-semibold text-gray-900">Week {week}</h3>
+                    <div className="flex items-center gap-3">
+                      <svg 
+                        className={`w-5 h-5 text-gray-600 transition-transform ${isExpanded ? 'transform rotate-90' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      <h3 className="text-md font-semibold text-gray-900">Week {week}</h3>
+                    </div>
                     <div className="text-sm text-gray-600">
                       <span className="font-semibold text-nutrafi-primary">{weekTotal.calories} kcal</span>
                       {' '}• P: {weekTotal.protein.toFixed(1)}g | C: {weekTotal.carbs.toFixed(1)}g | F: {weekTotal.fats.toFixed(1)}g
@@ -732,8 +926,9 @@ export default function MealPlanViewPage() {
                 </div>
                 
                 {/* Week Content */}
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
+                {isExpanded && (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day / Date</th>
@@ -744,7 +939,7 @@ export default function MealPlanViewPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {Object.entries(weekDates).sort().map(([date, items]) => {
+                      {Object.keys(weekDates).length > 0 ? Object.entries(weekDates).sort().map(([date, items]) => {
                         const dayTotal = dailyTotals[date]
                         return (
                           <React.Fragment key={date}>
@@ -806,7 +1001,13 @@ export default function MealPlanViewPage() {
                             </tr>
                           </React.Fragment>
                         )
-                      })}
+                      }) : (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
+                            No meals generated for this week yet. Meals will be generated when you add dishes.
+                          </td>
+                        </tr>
+                      )}
                       {/* Week Total Row */}
                       <tr className="bg-nutrafi-primary bg-opacity-20 font-bold border-t-2 border-nutrafi-primary">
                         <td colSpan={5} className="px-6 py-4 text-left">
@@ -822,14 +1023,20 @@ export default function MealPlanViewPage() {
                         </td>
                       </tr>
                     </tbody>
-                  </table>
-                </div>
+                    </table>
+                  </div>
+                )}
               </div>
             )
-          })}
+          })
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No weeks available. Click "Add Another Week" to start.
+            </div>
+          )}
           
           {/* Grand Total Row */}
-          {Object.keys(itemsByWeek).length > 0 && (
+          {visibleWeeks.length > 0 && (
             <div className="bg-nutrafi-primary bg-opacity-10 rounded-lg p-4 border-2 border-nutrafi-primary">
               <div className="flex items-center gap-4">
                 <span className="text-sm font-semibold text-gray-900">Grand Total:</span>
@@ -984,36 +1191,6 @@ export default function MealPlanViewPage() {
                 </div>
               )}
 
-              {/* Nutritional Information */}
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-md font-semibold text-gray-900 mb-3">Nutritional Information</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Calories</label>
-                    <p className="text-sm text-gray-900 font-semibold">
-                      {selectedItem.calories !== null ? selectedItem.calories : '-'} kcal
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Protein</label>
-                    <p className="text-sm text-gray-900 font-semibold">
-                      {selectedItem.protein !== null ? selectedItem.protein.toFixed(1) : '-'} g
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Carbs</label>
-                    <p className="text-sm text-gray-900 font-semibold">
-                      {selectedItem.carbs !== null ? selectedItem.carbs.toFixed(1) : '-'} g
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Fats</label>
-                    <p className="text-sm text-gray-900 font-semibold">
-                      {selectedItem.fats !== null ? selectedItem.fats.toFixed(1) : '-'} g
-                    </p>
-                  </div>
-                </div>
-              </div>
 
               {/* Instructions */}
               {(() => {
@@ -1062,195 +1239,141 @@ export default function MealPlanViewPage() {
               })()}
             </div>
 
-            {/* Add Dish Form for Skipped Meals */}
-            {selectedItem.isSkipped && editingDish && (
+            {/* Add Dish Form for Empty Meals */}
+            {((!selectedItem.dishName || selectedItem.dishName?.trim() === '') && (!selectedItem.dishId || selectedItem.dishId === '')) && editingDish && (
               <div className="border-t border-gray-200 pt-4 px-6 pb-4 space-y-4 bg-gray-50">
                 <h4 className="text-md font-semibold text-gray-900 mb-3">Add Dish to This Meal</h4>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
+                <div className="space-y-4">
+                  {/* Searchable Dish Dropdown */}
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Select Dish</label>
-                    <select
-                      value={dishFormData.dishId}
-                      onChange={(e) => handleDishSelect(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                    >
-                      <option value="">Select dish (optional)</option>
-                      {dishes.map((dish) => (
-                        <option key={dish.id} value={dish.id}>
-                          {dish.name} ({dish.category})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDishFormData({
-                          ...dishFormData,
-                          dishId: '',
-                          dishName: '',
-                          dishDescription: '',
-                          dishCategory: 'BREAKFAST',
-                          ingredients: '',
-                          allergens: '',
-                          calories: '',
-                          protein: '',
-                          carbs: '',
-                          fats: '',
-                          price: '',
-                        })
-                      }}
-                      className="px-4 py-2 text-sm bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
-                    >
-                      + Add New Dish
-                    </button>
+                    <div className="relative dish-dropdown-container">
+                      <button
+                        type="button"
+                        onClick={() => setDishDropdownOpen(!dishDropdownOpen)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary bg-white text-left flex items-center justify-between"
+                      >
+                        <span className={dishFormData.dishId ? 'text-gray-900' : 'text-gray-500'}>
+                          {dishFormData.dishId ? dishes.find(d => d.id === dishFormData.dishId)?.name || 'Select dish' : 'Select dish (optional)'}
+                        </span>
+                        <svg className={`w-4 h-4 text-gray-500 transition-transform ${dishDropdownOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      
+                      {dishDropdownOpen && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                          <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+                            <input
+                              type="text"
+                              placeholder="Search dishes..."
+                              value={dishSearchQuery}
+                              onChange={(e) => setDishSearchQuery(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                              autoFocus
+                            />
+                          </div>
+                          <div className="max-h-48 overflow-auto">
+                            {(() => {
+                              const filteredDishes = Array.isArray(dishes) ? dishes.filter(dish => 
+                                dish.name.toLowerCase().includes(dishSearchQuery.toLowerCase()) ||
+                                dish.category.toLowerCase().includes(dishSearchQuery.toLowerCase())
+                              ) : []
+                              return filteredDishes.length > 0 ? (
+                                filteredDishes.map((dish) => (
+                                  <button
+                                    key={dish.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleDishSelect(dish.id)
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                                      dishFormData.dishId === dish.id ? 'bg-nutrafi-primary/10 text-nutrafi-primary font-medium' : 'text-gray-900'
+                                    }`}
+                                  >
+                                    {dish.name} ({dish.category})
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="px-3 py-2 text-sm text-gray-500">No dishes found</div>
+                              )
+                            })()}
+                            <div className="border-t border-gray-200">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDishFormData({
+                                    ...dishFormData,
+                                    dishId: '',
+                                    dishName: '',
+                                    dishDescription: '',
+                                    dishCategory: 'BREAKFAST',
+                                    ingredients: '',
+                                    allergens: '',
+                                    calories: '',
+                                    protein: '',
+                                    carbs: '',
+                                    fats: '',
+                                    price: '',
+                                  })
+                                  setShowDishDetails(true)
+                                  setDishDropdownOpen(false)
+                                  setDishSearchQuery('')
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm text-nutrafi-primary hover:bg-nutrafi-primary/10 font-medium flex items-center gap-2"
+                              >
+                                <span>+</span>
+                                <span>Add Custom Dish</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Dish Name *</label>
-                    <input
-                      type="text"
-                      value={dishFormData.dishName}
-                      onChange={(e) => setDishFormData({ ...dishFormData, dishName: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select
-                      value={dishFormData.dishCategory}
-                      onChange={(e) => setDishFormData({ ...dishFormData, dishCategory: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                    >
-                      <option value="BREAKFAST">Breakfast</option>
-                      <option value="LUNCH">Lunch</option>
-                      <option value="DINNER">Dinner</option>
-                      <option value="LUNCH_DINNER">Lunch/Dinner</option>
-                      <option value="SNACK">Snack</option>
-                      <option value="SMOOTHIE">Smoothie</option>
-                      <option value="JUICE">Juice</option>
-                    </select>
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea
-                      value={dishFormData.dishDescription}
-                      onChange={(e) => setDishFormData({ ...dishFormData, dishDescription: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                      rows={2}
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ingredients</label>
-                    <textarea
-                      value={dishFormData.ingredients}
-                      onChange={(e) => setDishFormData({ ...dishFormData, ingredients: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                      rows={2}
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Allergens</label>
-                    <input
-                      type="text"
-                      value={dishFormData.allergens}
-                      onChange={(e) => setDishFormData({ ...dishFormData, allergens: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                      placeholder="e.g., Dairy, Eggs, Gluten"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Calories (kcal) *</label>
-                    <input
-                      type="number"
-                      value={dishFormData.calories}
-                      onChange={(e) => setDishFormData({ ...dishFormData, calories: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Protein (g) *</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={dishFormData.protein}
-                      onChange={(e) => setDishFormData({ ...dishFormData, protein: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Carbs (g) *</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={dishFormData.carbs}
-                      onChange={(e) => setDishFormData({ ...dishFormData, carbs: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fats (g) *</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={dishFormData.fats}
-                      onChange={(e) => setDishFormData({ ...dishFormData, fats: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Type</label>
-                    <select
-                      value={dishFormData.deliveryType}
-                      onChange={(e) => setDishFormData({ ...dishFormData, deliveryType: e.target.value as 'delivery' | 'pickup' })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                    >
-                      <option value="delivery">Delivery</option>
-                      <option value="pickup">Pickup</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Time</label>
-                    <input
-                      type="time"
-                      value={dishFormData.deliveryTime}
-                      onChange={(e) => setDishFormData({ ...dishFormData, deliveryTime: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                    />
-                  </div>
-                  
-                  {dishFormData.deliveryType === 'delivery' && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address</label>
+                  {/* Delivery Type, Time, Location */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Type</label>
+                      <select
+                        value={dishFormData.deliveryType}
+                        onChange={(e) => setDishFormData({ ...dishFormData, deliveryType: e.target.value as 'delivery' | 'pickup' })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      >
+                        <option value="delivery">Delivery</option>
+                        <option value="pickup">Pickup</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Time</label>
                       <input
-                        type="text"
-                        value={dishFormData.location}
-                        onChange={(e) => setDishFormData({ ...dishFormData, location: e.target.value })}
-                        placeholder={mealPlan?.customer.deliveryArea || 'Delivery Address'}
+                        type="time"
+                        value={dishFormData.deliveryTime}
+                        onChange={(e) => setDishFormData({ ...dishFormData, deliveryTime: e.target.value })}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                       />
                     </div>
-                  )}
-                  
-                  <div className="md:col-span-2">
+                    
+                    {dishFormData.deliveryType === 'delivery' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address</label>
+                        <input
+                          type="text"
+                          value={dishFormData.location}
+                          onChange={(e) => setDishFormData({ ...dishFormData, location: e.target.value })}
+                          placeholder={mealPlan?.customer.deliveryArea || 'Delivery Address'}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notes Field - Always Visible */}
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                     <textarea
                       value={dishFormData.customNote}
@@ -1260,13 +1383,138 @@ export default function MealPlanViewPage() {
                       placeholder="Add any notes for this meal..."
                     />
                   </div>
+
+                  {/* Show/Hide Details Button */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDishDetails(!showDishDetails)}
+                      className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                      title={showDishDetails ? "Hide Dish Details" : "Show Dish Details"}
+                    >
+                      {showDishDetails ? 'Hide Details' : 'Show Details'}
+                    </button>
+                  </div>
+
+                  {/* Dish Details Fields - Collapsible */}
+                  {showDishDetails && (
+                    <div className="border-t border-gray-200 pt-4 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Dish Name *</label>
+                          <input
+                            type="text"
+                            value={dishFormData.dishName}
+                            onChange={(e) => setDishFormData({ ...dishFormData, dishName: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                          <select
+                            value={dishFormData.dishCategory}
+                            onChange={(e) => setDishFormData({ ...dishFormData, dishCategory: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                          >
+                            <option value="BREAKFAST">Breakfast</option>
+                            <option value="LUNCH">Lunch</option>
+                            <option value="DINNER">Dinner</option>
+                            <option value="LUNCH_DINNER">Lunch/Dinner</option>
+                            <option value="SNACK">Snack</option>
+                            <option value="SMOOTHIE">Smoothie</option>
+                            <option value="JUICE">Juice</option>
+                          </select>
+                        </div>
+                        
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                          <textarea
+                            value={dishFormData.dishDescription}
+                            onChange={(e) => setDishFormData({ ...dishFormData, dishDescription: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            rows={2}
+                          />
+                        </div>
+                        
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Ingredients</label>
+                          <textarea
+                            value={dishFormData.ingredients}
+                            onChange={(e) => setDishFormData({ ...dishFormData, ingredients: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            rows={2}
+                          />
+                        </div>
+                        
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Allergens</label>
+                          <input
+                            type="text"
+                            value={dishFormData.allergens}
+                            onChange={(e) => setDishFormData({ ...dishFormData, allergens: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            placeholder="e.g., Dairy, Eggs, Gluten"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Calories (kcal) *</label>
+                          <input
+                            type="number"
+                            value={dishFormData.calories}
+                            onChange={(e) => setDishFormData({ ...dishFormData, calories: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Protein (g) *</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={dishFormData.protein}
+                            onChange={(e) => setDishFormData({ ...dishFormData, protein: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Carbs (g) *</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={dishFormData.carbs}
+                            onChange={(e) => setDishFormData({ ...dishFormData, carbs: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Fats (g) *</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={dishFormData.fats}
+                            onChange={(e) => setDishFormData({ ...dishFormData, fats: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between items-center">
               <div className="flex gap-2">
-                {selectedItem.isSkipped && !editingDish && (
+                {((!selectedItem.dishName || selectedItem.dishName?.trim() === '') && (!selectedItem.dishId || selectedItem.dishId === '')) && !editingDish && (
                   <button
                     onClick={() => setEditingDish(true)}
                     className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium"
@@ -1274,7 +1522,7 @@ export default function MealPlanViewPage() {
                     Add Dish
                   </button>
                 )}
-                {selectedItem.isSkipped && editingDish && (
+                {((!selectedItem.dishName || selectedItem.dishName?.trim() === '') && (!selectedItem.dishId || selectedItem.dishId === '')) && editingDish && (
                   <>
                     <button
                       onClick={handleSaveDish}
