@@ -1,10 +1,5 @@
 {
-  "buildCommand": "prisma generate && node scripts/ensure-prisma-binaries.js && next build && node scripts/copy-prisma-to-next.js",
+  "buildCommand": "prisma generate && node scripts/setup-prisma-runtime.js && next build",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "functions": {
-    "app/api/**/*.ts": {
-      "includeFiles": "lib/generated/prisma/**/*.so.node"
-    }
-  }
+  "framework": "nextjs"
 }
