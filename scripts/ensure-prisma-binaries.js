@@ -3,11 +3,11 @@ const path = require('path');
 
 // This script ensures Prisma binaries are accessible in multiple locations
 // Prisma looks for binaries in:
-// 1. __dirname (same directory as client.ts)
+// 1. __dirname (same directory as client.ts) - lib/generated/prisma/
 // 2. process.cwd() + "lib/generated/prisma/"
+// 3. node_modules/.prisma/client/ (fallback)
 
 const sourceDir = path.join(__dirname, '../lib/generated/prisma');
-const clientDir = sourceDir; // Same directory as client.ts
 const nodeModulesDir = path.join(__dirname, '../node_modules/.prisma/client');
 
 const binaries = [
@@ -15,23 +15,25 @@ const binaries = [
   'libquery_engine-debian-openssl-3.0.x.so.node'
 ];
 
-// Ensure source binaries exist (RHEL is required for production, debian is optional)
-binaries.forEach(binary => {
-  const sourcePath = path.join(sourceDir, binary);
-  if (fs.existsSync(sourcePath)) {
-    console.log(`✓ Found ${binary}`);
-  } else {
-    // Only fail if RHEL binary is missing (required for production)
-    if (binary.includes('rhel-openssl-3.0.x')) {
-      console.error(`✗ Required binary not found: ${sourcePath}`);
-      process.exit(1);
-    } else {
-      console.warn(`⚠ Optional binary not found: ${binary} (this is OK if not needed)`);
-    }
-  }
-});
+// Check for required RHEL binary
+const rhelBinary = 'libquery_engine-rhel-openssl-3.0.x.so.node';
+const rhelPath = path.join(sourceDir, rhelBinary);
+if (!fs.existsSync(rhelPath)) {
+  console.error(`✗ Required binary not found: ${rhelPath}`);
+  process.exit(1);
+}
+console.log(`✓ Found required binary: ${rhelBinary}`);
 
-// Copy to node_modules/.prisma/client (fallback location)
+// Check for optional debian binary
+const debianBinary = 'libquery_engine-debian-openssl-3.0.x.so.node';
+const debianPath = path.join(sourceDir, debianBinary);
+if (fs.existsSync(debianPath)) {
+  console.log(`✓ Found optional binary: ${debianBinary}`);
+} else {
+  console.log(`⊘ Optional binary not found: ${debianBinary} (OK if not needed)`);
+}
+
+// Copy to node_modules/.prisma/client (fallback location for Vercel)
 if (!fs.existsSync(nodeModulesDir)) {
   fs.mkdirSync(nodeModulesDir, { recursive: true });
 }
@@ -45,22 +47,10 @@ binaries.forEach(binary => {
       fs.copyFileSync(sourcePath, targetPath);
       console.log(`✓ Copied ${binary} to node_modules/.prisma/client`);
     } catch (error) {
-      console.warn(`⚠ Failed to copy ${binary} to node_modules:`, error.message);
+      console.warn(`⚠ Failed to copy ${binary}:`, error.message);
     }
-  } else {
-    console.log(`⊘ Skipping ${binary} (not found, may not be needed for this platform)`);
   }
 });
-
-// Verify required binary (RHEL) is in the client directory
-const rhelBinary = 'libquery_engine-rhel-openssl-3.0.x.so.node';
-const rhelPath = path.join(clientDir, rhelBinary);
-if (fs.existsSync(rhelPath)) {
-  console.log(`✓ Required binary (RHEL) exists in client directory`);
-} else {
-  console.error(`✗ Required binary (RHEL) missing in client directory`);
-  process.exit(1);
-}
 
 console.log('Prisma binaries setup complete.');
 
