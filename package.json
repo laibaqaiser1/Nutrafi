@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "postinstall": "prisma generate",
-    "build": "prisma generate && next build && node scripts/copy-prisma-binaries.js",
+    "postinstall": "prisma generate && node scripts/ensure-prisma-binaries.js",
+    "build": "prisma generate && node scripts/ensure-prisma-binaries.js && next build",
     "postbuild": "node -e \"const fs=require('fs');const path=require('path');const src=path.join(__dirname,'lib/generated/prisma');const dest=path.join(__dirname,'.next/standalone/lib/generated/prisma');if(fs.existsSync('.next/standalone')&&fs.existsSync(src)){fs.mkdirSync(dest,{recursive:true});['libquery_engine-rhel-openssl-3.0.x.so.node','libquery_engine-debian-openssl-3.0.x.so.node'].forEach(f=>{const s=path.join(src,f);const d=path.join(dest,f);if(fs.existsSync(s))fs.copyFileSync(s,d);});}\"",
     "start": "next start",
     "lint": "eslint",
