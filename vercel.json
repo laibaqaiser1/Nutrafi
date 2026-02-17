@@ -1,6 +1,10 @@
 {
   "buildCommand": "prisma generate && next build",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/**/*.ts": {
+      "includeFiles": "lib/generated/prisma/**/*.so.node"
+    }
+  }
 }
-
