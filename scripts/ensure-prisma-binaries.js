@@ -15,14 +15,20 @@ const binaries = [
   'libquery_engine-debian-openssl-3.0.x.so.node'
 ];
 
-// Ensure source binaries exist
+// Ensure source binaries exist (RHEL is required for production, debian is optional)
 binaries.forEach(binary => {
   const sourcePath = path.join(sourceDir, binary);
-  if (!fs.existsSync(sourcePath)) {
-    console.error(`✗ Source file not found: ${sourcePath}`);
-    process.exit(1);
+  if (fs.existsSync(sourcePath)) {
+    console.log(`✓ Found ${binary}`);
+  } else {
+    // Only fail if RHEL binary is missing (required for production)
+    if (binary.includes('rhel-openssl-3.0.x')) {
+      console.error(`✗ Required binary not found: ${sourcePath}`);
+      process.exit(1);
+    } else {
+      console.warn(`⚠ Optional binary not found: ${binary} (this is OK if not needed)`);
+    }
   }
-  console.log(`✓ Found ${binary}`);
 });
 
 // Copy to node_modules/.prisma/client (fallback location)
@@ -34,23 +40,27 @@ binaries.forEach(binary => {
   const sourcePath = path.join(sourceDir, binary);
   const targetPath = path.join(nodeModulesDir, binary);
   
-  try {
-    fs.copyFileSync(sourcePath, targetPath);
-    console.log(`✓ Copied ${binary} to node_modules/.prisma/client`);
-  } catch (error) {
-    console.warn(`⚠ Failed to copy ${binary} to node_modules:`, error.message);
+  if (fs.existsSync(sourcePath)) {
+    try {
+      fs.copyFileSync(sourcePath, targetPath);
+      console.log(`✓ Copied ${binary} to node_modules/.prisma/client`);
+    } catch (error) {
+      console.warn(`⚠ Failed to copy ${binary} to node_modules:`, error.message);
+    }
+  } else {
+    console.log(`⊘ Skipping ${binary} (not found, may not be needed for this platform)`);
   }
 });
 
-// Verify binaries are in the client directory (they should already be there)
-binaries.forEach(binary => {
-  const clientPath = path.join(clientDir, binary);
-  if (fs.existsSync(clientPath)) {
-    console.log(`✓ Binary exists in client directory: ${binary}`);
-  } else {
-    console.error(`✗ Binary missing in client directory: ${binary}`);
-  }
-});
+// Verify required binary (RHEL) is in the client directory
+const rhelBinary = 'libquery_engine-rhel-openssl-3.0.x.so.node';
+const rhelPath = path.join(clientDir, rhelBinary);
+if (fs.existsSync(rhelPath)) {
+  console.log(`✓ Required binary (RHEL) exists in client directory`);
+} else {
+  console.error(`✗ Required binary (RHEL) missing in client directory`);
+  process.exit(1);
+}
 
 console.log('Prisma binaries setup complete.');
 
