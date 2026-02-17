@@ -1,0 +1,219 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Roles: ADMIN, MANAGER, CHEF
+enum UserRole {
+  ADMIN
+  MANAGER
+  CHEF
+}
+
+// User model for authentication
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  name          String
+  role          UserRole @default(CHEF)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([email])
+}
+
+// Menu Categories
+enum DishCategory {
+  BREAKFAST
+  LUNCH
+  DINNER
+  LUNCH_DINNER
+  SNACK
+  SMOOTHIE
+  JUICE
+}
+
+// Menu/Dish model
+model Dish {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  category    DishCategory
+  ingredients String?      // Text field for now, can be relational later
+  allergens   String?      // Comma-separated or JSON
+  calories    Int          // kcal
+  protein     Float        // grams
+  carbs       Float        // grams
+  fats        Float        // grams
+  price       Float?       // AED
+  status      String       @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  mealPlanItems MealPlanItem[]
+
+  @@index([category])
+  @@index([status])
+  @@index([name])
+}
+
+// Plan Types
+enum PlanType {
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+// Customer Status
+enum CustomerStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+// Customer model
+model Customer {
+  id            String         @id @default(cuid())
+  fullName      String
+  phone         String
+  email         String?
+  address       String         // Full delivery address
+  deliveryArea  String         // General area/zone
+  status        CustomerStatus @default(ACTIVE)
+  notes        String?        // General customer notes
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  mealPlans    MealPlan[]
+  payments     Payment[]
+
+  @@index([status])
+  @@index([deliveryArea])
+  @@index([phone])
+  @@index([fullName])
+}
+
+// Predefined Plans (for pricing and management)
+model Plan {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "2 Meals/Day for 5 Days"
+  planType    PlanType
+  days        Int      // 5, 7, 22, 26
+  mealsPerDay Int      // 2 or 3
+  price       Float    // AED
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mealPlans   MealPlan[]
+  payments    Payment[]
+
+  @@index([isActive])
+}
+
+// Meal Plan (main subscription plan for a customer)
+model MealPlan {
+  id                  String   @id @default(cuid())
+  customerId          String
+  planId              String?  // Reference to predefined plan (optional)
+  planType            PlanType // WEEKLY, MONTHLY, CUSTOM
+  startDate           DateTime?
+  endDate             DateTime?
+  days                Int      // Days per plan (e.g., 22, 26, 7)
+  mealsPerDay         Int      // 2 or 3 typically
+  timeSlots           String   // JSON array of time strings like ["08:00", "13:00", "18:00"]
+  baseAmount          Float?   // Base amount before VAT (AED)
+  vatAmount           Float?   // VAT amount (AED)
+  totalAmount         Float?   // Total amount after VAT (AED)
+  totalMeals          Int?     // Total number of meals in this plan
+  remainingMeals      Int?     // Remaining meals in this plan
+  averageMealRate     Float?   // Average cost per meal (AED)
+  status              String   @default("ACTIVE") // ACTIVE, PAUSED, CANCELLED
+  notes               String?  // Plan-specific notes
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  plan        Plan?         @relation(fields: [planId], references: [id])
+  mealPlanItems MealPlanItem[]
+  payments    Payment[]
+
+  @@index([customerId])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([status])
+  @@index([planType])
+}
+
+// Meal Plan Item (individual meal assignment)
+model MealPlanItem {
+  id            String   @id @default(cuid())
+  mealPlanId    String
+  dishId        String?  // Reference to menu dish (template) - optional, for tracking which dish was used as base
+  date          DateTime // Date of the meal
+  timeSlot      String   // e.g., "08:00", "13:00", "18:00"
+  deliveryTime  String?  // Delivery time for this meal (e.g., "10:00:00 AM")
+  isSkipped     Boolean  @default(false)
+  isDelivered   Boolean  @default(false)
+  deliveredAt   DateTime?
+  customNote    String?
+  
+  // Dish details (customized for each customer - copied from menu dish but can be modified)
+  dishName      String?  // Name of the dish (copied from menu, can be customized)
+  dishDescription String? // Description of the dish (copied from menu, can be customized)
+  dishCategory  DishCategory? // Category of the dish (copied from menu)
+  ingredients   String?  // Ingredients for this specific meal (customized per customer)
+  allergens     String?  // Allergens for this specific meal (customized per customer)
+  calories      Int?     // Calories for this specific meal (customized per customer)
+  protein       Float?   // Protein (grams) for this specific meal (customized per customer)
+  carbs         Float?   // Carbs (grams) for this specific meal (customized per customer)
+  fats          Float?   // Fats (grams) for this specific meal (customized per customer)
+  price         Float?   // Price for this specific meal (AED) - can be customized
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mealPlan      MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  dish          Dish?    @relation(fields: [dishId], references: [id]) // Optional reference to original menu item
+
+  @@index([mealPlanId])
+  @@index([date])
+  @@index([timeSlot])
+  @@index([dishId])
+  @@index([dishCategory])
+  @@unique([mealPlanId, date, timeSlot]) // One meal per slot per day
+}
+
+// Payment tracking
+model Payment {
+  id          String   @id @default(cuid())
+  customerId  String
+  mealPlanId  String?
+  planId      String?  // If payment is for a predefined plan
+  amount      Float    // AED
+  paymentDate DateTime @default(now())
+  paymentMethod String? // CASH, CARD, DIGITAL_WALLET
+  status      String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  mealPlan    MealPlan? @relation(fields: [mealPlanId], references: [id])
+  plan        Plan?     @relation(fields: [planId], references: [id])
+
+  @@index([customerId])
+  @@index([mealPlanId])
+  @@index([paymentDate])
+  @@index([status])
+}

@@ -3,20 +3,24 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Nutrafi Brand Colors */
+  --nutrafi-primary: #728d53;
+  --nutrafi-primary-alt: #718d55;
+  --nutrafi-dark: #4f6849;
+  --nutrafi-light: #9eb664;
+  --nutrafi-text: #1f2937;
+  --nutrafi-text-light: #6b7280;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-nutrafi-primary: var(--nutrafi-primary);
+  --color-nutrafi-primary-alt: var(--nutrafi-primary-alt);
+  --color-nutrafi-dark: var(--nutrafi-dark);
+  --color-nutrafi-light: var(--nutrafi-light);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
