@@ -22,10 +22,10 @@ export const DishCategory = {
   BREAKFAST: 'BREAKFAST',
   LUNCH: 'LUNCH',
   DINNER: 'DINNER',
-  LUNCH_DINNER: 'LUNCH_DINNER',
   SNACK: 'SNACK',
   SMOOTHIE: 'SMOOTHIE',
-  JUICE: 'JUICE'
+  JUICE: 'JUICE',
+  LUNCH_DINNER: 'LUNCH_DINNER'
 } as const
 
 export type DishCategory = (typeof DishCategory)[keyof typeof DishCategory]

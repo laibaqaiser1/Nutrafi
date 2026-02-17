@@ -9,7 +9,7 @@ const mealPlanUpdateSchema = z.object({
   startDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   endDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   mealsPerDay: z.number().int().min(1).max(5).optional(),
-  timeSlots: z.string().optional(),
+  // timeSlots removed - not stored in meal plan
   status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional(),
   notes: z.string().optional(),
 })
@@ -108,16 +108,28 @@ export async function PUT(
     const body = await request.json()
     const data = mealPlanUpdateSchema.parse(body)
 
+    // Fetch current meal plan to get current values
+    const currentMealPlan = await prisma.mealPlan.findUnique({
+      where: { id },
+    })
+
+    if (!currentMealPlan) {
+      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
+    }
+
     // Use UncheckedUpdateInput to allow setting planId directly
     const updateData: {
       planId?: string | null
       planType?: 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
       startDate?: Date | null
       endDate?: Date | null
+      days?: number
       mealsPerDay?: number
-      timeSlots?: string
+      // timeSlots removed - not stored in meal plan
       status?: string
       notes?: string | null
+      totalMeals?: number
+      remainingMeals?: number
     } = {}
     
     if (data.planId !== undefined) {
@@ -131,10 +143,43 @@ export async function PUT(
     if (data.endDate !== undefined) {
       updateData.endDate = data.endDate === null ? null : data.endDate
     }
+    
+    // Calculate days if dates are provided
+    let days = currentMealPlan.days
+    if (data.startDate !== undefined && data.endDate !== undefined) {
+      if (data.startDate && data.endDate) {
+        days = Math.ceil((data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        updateData.days = days
+      } else {
+        // Don't update days if dates are cleared - keep existing value
+        // updateData.days = null
+      }
+    }
+    
     if (data.mealsPerDay !== undefined) updateData.mealsPerDay = data.mealsPerDay
-    if (data.timeSlots !== undefined) updateData.timeSlots = data.timeSlots
+    // timeSlots removed - not stored in meal plan
     if (data.status !== undefined) updateData.status = data.status
     if (data.notes !== undefined) updateData.notes = data.notes
+
+    // Recalculate totalMeals if days or mealsPerDay changed
+    const finalDays = updateData.days !== undefined ? updateData.days : currentMealPlan.days
+    const finalMealsPerDay = updateData.mealsPerDay !== undefined ? updateData.mealsPerDay : currentMealPlan.mealsPerDay
+    
+    if (finalDays !== null && finalDays > 0 && finalMealsPerDay > 0) {
+      const newTotalMeals = finalDays * finalMealsPerDay
+      updateData.totalMeals = newTotalMeals
+      
+      // Recalculate remaining meals: new total meals minus delivered meals
+      const deliveredCount = await prisma.mealPlanItem.count({
+        where: {
+          mealPlanId: id,
+          isDelivered: true,
+          isSkipped: false,
+        },
+      })
+      
+      updateData.remainingMeals = Math.max(0, newTotalMeals - deliveredCount)
+    }
 
     const mealPlan = await prisma.mealPlan.update({
       where: { id },

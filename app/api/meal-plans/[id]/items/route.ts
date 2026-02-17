@@ -22,6 +22,7 @@ const mealPlanItemSchema = z.object({
   deliveryType: z.enum(['delivery', 'pickup']).optional(),
   location: z.string().optional(),
   isSkipped: z.boolean().optional(),
+  customNote: z.string().optional(),
 })
 
 // POST - Update or create meal plan item
@@ -88,15 +89,16 @@ export async function POST(
       },
     })
 
-    // Prepare custom note with delivery info
-    const customNote: any = {}
-    if (data.deliveryType) customNote.deliveryType = data.deliveryType
-    if (data.location) customNote.location = data.location
+    // Prepare custom note - merge user notes with delivery info
+    const customNoteObj: any = {}
+    if (data.deliveryType) customNoteObj.deliveryType = data.deliveryType
+    if (data.location) customNoteObj.location = data.location
+    if (data.customNote) customNoteObj.note = data.customNote
 
     const updateData: any = {
       ...dishData,
       deliveryTime: data.deliveryTime || undefined,
-      customNote: Object.keys(customNote).length > 0 ? JSON.stringify(customNote) : undefined,
+      customNote: Object.keys(customNoteObj).length > 0 ? JSON.stringify(customNoteObj) : undefined,
       isSkipped: data.isSkipped !== undefined ? data.isSkipped : undefined,
     }
 

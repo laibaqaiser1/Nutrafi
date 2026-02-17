@@ -443,7 +443,6 @@ async function importCustomers() {
                 endDate: endDate,
                 days: estimatedDays,
                 mealsPerDay: mealsPerDay, // Determined from data
-                timeSlots: JSON.stringify(["10:00:00 AM"]), // Default time slot
                 baseAmount: baseAmount,
                 vatAmount: vatAmount,
                 totalAmount: totalAmount,

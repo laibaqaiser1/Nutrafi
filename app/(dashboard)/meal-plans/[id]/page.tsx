@@ -26,7 +26,7 @@ interface MealPlan {
   startDate: string
   endDate: string
   mealsPerDay: number
-  timeSlots: string
+  // timeSlots removed - delivery times stored per meal item
   status: string
   notes: string | null
   baseAmount: number | null
@@ -66,6 +66,20 @@ interface MealPlan {
   }>
 }
 
+interface Dish {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  ingredients: string | null
+  allergens: string | null
+  calories: number | null
+  protein: number | null
+  carbs: number | null
+  fats: number | null
+  price: number | null
+}
+
 export default function MealPlanViewPage() {
   const router = useRouter()
   const params = useParams()
@@ -76,12 +90,45 @@ export default function MealPlanViewPage() {
   const [editingTimeSlot, setEditingTimeSlot] = useState(false)
   const [timeSlotValue, setTimeSlotValue] = useState('')
   const [savingTimeSlot, setSavingTimeSlot] = useState(false)
+  const [dishes, setDishes] = useState<Dish[]>([])
+  const [editingDish, setEditingDish] = useState(false)
+  const [dishFormData, setDishFormData] = useState({
+    dishId: '',
+    dishName: '',
+    dishDescription: '',
+    dishCategory: 'BREAKFAST',
+    ingredients: '',
+    allergens: '',
+    calories: '',
+    protein: '',
+    carbs: '',
+    fats: '',
+    price: '',
+    deliveryType: 'delivery' as 'delivery' | 'pickup',
+    deliveryTime: '',
+    location: '',
+    customNote: '',
+  })
+  const [savingDish, setSavingDish] = useState(false)
 
   useEffect(() => {
     if (params.id) {
       fetchMealPlan(params.id as string)
+      fetchDishes()
     }
   }, [params.id])
+
+  const fetchDishes = async () => {
+    try {
+      const response = await fetch('/api/menu?status=ACTIVE&limit=1000')
+      if (response.ok) {
+        const data = await response.json()
+        setDishes(Array.isArray(data.dishes) ? data.dishes : [])
+      }
+    } catch (error) {
+      console.error('Error fetching dishes:', error)
+    }
+  }
 
   const fetchMealPlan = async (id: string) => {
     try {
@@ -223,7 +270,29 @@ export default function MealPlanViewPage() {
 
   const handleItemClick = (item: MealPlan['mealPlanItems'][0]) => {
     setSelectedItem(item)
+    setShowModal(true)
+    setEditingTimeSlot(false)
     setTimeSlotValue(item.timeSlot)
+    setEditingDish(false)
+    // Initialize dish form data from item
+    const customNote = parseCustomNote(item.customNote)
+    setDishFormData({
+      dishId: item.dishId || '',
+      dishName: item.dishName || '',
+      dishDescription: item.dishDescription || '',
+      dishCategory: item.dishCategory || 'BREAKFAST',
+      ingredients: item.ingredients || '',
+      allergens: item.allergens || '',
+      calories: item.calories?.toString() || '',
+      protein: item.protein?.toString() || '',
+      carbs: item.carbs?.toString() || '',
+      fats: item.fats?.toString() || '',
+      price: item.price?.toString() || '',
+      deliveryType: customNote?.deliveryType || 'delivery',
+      deliveryTime: item.deliveryTime || '',
+      location: customNote?.location || mealPlan?.customer.deliveryArea || '',
+      customNote: customNote?.note || '',
+    })
     setEditingTimeSlot(false)
     setShowModal(true)
   }
@@ -277,26 +346,143 @@ export default function MealPlanViewPage() {
     }
   }
 
-  // Group meal plan items by date
-  const itemsByDate = mealPlan.mealPlanItems.reduce((acc, item) => {
-    const date = format(new Date(item.date), 'yyyy-MM-dd')
-    if (!acc[date]) {
-      acc[date] = []
+  const handleDishSelect = (dishId: string) => {
+    const dish = dishes.find(d => d.id === dishId)
+    if (dish) {
+      setDishFormData({
+        ...dishFormData,
+        dishId: dish.id,
+        dishName: dish.name,
+        dishDescription: dish.description || '',
+        dishCategory: dish.category,
+        ingredients: dish.ingredients || '',
+        allergens: dish.allergens || '',
+        calories: dish.calories?.toString() || '',
+        protein: dish.protein?.toString() || '',
+        carbs: dish.carbs?.toString() || '',
+        fats: dish.fats?.toString() || '',
+        price: dish.price?.toString() || '',
+      })
+    } else {
+      setDishFormData({ ...dishFormData, dishId: '', dishName: '' })
     }
-    acc[date].push(item)
-    return acc
-  }, {} as Record<string, typeof mealPlan.mealPlanItems>)
+  }
+
+  const handleSaveDish = async () => {
+    if (!mealPlan || !selectedItem) return
+    
+    // Validate required fields
+    if (!dishFormData.dishName) {
+      alert('Please enter a dish name')
+      return
+    }
+    
+    setSavingDish(true)
+    try {
+      const customNoteObj: any = {}
+      if (dishFormData.deliveryType) customNoteObj.deliveryType = dishFormData.deliveryType
+      if (dishFormData.location) customNoteObj.location = dishFormData.location
+      if (dishFormData.customNote) customNoteObj.note = dishFormData.customNote
+
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedItem.date,
+          timeSlot: selectedItem.timeSlot,
+          dishId: dishFormData.dishId || undefined,
+          dishName: dishFormData.dishName,
+          dishDescription: dishFormData.dishDescription || undefined,
+          dishCategory: dishFormData.dishCategory,
+          ingredients: dishFormData.ingredients || undefined,
+          allergens: dishFormData.allergens || undefined,
+          calories: dishFormData.calories ? parseInt(dishFormData.calories) : undefined,
+          protein: dishFormData.protein ? parseFloat(dishFormData.protein) : undefined,
+          carbs: dishFormData.carbs ? parseFloat(dishFormData.carbs) : undefined,
+          fats: dishFormData.fats ? parseFloat(dishFormData.fats) : undefined,
+          price: dishFormData.price ? parseFloat(dishFormData.price) : undefined,
+          deliveryTime: dishFormData.deliveryTime || undefined,
+          deliveryType: dishFormData.deliveryType,
+          location: dishFormData.location || undefined,
+          isSkipped: false, // Un-skip the meal when adding dish
+          customNote: Object.keys(customNoteObj).length > 0 ? JSON.stringify(customNoteObj) : undefined,
+        }),
+      })
+
+      if (response.ok) {
+        await fetchMealPlan(mealPlan.id)
+        setEditingDish(false)
+        setShowModal(false)
+        alert('Dish added successfully!')
+      } else {
+        const error = await response.json()
+        alert('Failed to add dish: ' + (error.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error saving dish:', error)
+      alert('Failed to save dish')
+    } finally {
+      setSavingDish(false)
+    }
+  }
+
+  // Helper function to calculate week number from start date
+  const getWeekNumber = (date: string, startDate: string | null): number => {
+    if (!startDate) return 1
+    const mealDate = new Date(date)
+    const start = new Date(startDate)
+    const daysDiff = Math.floor((mealDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    // Ensure week number is always >= 1 (no Week 0)
+    return Math.max(1, Math.floor(daysDiff / 7) + 1)
+  }
+
+  // Group meal plan items by week, then by date
+  const itemsByWeek: Record<number, Record<string, typeof mealPlan.mealPlanItems>> = {}
+  mealPlan.mealPlanItems.forEach(item => {
+    const week = getWeekNumber(item.date, mealPlan.startDate)
+    const date = format(new Date(item.date), 'yyyy-MM-dd')
+    
+    if (!itemsByWeek[week]) {
+      itemsByWeek[week] = {}
+    }
+    if (!itemsByWeek[week][date]) {
+      itemsByWeek[week][date] = []
+    }
+    itemsByWeek[week][date].push(item)
+  })
 
   // Calculate daily totals for each date
-  const dailyTotals = Object.entries(itemsByDate).reduce((acc, [date, items]) => {
-    acc[date] = {
-      calories: items.reduce((sum, item) => sum + (item.calories || 0), 0),
-      protein: items.reduce((sum, item) => sum + (item.protein || 0), 0),
-      carbs: items.reduce((sum, item) => sum + (item.carbs || 0), 0),
-      fats: items.reduce((sum, item) => sum + (item.fats || 0), 0),
+  const dailyTotals: Record<string, { calories: number; protein: number; carbs: number; fats: number }> = {}
+  Object.values(itemsByWeek).forEach(weekDates => {
+    Object.entries(weekDates).forEach(([date, items]) => {
+      dailyTotals[date] = {
+        calories: items.reduce((sum, item) => sum + (item.calories || 0), 0),
+        protein: items.reduce((sum, item) => sum + (item.protein || 0), 0),
+        carbs: items.reduce((sum, item) => sum + (item.carbs || 0), 0),
+        fats: items.reduce((sum, item) => sum + (item.fats || 0), 0),
+      }
+    })
+  })
+
+  // Calculate weekly totals
+  const weeklyTotals: Record<number, { calories: number; protein: number; carbs: number; fats: number }> = {}
+  Object.entries(itemsByWeek).forEach(([weekStr, weekDates]) => {
+    const week = parseInt(weekStr)
+    weeklyTotals[week] = {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fats: 0,
     }
-    return acc
-  }, {} as Record<string, { calories: number; protein: number; carbs: number; fats: number }>)
+    Object.values(weekDates).forEach(items => {
+      items.forEach(item => {
+        weeklyTotals[week].calories += item.calories || 0
+        weeklyTotals[week].protein += item.protein || 0
+        weeklyTotals[week].carbs += item.carbs || 0
+        weeklyTotals[week].fats += item.fats || 0
+      })
+    })
+  })
 
   // Calculate grand totals
   const grandTotals = Object.values(dailyTotals).reduce(
@@ -381,16 +567,12 @@ export default function MealPlanViewPage() {
             <p className="text-sm text-gray-900">{mealPlan.mealsPerDay}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Time Slots</label>
-            <p className="text-sm text-gray-900">{JSON.parse(mealPlan.timeSlots).join(', ')}</p>
-          </div>
-          <div>
             <label className="text-sm font-medium text-gray-500">Total Meals</label>
-            <p className="text-sm text-gray-900 font-semibold">{mealPlan.totalMeals !== null ? mealPlan.totalMeals : mealPlan.mealPlanItems.length || '-'}</p>
+            <p className="text-sm text-gray-900 font-semibold">{mealPlan.totalMeals !== null ? mealPlan.totalMeals : (mealPlan.days && mealPlan.mealsPerDay ? mealPlan.days * mealPlan.mealsPerDay : '-')}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500">Remaining Meals</label>
-            <p className={`text-sm font-semibold ${mealPlan.remainingMeals !== null && mealPlan.remainingMeals < 10 ? 'text-orange-600' : 'text-green-600'}`}>
+            <p className={`text-sm font-semibold ${mealPlan.remainingMeals !== null && mealPlan.remainingMeals < 10 ? 'text-orange-600' : 'text-nutrafi-primary'}`}>
               {mealPlan.remainingMeals !== null ? mealPlan.remainingMeals : '-'}
             </p>
           </div>
@@ -481,7 +663,7 @@ export default function MealPlanViewPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        payment.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        payment.status === 'COMPLETED' ? 'bg-[#f0f4e8] text-nutrafi-dark' :
                         payment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
                       }`}>
@@ -511,7 +693,7 @@ export default function MealPlanViewPage() {
                   <span className={`text-lg font-semibold ${
                     (mealPlan.totalAmount - mealPlan.payments.filter(p => p.status === 'COMPLETED').reduce((sum, p) => sum + p.amount, 0)) > 0
                       ? 'text-orange-600'
-                      : 'text-green-600'
+                      : 'text-nutrafi-primary'
                   }`}>
                     {(mealPlan.totalAmount - mealPlan.payments.filter(p => p.status === 'COMPLETED').reduce((sum, p) => sum + p.amount, 0)).toFixed(2)} AED
                   </span>
@@ -527,110 +709,154 @@ export default function MealPlanViewPage() {
       {/* Meal Plan Items */}
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Meal Schedule</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day / Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Slot</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dish</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calories</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {Object.entries(itemsByDate).sort().map(([date, items]) => {
-                const dayTotal = dailyTotals[date]
-                return (
-                  <React.Fragment key={date}>
-                    {items.map((item, index) => (
-                      <tr 
-                        key={item.id}
-                        onClick={() => handleItemClick(item)}
-                        className="cursor-pointer hover:bg-gray-50 transition-colors"
-                      >
-                        {index === 0 && (
-                          <>
-                            <td 
-                              rowSpan={items.length + 1}
-                              className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top border-r border-gray-200"
-                            >
-                              <div>{getDayName(item.date)}</div>
-                              <div className="text-xs text-gray-500 mt-1">{format(new Date(item.date), 'MMM dd, yyyy')}</div>
-                            </td>
-                          </>
-                        )}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatTime12Hour(item.timeSlot)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.dishName || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.calories !== null ? `${item.calories} kcal` : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.isSkipped ? (
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                              Skipped
+        <div className="space-y-6">
+          {Object.keys(itemsByWeek)
+            .filter(weekStr => parseInt(weekStr) > 0) // Filter out Week 0
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map((weekStr) => {
+            const week = parseInt(weekStr)
+            const weekDates = itemsByWeek[week]
+            const weekTotal = weeklyTotals[week]
+            
+            return (
+              <div key={week} className="border border-gray-200 rounded-lg overflow-hidden">
+                {/* Week Header */}
+                <div className="bg-nutrafi-primary bg-opacity-10 px-6 py-3 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-md font-semibold text-gray-900">Week {week}</h3>
+                    <div className="text-sm text-gray-600">
+                      <span className="font-semibold text-nutrafi-primary">{weekTotal.calories} kcal</span>
+                      {' '}• P: {weekTotal.protein.toFixed(1)}g | C: {weekTotal.carbs.toFixed(1)}g | F: {weekTotal.fats.toFixed(1)}g
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Week Content */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day / Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Slot</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dish</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calories</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {Object.entries(weekDates).sort().map(([date, items]) => {
+                        const dayTotal = dailyTotals[date]
+                        return (
+                          <React.Fragment key={date}>
+                            {items.map((item, index) => (
+                              <tr 
+                                key={item.id}
+                                onClick={() => handleItemClick(item)}
+                                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                              >
+                                {index === 0 && (
+                                  <>
+                                    <td 
+                                      rowSpan={items.length + 1}
+                                      className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top border-r border-gray-200"
+                                    >
+                                      <div>{getDayName(item.date)}</div>
+                                      <div className="text-xs text-gray-500 mt-1">{format(new Date(item.date), 'MMM dd, yyyy')}</div>
+                                    </td>
+                                  </>
+                                )}
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {formatTime12Hour(item.timeSlot)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {item.dishName || '-'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {item.calories !== null ? `${item.calories} kcal` : '-'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {item.isSkipped ? (
+                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                      Skipped
+                                    </span>
+                                  ) : item.isDelivered ? (
+                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                      Delivered
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
+                                      Active
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                            {/* Daily Total Row */}
+                            <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
+                              <td></td>
+                              <td colSpan={2} className="px-6 py-3 text-sm text-gray-700 text-left">
+                                Daily Total:
+                              </td>
+                              <td className="px-6 py-3 text-sm text-gray-900 font-bold text-left">
+                                {dayTotal.calories} kcal
+                              </td>
+                              <td className="px-6 py-3 text-sm text-gray-600 text-left">
+                                P: {dayTotal.protein.toFixed(1)}g | C: {dayTotal.carbs.toFixed(1)}g | F: {dayTotal.fats.toFixed(1)}g
+                              </td>
+                            </tr>
+                          </React.Fragment>
+                        )
+                      })}
+                      {/* Week Total Row */}
+                      <tr className="bg-nutrafi-primary bg-opacity-20 font-bold border-t-2 border-nutrafi-primary">
+                        <td colSpan={5} className="px-6 py-4 text-left">
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-900">Week {week} Total:</span>
+                            <span className="text-sm text-nutrafi-primary font-bold">
+                              {weekTotal.calories} kcal
                             </span>
-                          ) : item.isDelivered ? (
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                              Delivered
+                            <span className="text-sm text-gray-700">
+                              P: {weekTotal.protein.toFixed(1)}g | C: {weekTotal.carbs.toFixed(1)}g | F: {weekTotal.fats.toFixed(1)}g
                             </span>
-                          ) : (
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              Active
-                            </span>
-                          )}
+                          </div>
                         </td>
                       </tr>
-                    ))}
-                    {/* Daily Total Row */}
-                    <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
-                      <td></td>
-                      <td colSpan={2} className="px-6 py-3 text-sm text-gray-700 text-left">
-                        Daily Total:
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-900 font-bold text-left">
-                        {dayTotal.calories} kcal
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-600 text-left">
-                        P: {dayTotal.protein.toFixed(1)}g | C: {dayTotal.carbs.toFixed(1)}g | F: {dayTotal.fats.toFixed(1)}g
-                      </td>
-                    </tr>
-                  </React.Fragment>
-                )
-              })}
-              {/* Grand Total Row */}
-              {Object.keys(itemsByDate).length > 0 && (
-                <tr className="bg-nutrafi-primary bg-opacity-10 font-bold border-t-2 border-nutrafi-primary">
-                  <td colSpan={5} className="px-6 py-4 text-left">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-900">Grand Total:</span>
-                      <span className="text-sm text-nutrafi-primary font-bold">
-                        {grandTotals.calories} kcal
-                      </span>
-                      <span className="text-sm text-gray-700">
-                        P: {grandTotals.protein.toFixed(1)}g | C: {grandTotals.carbs.toFixed(1)}g | F: {grandTotals.fats.toFixed(1)}g
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })}
+          
+          {/* Grand Total Row */}
+          {Object.keys(itemsByWeek).length > 0 && (
+            <div className="bg-nutrafi-primary bg-opacity-10 rounded-lg p-4 border-2 border-nutrafi-primary">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-gray-900">Grand Total:</span>
+                <span className="text-sm text-nutrafi-primary font-bold">
+                  {grandTotals.calories} kcal
+                </span>
+                <span className="text-sm text-gray-700">
+                  P: {grandTotals.protein.toFixed(1)}g | C: {grandTotals.carbs.toFixed(1)}g | F: {grandTotals.fats.toFixed(1)}g
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Meal Item Detail Modal */}
       {showModal && selectedItem && (
         <div 
-          className="fixed inset-0 bg-gray-100 bg-opacity-20 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           onClick={() => setShowModal(false)}
         >
+          {/* Blurred Background */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+          
+          {/* Modal Box */}
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
@@ -709,7 +935,7 @@ export default function MealPlanViewPage() {
                         Delivered
                       </span>
                     ) : (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
                         Active
                       </span>
                     )}
@@ -836,8 +1062,239 @@ export default function MealPlanViewPage() {
               })()}
             </div>
 
+            {/* Add Dish Form for Skipped Meals */}
+            {selectedItem.isSkipped && editingDish && (
+              <div className="border-t border-gray-200 pt-4 px-6 pb-4 space-y-4 bg-gray-50">
+                <h4 className="text-md font-semibold text-gray-900 mb-3">Add Dish to This Meal</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Dish</label>
+                    <select
+                      value={dishFormData.dishId}
+                      onChange={(e) => handleDishSelect(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                    >
+                      <option value="">Select dish (optional)</option>
+                      {dishes.map((dish) => (
+                        <option key={dish.id} value={dish.id}>
+                          {dish.name} ({dish.category})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDishFormData({
+                          ...dishFormData,
+                          dishId: '',
+                          dishName: '',
+                          dishDescription: '',
+                          dishCategory: 'BREAKFAST',
+                          ingredients: '',
+                          allergens: '',
+                          calories: '',
+                          protein: '',
+                          carbs: '',
+                          fats: '',
+                          price: '',
+                        })
+                      }}
+                      className="px-4 py-2 text-sm bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
+                    >
+                      + Add New Dish
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dish Name *</label>
+                    <input
+                      type="text"
+                      value={dishFormData.dishName}
+                      onChange={(e) => setDishFormData({ ...dishFormData, dishName: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={dishFormData.dishCategory}
+                      onChange={(e) => setDishFormData({ ...dishFormData, dishCategory: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                    >
+                      <option value="BREAKFAST">Breakfast</option>
+                      <option value="LUNCH">Lunch</option>
+                      <option value="DINNER">Dinner</option>
+                      <option value="LUNCH_DINNER">Lunch/Dinner</option>
+                      <option value="SNACK">Snack</option>
+                      <option value="SMOOTHIE">Smoothie</option>
+                      <option value="JUICE">Juice</option>
+                    </select>
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={dishFormData.dishDescription}
+                      onChange={(e) => setDishFormData({ ...dishFormData, dishDescription: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      rows={2}
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ingredients</label>
+                    <textarea
+                      value={dishFormData.ingredients}
+                      onChange={(e) => setDishFormData({ ...dishFormData, ingredients: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      rows={2}
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Allergens</label>
+                    <input
+                      type="text"
+                      value={dishFormData.allergens}
+                      onChange={(e) => setDishFormData({ ...dishFormData, allergens: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      placeholder="e.g., Dairy, Eggs, Gluten"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Calories (kcal) *</label>
+                    <input
+                      type="number"
+                      value={dishFormData.calories}
+                      onChange={(e) => setDishFormData({ ...dishFormData, calories: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Protein (g) *</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={dishFormData.protein}
+                      onChange={(e) => setDishFormData({ ...dishFormData, protein: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Carbs (g) *</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={dishFormData.carbs}
+                      onChange={(e) => setDishFormData({ ...dishFormData, carbs: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fats (g) *</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={dishFormData.fats}
+                      onChange={(e) => setDishFormData({ ...dishFormData, fats: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Type</label>
+                    <select
+                      value={dishFormData.deliveryType}
+                      onChange={(e) => setDishFormData({ ...dishFormData, deliveryType: e.target.value as 'delivery' | 'pickup' })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                    >
+                      <option value="delivery">Delivery</option>
+                      <option value="pickup">Pickup</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Time</label>
+                    <input
+                      type="time"
+                      value={dishFormData.deliveryTime}
+                      onChange={(e) => setDishFormData({ ...dishFormData, deliveryTime: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                    />
+                  </div>
+                  
+                  {dishFormData.deliveryType === 'delivery' && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address</label>
+                      <input
+                        type="text"
+                        value={dishFormData.location}
+                        onChange={(e) => setDishFormData({ ...dishFormData, location: e.target.value })}
+                        placeholder={mealPlan?.customer.deliveryArea || 'Delivery Address'}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea
+                      value={dishFormData.customNote}
+                      onChange={(e) => setDishFormData({ ...dishFormData, customNote: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                      rows={2}
+                      placeholder="Add any notes for this meal..."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between items-center">
-              <div>
+              <div className="flex gap-2">
+                {selectedItem.isSkipped && !editingDish && (
+                  <button
+                    onClick={() => setEditingDish(true)}
+                    className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium"
+                  >
+                    Add Dish
+                  </button>
+                )}
+                {selectedItem.isSkipped && editingDish && (
+                  <>
+                    <button
+                      onClick={handleSaveDish}
+                      disabled={savingDish}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50"
+                    >
+                      {savingDish ? 'Saving...' : 'Save Dish'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingDish(false)
+                        handleItemClick(selectedItem) // Reset form data
+                      }}
+                      disabled={savingDish}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 font-medium disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
                 {!selectedItem.isSkipped && (
                   <button
                     onClick={() => handleMarkAsDelivered(selectedItem.id, !selectedItem.isDelivered)}

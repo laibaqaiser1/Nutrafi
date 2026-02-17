@@ -12,7 +12,7 @@ const mealPlanSchema = z.object({
   endDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   days: z.number().int().min(1).optional(),
   mealsPerDay: z.number().int().min(1).max(5),
-  timeSlots: z.string(), // JSON array
+  // timeSlots removed - not stored in meal plan, only used in UI to set deliveryTime
   status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).default('ACTIVE'),
   notes: z.string().optional(),
   totalAmount: z.number().optional(),
@@ -113,8 +113,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = mealPlanSchema.parse(body)
 
-    // Parse time slots
-    const timeSlots = JSON.parse(data.timeSlots)
+    // timeSlots are not used here - meal items are created separately when dishes are assigned
 
     // Generate dates only if both start and end dates are provided
     let dates: Date[] = []
@@ -145,20 +144,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate total meals
-    const totalMeals = data.totalMeals || dates.length * timeSlots.length
+    // Calculate total meals based on plan configuration (days * mealsPerDay)
+    // Use provided totalMeals if given, otherwise calculate from days * mealsPerDay
+    const totalMeals = data.totalMeals || (days > 0 ? days * data.mealsPerDay : 0)
 
     // Calculate remaining meals (initially equals total meals since none are delivered yet)
     const remainingMeals = totalMeals
 
-    // Create meal plan
+    // Create meal plan (timeSlots not stored - meal items are created separately when dishes are assigned)
     const mealPlanData: any = {
       customerId: data.customerId,
       planId: data.planId,
       planType: planType,
       days: days,
       mealsPerDay: data.mealsPerDay,
-      timeSlots: data.timeSlots,
+      // timeSlots is NOT stored in meal plan - it's only used in the UI to set deliveryTime when creating meal items
       status: data.status,
       notes: data.notes,
       totalMeals: totalMeals,
@@ -177,25 +177,8 @@ export async function POST(request: NextRequest) {
       data: mealPlanData,
     })
 
-    // Generate meal plan items only if dates are provided
-    if (dates.length > 0) {
-      const mealPlanItems = []
-      for (const date of dates) {
-        for (const timeSlot of timeSlots) {
-          mealPlanItems.push({
-            mealPlanId: mealPlan.id,
-            date: date,
-            timeSlot: timeSlot,
-            isSkipped: false,
-          })
-        }
-      }
-
-      // Create meal plan items in batches (dishId will be assigned later)
-      await prisma.mealPlanItem.createMany({
-        data: mealPlanItems,
-      })
-    }
+    // DO NOT create empty meal items here - meal items are created only when dishes are assigned
+    // in step 4 of the form via the /api/meal-plans/[id]/items endpoint
 
     return NextResponse.json(mealPlan, { status: 201 })
   } catch (error) {

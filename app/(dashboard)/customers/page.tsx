@@ -15,7 +15,7 @@ interface Customer {
     id: string
     planType: string
     mealsPerDay: number
-    timeSlots: string
+    // timeSlots removed - delivery times stored per meal item
     status: string
   }>
 }

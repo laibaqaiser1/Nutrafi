@@ -425,8 +425,12 @@ export default function MenuPage() {
 
        {/* Ingredients Modal */}
        {ingredientsModal.isOpen && ingredientsModal.dish && (
-         <div className="fixed inset-0 bg-black bg-opacity-10 backdrop-blur-md overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-          <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
+         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto h-full w-full p-4">
+           {/* Blurred Background */}
+           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+           
+           {/* Modal Box */}
+           <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
             <div className="flex items-center justify-between p-5 border-b border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">
                 Ingredients - {ingredientsModal.dish.name}

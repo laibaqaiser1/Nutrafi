@@ -189,7 +189,6 @@ async function addGarryMealItems() {
           endDate: thisFriday,
           days: 5,
           mealsPerDay: 2,
-          timeSlots: JSON.stringify(['13:00', '18:00']),
           status: 'ACTIVE',
           totalMeals: 10,
           remainingMeals: 10,
@@ -296,4 +295,6 @@ async function addGarryMealItems() {
 }
 
 addGarryMealItems()
+
+
 

@@ -102,6 +102,7 @@ export default function NewMealPlanPage() {
       location: string
       isSkipped: boolean
       showDishFields?: boolean
+      customNote?: string
     }>,
     skippedWeeks: [] as number[], // Array of week numbers to skip
     skippedDays: [] as string[], // Array of dates to skip
@@ -139,10 +140,12 @@ export default function NewMealPlanPage() {
   }, [formData.planId, plans])
 
   useEffect(() => {
-    if (formData.startDate && formData.days && formData.mealsPerDay && formData.timeSlots) {
+    // Only generate meals if we have all required fields and we're on step 4 or beyond
+    // This prevents generating meals too early or multiple times
+    if (step >= 4 && formData.startDate && formData.days && formData.mealsPerDay && formData.timeSlots) {
       generateMeals()
     }
-  }, [formData.startDate, formData.days, formData.mealsPerDay, formData.timeSlots, formData.deliveryType, formData.customerId])
+  }, [step, formData.startDate, formData.days, formData.mealsPerDay, formData.timeSlots, formData.deliveryType, formData.customerId])
 
   // Generate meals when entering step 4 if not already generated
   useEffect(() => {
@@ -150,35 +153,8 @@ export default function NewMealPlanPage() {
       // If startDate is not set, default to today
       if (!formData.startDate && formData.days) {
         const today = new Date().toISOString().split('T')[0]
-        const updatedFormData = { ...formData, startDate: today }
-        setFormData(updatedFormData)
-        // Generate meals immediately with updated data
-        if (updatedFormData.days && updatedFormData.mealsPerDay && updatedFormData.timeSlots) {
-          const startDate = new Date(today)
-          const days = parseInt(updatedFormData.days)
-          const endDate = addDays(startDate, days - 1)
-          const dates = eachDayOfInterval({ start: startDate, end: endDate })
-          const timeSlots = JSON.parse(updatedFormData.timeSlots)
-          const selectedCustomer = customers.find(c => c.id === updatedFormData.customerId)
-
-          const meals: typeof formData.meals = []
-          dates.forEach(date => {
-            const dateStr = format(date, 'yyyy-MM-dd')
-            timeSlots.slice(0, parseInt(updatedFormData.mealsPerDay)).forEach((timeSlot: string) => {
-              meals.push({
-                date: dateStr,
-                timeSlot,
-                dishId: '',
-                deliveryType: updatedFormData.deliveryType as 'delivery' | 'pickup',
-                deliveryTime: '',
-                location: selectedCustomer?.deliveryArea || '',
-                isSkipped: false,
-              })
-            })
-          })
-
-          setFormData(prev => ({ ...prev, meals, endDate: format(endDate, 'yyyy-MM-dd'), skippedDays: [], skippedWeeks: [] }))
-        }
+        setFormData(prev => ({ ...prev, startDate: today }))
+        // The main useEffect will handle meal generation when startDate is set
       } else if (formData.startDate && formData.days && formData.mealsPerDay && formData.timeSlots) {
         // Generate meals if we have all required fields
         generateMeals()
@@ -371,20 +347,53 @@ export default function NewMealPlanPage() {
       const dates = eachDayOfInterval({ start: startDate, end: endDate })
       const timeSlots = JSON.parse(formData.timeSlots)
       const selectedCustomer = customers.find(c => c.id === formData.customerId)
+      const mealsPerDay = parseInt(formData.mealsPerDay)
 
+      // Use a Set to track unique meal keys (date + timeSlot) to prevent duplicates
+      const mealKeys = new Set<string>()
       const meals: typeof formData.meals = []
+      
       dates.forEach(date => {
         const dateStr = format(date, 'yyyy-MM-dd')
-        timeSlots.slice(0, parseInt(formData.mealsPerDay)).forEach((timeSlot: string) => {
+        // Only take the first N time slots based on mealsPerDay
+        const dayTimeSlots = timeSlots.slice(0, mealsPerDay)
+        
+        dayTimeSlots.forEach((timeSlot: string) => {
+          const mealKey = `${dateStr}-${timeSlot}`
+          
+          // Skip if this meal already exists
+          if (mealKeys.has(mealKey)) {
+            return
+          }
+          mealKeys.add(mealKey)
+          
+          // Convert timeSlot to 24-hour format for deliveryTime
+          const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
+          let deliveryTime = ''
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1])
+            const minutes = timeMatch[2]
+            // If timeSlot already has AM/PM, parse it
+            if (timeSlot.toUpperCase().includes('PM') && hours !== 12) {
+              hours += 12
+            } else if (timeSlot.toUpperCase().includes('AM') && hours === 12) {
+              hours = 0
+            }
+            deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
+          } else {
+            deliveryTime = timeSlot // Use as-is if format is unexpected
+          }
+          
           meals.push({
             date: dateStr,
             timeSlot,
             dishId: '',
             deliveryType: formData.deliveryType as 'delivery' | 'pickup',
-            deliveryTime: '',
+            deliveryTime: deliveryTime,
             location: selectedCustomer?.deliveryArea || '',
             isSkipped: false,
             showDishFields: false,
+            customNote: '',
           })
         })
       })
@@ -406,7 +415,8 @@ export default function NewMealPlanPage() {
         const mealDate = new Date(date)
         const startDate = new Date(formData.startDate)
         const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const week = Math.floor(daysDiff / 7) + 1
+        // Ensure week number is always >= 1 (no Week 0)
+        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
         
         if (formData.skippedDays.includes(date)) return false
         if (formData.planType === 'MONTHLY' && formData.skippedWeeks.includes(week)) return false
@@ -425,14 +435,15 @@ export default function NewMealPlanPage() {
           endDate: formData.endDate,
           days: parseInt(formData.days),
           mealsPerDay: parseInt(formData.mealsPerDay),
-          timeSlots: formData.timeSlots,
+          // timeSlots not sent - only used in UI to set deliveryTime when creating meal items
           status: formData.status,
           notes: formData.notes,
+          // Calculate totalMeals based on plan configuration (days * mealsPerDay)
+          totalMeals: parseInt(formData.days) * parseInt(formData.mealsPerDay),
           // Calculate amounts
           totalAmount: planMode === 'predefined' 
             ? parseFloat(formData.paymentAmount)
-            : parseFloat(formData.pricePerMeal) * activeMealsCount,
-          totalMeals: activeMealsCount,
+            : parseFloat(formData.pricePerMeal) * (parseInt(formData.days) * parseInt(formData.mealsPerDay)),
         }),
       })
 
@@ -460,13 +471,20 @@ export default function NewMealPlanPage() {
       }
 
       // Update meal plan items with dishes and delivery info
-      // Filter out skipped days and weeks
+      // Only create meal items when a dish is actually assigned (dishId or dishName)
+      // Filter out skipped days and weeks, and meals without dishes
       const activeMeals = formData.meals.filter(meal => {
+        // Only create meal items if a dish is assigned
+        if (!meal.dishId && !meal.dishName) {
+          return false
+        }
+        
         const date = meal.date
         const mealDate = new Date(date)
         const startDate = new Date(formData.startDate)
         const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const week = Math.floor(daysDiff / 7) + 1
+        // Ensure week number is always >= 1 (no Week 0)
+        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
         
         // Skip if day is skipped
         if (formData.skippedDays.includes(date)) {
@@ -503,6 +521,7 @@ export default function NewMealPlanPage() {
             deliveryType: meal.deliveryType,
             deliveryTime: meal.deliveryTime || undefined,
             location: meal.location || undefined,
+            customNote: meal.customNote || undefined,
           }),
         })
       })
@@ -514,7 +533,8 @@ export default function NewMealPlanPage() {
         const mealDate = new Date(date)
         const startDate = new Date(formData.startDate)
         const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const week = Math.floor(daysDiff / 7) + 1
+        // Ensure week number is always >= 1 (no Week 0)
+        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
         
         if (formData.skippedDays.includes(date)) return true
         if (formData.planType === 'MONTHLY' && formData.skippedWeeks.includes(week)) return true
@@ -532,6 +552,7 @@ export default function NewMealPlanPage() {
             deliveryType: meal.deliveryType,
             location: meal.location,
             isSkipped: true,
+            customNote: meal.customNote || undefined,
           }),
         })
       })
@@ -564,10 +585,13 @@ export default function NewMealPlanPage() {
     return true
   }).length
   
-  const totalMeals = formData.meals.length
+  // Calculate totalMeals based on plan configuration (days * mealsPerDay), not the number of meals added
+  const totalMeals = formData.days && formData.mealsPerDay 
+    ? parseInt(formData.days) * parseInt(formData.mealsPerDay) 
+    : 0
   const totalAmount = planMode === 'predefined' 
     ? parseFloat(formData.paymentAmount || '0')
-    : parseFloat(formData.pricePerMeal || '0') * activeMealsCount
+    : parseFloat(formData.pricePerMeal || '0') * totalMeals
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -688,14 +712,26 @@ export default function NewMealPlanPage() {
                   </select>
                 </div>
                 {selectedPlan && (
-                  <div className="bg-green-50 p-4 rounded-md mb-4">
+                  <div className="bg-[#f0f4e8] p-4 rounded-md mb-4">
                     <h3 className="font-medium text-gray-900 mb-2">Plan Details</h3>
                     <p className="text-sm text-gray-600">Type: {selectedPlan.planType}</p>
                     <p className="text-sm text-gray-600">Days: {selectedPlan.days}</p>
                     <p className="text-sm text-gray-600">Meals per Day: {selectedPlan.mealsPerDay}</p>
-                    <p className="text-sm font-semibold text-green-700">Price: {selectedPlan.price} AED</p>
+                    <p className="text-sm font-semibold text-nutrafi-dark">Price: {selectedPlan.price} AED</p>
                   </div>
                 )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Time Slots * (JSON array)</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.timeSlots}
+                    onChange={(e) => setFormData({ ...formData, timeSlots: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder='["08:00", "13:00", "18:00"]'
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter time slots as JSON array. These will be used to set delivery times for each meal.</p>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
                   <input
@@ -758,6 +794,7 @@ export default function NewMealPlanPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     placeholder='["08:00", "13:00", "18:00"]'
                   />
+                  <p className="text-xs text-gray-500 mt-1">Enter time slots as JSON array. These will be used to set delivery times for each meal.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Price Per Meal (AED) *</label>
@@ -821,8 +858,8 @@ export default function NewMealPlanPage() {
                   }
                 }}
                 disabled={
-                  (planMode === 'predefined' && (!formData.planId || !formData.startDate)) ||
-                  (planMode === 'custom' && (!formData.days || !formData.startDate || !formData.pricePerMeal))
+                  (planMode === 'predefined' && (!formData.planId || !formData.startDate || !formData.timeSlots)) ||
+                  (planMode === 'custom' && (!formData.days || !formData.startDate || !formData.pricePerMeal || !formData.timeSlots))
                 }
                 className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -836,8 +873,8 @@ export default function NewMealPlanPage() {
         {step === 3 && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h2>
-            <div className="bg-green-50 p-4 rounded-md mb-4">
-              <p className="text-lg font-semibold text-green-700">
+            <div className="bg-[#f0f4e8] p-4 rounded-md mb-4">
+              <p className="text-lg font-semibold text-nutrafi-dark">
                 Total Amount: {totalAmount.toFixed(2)} AED
               </p>
               {planMode === 'custom' && (
@@ -1018,7 +1055,8 @@ export default function NewMealPlanPage() {
               const mealDate = new Date(date)
               const startDate = new Date(formData.startDate)
               const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-              const week = Math.floor(daysDiff / 7) + 1
+              // Ensure week number is always >= 1 (no Week 0)
+              const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
               if (!mealsByWeek[week]) {
                 mealsByWeek[week] = {}
               }
@@ -1051,7 +1089,10 @@ export default function NewMealPlanPage() {
               {/* Monthly Plan: Show all weeks */}
               {formData.planType === 'MONTHLY' ? (
                 <div className="max-h-[600px] overflow-y-auto space-y-6 pr-2">
-                  {Object.keys(mealsByWeek).sort((a, b) => parseInt(a) - parseInt(b)).map((weekStr) => {
+                  {Object.keys(mealsByWeek)
+                    .filter(weekStr => parseInt(weekStr) > 0) // Filter out Week 0
+                    .sort((a, b) => parseInt(a) - parseInt(b))
+                    .map((weekStr) => {
                     const week = parseInt(weekStr)
                     const isWeekSkipped = formData.skippedWeeks.includes(week)
                     const weekDates = Object.keys(mealsByWeek[week] || {}).sort()
@@ -1110,11 +1151,8 @@ export default function NewMealPlanPage() {
                                         return (
                                           <div key={idx} className="border border-gray-200 rounded-md bg-gray-50">
                                             <div className="p-3 space-y-3">
-                                              {/* First Row: Time, Select Dish, Delivery Type, Delivery Time, Location */}
+                                              {/* First Row: Select Dish, Delivery Type, Delivery Time, Location */}
                                               <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-                                                <div className="md:col-span-1 text-sm font-medium text-gray-700">
-                                                  {formatTime12Hour(meal.timeSlot)}
-                                                </div>
                                                 <div className="md:col-span-3">
                                                   <label className="block text-xs text-gray-600 mb-1">Select Dish</label>
                                                   <select
@@ -1164,12 +1202,24 @@ export default function NewMealPlanPage() {
                                                 )}
                                               </div>
                                               
+                                              {/* Notes Field - Always Visible */}
+                                              <div>
+                                                <label className="block text-xs text-gray-600 mb-1">Notes</label>
+                                                <textarea
+                                                  value={meal.customNote || ''}
+                                                  onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value)}
+                                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                                                  rows={2}
+                                                  placeholder="Add any notes for this meal..."
+                                                />
+                                              </div>
+                                              
                                               {/* Second Row: Add Dish Button */}
                                               <div className="flex items-center gap-2">
                                                 <button
                                                   type="button"
                                                   onClick={() => toggleDishFields(meal.date, meal.timeSlot, true)}
-                                                  className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 whitespace-nowrap"
+                                                  className="px-4 py-2 text-sm bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark whitespace-nowrap"
                                                   title="Add New Dish (Empty Fields)"
                                                 >
                                                   + Add New Dish
@@ -1337,11 +1387,8 @@ export default function NewMealPlanPage() {
                                         return (
                                           <div key={idx} className="border border-gray-200 rounded-md bg-gray-50">
                                             <div className="p-3 space-y-3">
-                                              {/* First Row: Time, Select Dish, Delivery Type, Delivery Time, Location */}
+                                              {/* First Row: Select Dish, Delivery Type, Delivery Time, Location */}
                                               <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-                                                <div className="md:col-span-1 text-sm font-medium text-gray-700">
-                                                  {formatTime12Hour(meal.timeSlot)}
-                                                </div>
                                                 <div className="md:col-span-3">
                                                   <label className="block text-xs text-gray-600 mb-1">Select Dish</label>
                                                   <select
@@ -1391,12 +1438,24 @@ export default function NewMealPlanPage() {
                                                 )}
                                               </div>
                                               
+                                              {/* Notes Field - Always Visible */}
+                                              <div>
+                                                <label className="block text-xs text-gray-600 mb-1">Notes</label>
+                                                <textarea
+                                                  value={meal.customNote || ''}
+                                                  onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value)}
+                                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                                                  rows={2}
+                                                  placeholder="Add any notes for this meal..."
+                                                />
+                                              </div>
+                                              
                                               {/* Second Row: Add Dish Button */}
                                               <div className="flex items-center gap-2">
                                                 <button
                                                   type="button"
                                                   onClick={() => toggleDishFields(meal.date, meal.timeSlot, true)}
-                                                  className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 whitespace-nowrap"
+                                                  className="px-4 py-2 text-sm bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark whitespace-nowrap"
                                                   title="Add New Dish (Empty Fields)"
                                                 >
                                                   + Add New Dish
@@ -1561,14 +1620,18 @@ export default function NewMealPlanPage() {
       {/* Add New Dish Modal */}
       {showAddDishModal && (
         <div 
-          className="fixed inset-0 bg-gray-100 bg-opacity-20 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           onClick={() => {
             setShowAddDishModal(false)
             setSelectedMealForDish(null)
           }}
         >
+          {/* Blurred Background */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+          
+          {/* Modal Box */}
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">

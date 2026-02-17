@@ -189,7 +189,6 @@ async function addDuaMealItems() {
           endDate: thisFriday,
           days: 5,
           mealsPerDay: 2,
-          timeSlots: JSON.stringify(['13:00', '18:00']),
           status: 'ACTIVE',
           totalMeals: 10,
           remainingMeals: 10,

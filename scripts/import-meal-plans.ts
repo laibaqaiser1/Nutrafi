@@ -414,7 +414,6 @@ async function importMealPlans() {
             totalMeals: totalMeals,
             remainingMeals: remainingMeals,
             averageMealRate: averageMealRate,
-            timeSlots: JSON.stringify(["10:00:00 AM"]), // Default time slot
             status: 'ACTIVE',
           }
         })

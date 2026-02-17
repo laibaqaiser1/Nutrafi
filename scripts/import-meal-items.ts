@@ -332,7 +332,6 @@ async function importMealItems() {
           endDate: new Date(),
           days: 1,
           mealsPerDay: 3,
-          timeSlots: JSON.stringify(['08:00', '13:00', '18:00']),
           status: 'ACTIVE',
         }
       })

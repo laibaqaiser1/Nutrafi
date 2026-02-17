@@ -28,18 +28,18 @@ export type AggregateMealPlanItem = {
 
 export type MealPlanItemAvgAggregateOutputType = {
   calories: number | null
-  protein: number | null
   carbs: number | null
   fats: number | null
   price: number | null
+  protein: number | null
 }
 
 export type MealPlanItemSumAggregateOutputType = {
   calories: number | null
-  protein: number | null
   carbs: number | null
   fats: number | null
   price: number | null
+  protein: number | null
 }
 
 export type MealPlanItemMinAggregateOutputType = {
@@ -48,23 +48,23 @@ export type MealPlanItemMinAggregateOutputType = {
   dishId: string | null
   date: Date | null
   timeSlot: string | null
-  deliveryTime: string | null
   isSkipped: boolean | null
-  isDelivered: boolean | null
-  deliveredAt: Date | null
   customNote: string | null
-  dishName: string | null
-  dishDescription: string | null
-  dishCategory: $Enums.DishCategory | null
-  ingredients: string | null
-  allergens: string | null
-  calories: number | null
-  protein: number | null
-  carbs: number | null
-  fats: number | null
-  price: number | null
   createdAt: Date | null
   updatedAt: Date | null
+  isDelivered: boolean | null
+  deliveredAt: Date | null
+  allergens: string | null
+  calories: number | null
+  carbs: number | null
+  deliveryTime: string | null
+  dishCategory: $Enums.DishCategory | null
+  dishDescription: string | null
+  dishName: string | null
+  fats: number | null
+  ingredients: string | null
+  price: number | null
+  protein: number | null
 }
 
 export type MealPlanItemMaxAggregateOutputType = {
@@ -73,23 +73,23 @@ export type MealPlanItemMaxAggregateOutputType = {
   dishId: string | null
   date: Date | null
   timeSlot: string | null
-  deliveryTime: string | null
   isSkipped: boolean | null
-  isDelivered: boolean | null
-  deliveredAt: Date | null
   customNote: string | null
-  dishName: string | null
-  dishDescription: string | null
-  dishCategory: $Enums.DishCategory | null
-  ingredients: string | null
-  allergens: string | null
-  calories: number | null
-  protein: number | null
-  carbs: number | null
-  fats: number | null
-  price: number | null
   createdAt: Date | null
   updatedAt: Date | null
+  isDelivered: boolean | null
+  deliveredAt: Date | null
+  allergens: string | null
+  calories: number | null
+  carbs: number | null
+  deliveryTime: string | null
+  dishCategory: $Enums.DishCategory | null
+  dishDescription: string | null
+  dishName: string | null
+  fats: number | null
+  ingredients: string | null
+  price: number | null
+  protein: number | null
 }
 
 export type MealPlanItemCountAggregateOutputType = {
@@ -98,41 +98,41 @@ export type MealPlanItemCountAggregateOutputType = {
   dishId: number
   date: number
   timeSlot: number
-  deliveryTime: number
   isSkipped: number
-  isDelivered: number
-  deliveredAt: number
   customNote: number
-  dishName: number
-  dishDescription: number
-  dishCategory: number
-  ingredients: number
-  allergens: number
-  calories: number
-  protein: number
-  carbs: number
-  fats: number
-  price: number
   createdAt: number
   updatedAt: number
+  isDelivered: number
+  deliveredAt: number
+  allergens: number
+  calories: number
+  carbs: number
+  deliveryTime: number
+  dishCategory: number
+  dishDescription: number
+  dishName: number
+  fats: number
+  ingredients: number
+  price: number
+  protein: number
   _all: number
 }
 
 
 export type MealPlanItemAvgAggregateInputType = {
   calories?: true
-  protein?: true
   carbs?: true
   fats?: true
   price?: true
+  protein?: true
 }
 
 export type MealPlanItemSumAggregateInputType = {
   calories?: true
-  protein?: true
   carbs?: true
   fats?: true
   price?: true
+  protein?: true
 }
 
 export type MealPlanItemMinAggregateInputType = {
@@ -141,23 +141,23 @@ export type MealPlanItemMinAggregateInputType = {
   dishId?: true
   date?: true
   timeSlot?: true
-  deliveryTime?: true
   isSkipped?: true
-  isDelivered?: true
-  deliveredAt?: true
   customNote?: true
-  dishName?: true
-  dishDescription?: true
-  dishCategory?: true
-  ingredients?: true
-  allergens?: true
-  calories?: true
-  protein?: true
-  carbs?: true
-  fats?: true
-  price?: true
   createdAt?: true
   updatedAt?: true
+  isDelivered?: true
+  deliveredAt?: true
+  allergens?: true
+  calories?: true
+  carbs?: true
+  deliveryTime?: true
+  dishCategory?: true
+  dishDescription?: true
+  dishName?: true
+  fats?: true
+  ingredients?: true
+  price?: true
+  protein?: true
 }
 
 export type MealPlanItemMaxAggregateInputType = {
@@ -166,23 +166,23 @@ export type MealPlanItemMaxAggregateInputType = {
   dishId?: true
   date?: true
   timeSlot?: true
-  deliveryTime?: true
   isSkipped?: true
-  isDelivered?: true
-  deliveredAt?: true
   customNote?: true
-  dishName?: true
-  dishDescription?: true
-  dishCategory?: true
-  ingredients?: true
-  allergens?: true
-  calories?: true
-  protein?: true
-  carbs?: true
-  fats?: true
-  price?: true
   createdAt?: true
   updatedAt?: true
+  isDelivered?: true
+  deliveredAt?: true
+  allergens?: true
+  calories?: true
+  carbs?: true
+  deliveryTime?: true
+  dishCategory?: true
+  dishDescription?: true
+  dishName?: true
+  fats?: true
+  ingredients?: true
+  price?: true
+  protein?: true
 }
 
 export type MealPlanItemCountAggregateInputType = {
@@ -191,23 +191,23 @@ export type MealPlanItemCountAggregateInputType = {
   dishId?: true
   date?: true
   timeSlot?: true
-  deliveryTime?: true
   isSkipped?: true
-  isDelivered?: true
-  deliveredAt?: true
   customNote?: true
-  dishName?: true
-  dishDescription?: true
-  dishCategory?: true
-  ingredients?: true
-  allergens?: true
-  calories?: true
-  protein?: true
-  carbs?: true
-  fats?: true
-  price?: true
   createdAt?: true
   updatedAt?: true
+  isDelivered?: true
+  deliveredAt?: true
+  allergens?: true
+  calories?: true
+  carbs?: true
+  deliveryTime?: true
+  dishCategory?: true
+  dishDescription?: true
+  dishName?: true
+  fats?: true
+  ingredients?: true
+  price?: true
+  protein?: true
   _all?: true
 }
 
@@ -303,23 +303,23 @@ export type MealPlanItemGroupByOutputType = {
   dishId: string | null
   date: Date
   timeSlot: string
-  deliveryTime: string | null
   isSkipped: boolean
-  isDelivered: boolean
-  deliveredAt: Date | null
   customNote: string | null
-  dishName: string | null
-  dishDescription: string | null
-  dishCategory: $Enums.DishCategory | null
-  ingredients: string | null
-  allergens: string | null
-  calories: number | null
-  protein: number | null
-  carbs: number | null
-  fats: number | null
-  price: number | null
   createdAt: Date
   updatedAt: Date
+  isDelivered: boolean
+  deliveredAt: Date | null
+  allergens: string | null
+  calories: number | null
+  carbs: number | null
+  deliveryTime: string | null
+  dishCategory: $Enums.DishCategory | null
+  dishDescription: string | null
+  dishName: string | null
+  fats: number | null
+  ingredients: string | null
+  price: number | null
+  protein: number | null
   _count: MealPlanItemCountAggregateOutputType | null
   _avg: MealPlanItemAvgAggregateOutputType | null
   _sum: MealPlanItemSumAggregateOutputType | null
@@ -351,25 +351,25 @@ export type MealPlanItemWhereInput = {
   dishId?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   date?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   timeSlot?: Prisma.StringFilter<"MealPlanItem"> | string
-  deliveryTime?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   isSkipped?: Prisma.BoolFilter<"MealPlanItem"> | boolean
-  isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
-  deliveredAt?: Prisma.DateTimeNullableFilter<"MealPlanItem"> | Date | string | null
   customNote?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishName?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishDescription?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishCategory?: Prisma.EnumDishCategoryNullableFilter<"MealPlanItem"> | $Enums.DishCategory | null
-  ingredients?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  allergens?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  calories?: Prisma.IntNullableFilter<"MealPlanItem"> | number | null
-  protein?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  carbs?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  fats?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  price?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
   createdAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
-  mealPlan?: Prisma.XOR<Prisma.MealPlanScalarRelationFilter, Prisma.MealPlanWhereInput>
+  isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
+  deliveredAt?: Prisma.DateTimeNullableFilter<"MealPlanItem"> | Date | string | null
+  allergens?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  calories?: Prisma.IntNullableFilter<"MealPlanItem"> | number | null
+  carbs?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  deliveryTime?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  dishCategory?: Prisma.EnumDishCategoryNullableFilter<"MealPlanItem"> | $Enums.DishCategory | null
+  dishDescription?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  dishName?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  fats?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  ingredients?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  price?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  protein?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
   dish?: Prisma.XOR<Prisma.DishNullableScalarRelationFilter, Prisma.DishWhereInput> | null
+  mealPlan?: Prisma.XOR<Prisma.MealPlanScalarRelationFilter, Prisma.MealPlanWhereInput>
 }
 
 export type MealPlanItemOrderByWithRelationInput = {
@@ -378,25 +378,25 @@ export type MealPlanItemOrderByWithRelationInput = {
   dishId?: Prisma.SortOrderInput | Prisma.SortOrder
   date?: Prisma.SortOrder
   timeSlot?: Prisma.SortOrder
-  deliveryTime?: Prisma.SortOrderInput | Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
-  isDelivered?: Prisma.SortOrder
-  deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
   customNote?: Prisma.SortOrderInput | Prisma.SortOrder
-  dishName?: Prisma.SortOrderInput | Prisma.SortOrder
-  dishDescription?: Prisma.SortOrderInput | Prisma.SortOrder
-  dishCategory?: Prisma.SortOrderInput | Prisma.SortOrder
-  ingredients?: Prisma.SortOrderInput | Prisma.SortOrder
-  allergens?: Prisma.SortOrderInput | Prisma.SortOrder
-  calories?: Prisma.SortOrderInput | Prisma.SortOrder
-  protein?: Prisma.SortOrderInput | Prisma.SortOrder
-  carbs?: Prisma.SortOrderInput | Prisma.SortOrder
-  fats?: Prisma.SortOrderInput | Prisma.SortOrder
-  price?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  mealPlan?: Prisma.MealPlanOrderByWithRelationInput
+  isDelivered?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  allergens?: Prisma.SortOrderInput | Prisma.SortOrder
+  calories?: Prisma.SortOrderInput | Prisma.SortOrder
+  carbs?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryTime?: Prisma.SortOrderInput | Prisma.SortOrder
+  dishCategory?: Prisma.SortOrderInput | Prisma.SortOrder
+  dishDescription?: Prisma.SortOrderInput | Prisma.SortOrder
+  dishName?: Prisma.SortOrderInput | Prisma.SortOrder
+  fats?: Prisma.SortOrderInput | Prisma.SortOrder
+  ingredients?: Prisma.SortOrderInput | Prisma.SortOrder
+  price?: Prisma.SortOrderInput | Prisma.SortOrder
+  protein?: Prisma.SortOrderInput | Prisma.SortOrder
   dish?: Prisma.DishOrderByWithRelationInput
+  mealPlan?: Prisma.MealPlanOrderByWithRelationInput
 }
 
 export type MealPlanItemWhereUniqueInput = Prisma.AtLeast<{
@@ -409,25 +409,25 @@ export type MealPlanItemWhereUniqueInput = Prisma.AtLeast<{
   dishId?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   date?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   timeSlot?: Prisma.StringFilter<"MealPlanItem"> | string
-  deliveryTime?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   isSkipped?: Prisma.BoolFilter<"MealPlanItem"> | boolean
-  isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
-  deliveredAt?: Prisma.DateTimeNullableFilter<"MealPlanItem"> | Date | string | null
   customNote?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishName?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishDescription?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishCategory?: Prisma.EnumDishCategoryNullableFilter<"MealPlanItem"> | $Enums.DishCategory | null
-  ingredients?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  allergens?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  calories?: Prisma.IntNullableFilter<"MealPlanItem"> | number | null
-  protein?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  carbs?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  fats?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  price?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
   createdAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
-  mealPlan?: Prisma.XOR<Prisma.MealPlanScalarRelationFilter, Prisma.MealPlanWhereInput>
+  isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
+  deliveredAt?: Prisma.DateTimeNullableFilter<"MealPlanItem"> | Date | string | null
+  allergens?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  calories?: Prisma.IntNullableFilter<"MealPlanItem"> | number | null
+  carbs?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  deliveryTime?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  dishCategory?: Prisma.EnumDishCategoryNullableFilter<"MealPlanItem"> | $Enums.DishCategory | null
+  dishDescription?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  dishName?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  fats?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  ingredients?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  price?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  protein?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
   dish?: Prisma.XOR<Prisma.DishNullableScalarRelationFilter, Prisma.DishWhereInput> | null
+  mealPlan?: Prisma.XOR<Prisma.MealPlanScalarRelationFilter, Prisma.MealPlanWhereInput>
 }, "id" | "mealPlanId_date_timeSlot">
 
 export type MealPlanItemOrderByWithAggregationInput = {
@@ -436,23 +436,23 @@ export type MealPlanItemOrderByWithAggregationInput = {
   dishId?: Prisma.SortOrderInput | Prisma.SortOrder
   date?: Prisma.SortOrder
   timeSlot?: Prisma.SortOrder
-  deliveryTime?: Prisma.SortOrderInput | Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
-  isDelivered?: Prisma.SortOrder
-  deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
   customNote?: Prisma.SortOrderInput | Prisma.SortOrder
-  dishName?: Prisma.SortOrderInput | Prisma.SortOrder
-  dishDescription?: Prisma.SortOrderInput | Prisma.SortOrder
-  dishCategory?: Prisma.SortOrderInput | Prisma.SortOrder
-  ingredients?: Prisma.SortOrderInput | Prisma.SortOrder
-  allergens?: Prisma.SortOrderInput | Prisma.SortOrder
-  calories?: Prisma.SortOrderInput | Prisma.SortOrder
-  protein?: Prisma.SortOrderInput | Prisma.SortOrder
-  carbs?: Prisma.SortOrderInput | Prisma.SortOrder
-  fats?: Prisma.SortOrderInput | Prisma.SortOrder
-  price?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDelivered?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  allergens?: Prisma.SortOrderInput | Prisma.SortOrder
+  calories?: Prisma.SortOrderInput | Prisma.SortOrder
+  carbs?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryTime?: Prisma.SortOrderInput | Prisma.SortOrder
+  dishCategory?: Prisma.SortOrderInput | Prisma.SortOrder
+  dishDescription?: Prisma.SortOrderInput | Prisma.SortOrder
+  dishName?: Prisma.SortOrderInput | Prisma.SortOrder
+  fats?: Prisma.SortOrderInput | Prisma.SortOrder
+  ingredients?: Prisma.SortOrderInput | Prisma.SortOrder
+  price?: Prisma.SortOrderInput | Prisma.SortOrder
+  protein?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.MealPlanItemCountOrderByAggregateInput
   _avg?: Prisma.MealPlanItemAvgOrderByAggregateInput
   _max?: Prisma.MealPlanItemMaxOrderByAggregateInput
@@ -469,48 +469,48 @@ export type MealPlanItemScalarWhereWithAggregatesInput = {
   dishId?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
   date?: Prisma.DateTimeWithAggregatesFilter<"MealPlanItem"> | Date | string
   timeSlot?: Prisma.StringWithAggregatesFilter<"MealPlanItem"> | string
-  deliveryTime?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
   isSkipped?: Prisma.BoolWithAggregatesFilter<"MealPlanItem"> | boolean
-  isDelivered?: Prisma.BoolWithAggregatesFilter<"MealPlanItem"> | boolean
-  deliveredAt?: Prisma.DateTimeNullableWithAggregatesFilter<"MealPlanItem"> | Date | string | null
   customNote?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
-  dishName?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
-  dishDescription?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
-  dishCategory?: Prisma.EnumDishCategoryNullableWithAggregatesFilter<"MealPlanItem"> | $Enums.DishCategory | null
-  ingredients?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
-  allergens?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
-  calories?: Prisma.IntNullableWithAggregatesFilter<"MealPlanItem"> | number | null
-  protein?: Prisma.FloatNullableWithAggregatesFilter<"MealPlanItem"> | number | null
-  carbs?: Prisma.FloatNullableWithAggregatesFilter<"MealPlanItem"> | number | null
-  fats?: Prisma.FloatNullableWithAggregatesFilter<"MealPlanItem"> | number | null
-  price?: Prisma.FloatNullableWithAggregatesFilter<"MealPlanItem"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"MealPlanItem"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"MealPlanItem"> | Date | string
+  isDelivered?: Prisma.BoolWithAggregatesFilter<"MealPlanItem"> | boolean
+  deliveredAt?: Prisma.DateTimeNullableWithAggregatesFilter<"MealPlanItem"> | Date | string | null
+  allergens?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
+  calories?: Prisma.IntNullableWithAggregatesFilter<"MealPlanItem"> | number | null
+  carbs?: Prisma.FloatNullableWithAggregatesFilter<"MealPlanItem"> | number | null
+  deliveryTime?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
+  dishCategory?: Prisma.EnumDishCategoryNullableWithAggregatesFilter<"MealPlanItem"> | $Enums.DishCategory | null
+  dishDescription?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
+  dishName?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
+  fats?: Prisma.FloatNullableWithAggregatesFilter<"MealPlanItem"> | number | null
+  ingredients?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
+  price?: Prisma.FloatNullableWithAggregatesFilter<"MealPlanItem"> | number | null
+  protein?: Prisma.FloatNullableWithAggregatesFilter<"MealPlanItem"> | number | null
 }
 
 export type MealPlanItemCreateInput = {
   id?: string
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  mealPlan: Prisma.MealPlanCreateNestedOneWithoutMealPlanItemsInput
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
   dish?: Prisma.DishCreateNestedOneWithoutMealPlanItemsInput
+  mealPlan: Prisma.MealPlanCreateNestedOneWithoutMealPlanItemsInput
 }
 
 export type MealPlanItemUncheckedCreateInput = {
@@ -519,48 +519,48 @@ export type MealPlanItemUncheckedCreateInput = {
   dishId?: string | null
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
 }
 
 export type MealPlanItemUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  mealPlan?: Prisma.MealPlanUpdateOneRequiredWithoutMealPlanItemsNestedInput
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   dish?: Prisma.DishUpdateOneWithoutMealPlanItemsNestedInput
+  mealPlan?: Prisma.MealPlanUpdateOneRequiredWithoutMealPlanItemsNestedInput
 }
 
 export type MealPlanItemUncheckedUpdateInput = {
@@ -569,23 +569,23 @@ export type MealPlanItemUncheckedUpdateInput = {
   dishId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanItemCreateManyInput = {
@@ -594,46 +594,46 @@ export type MealPlanItemCreateManyInput = {
   dishId?: string | null
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
 }
 
 export type MealPlanItemUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanItemUncheckedUpdateManyInput = {
@@ -642,23 +642,23 @@ export type MealPlanItemUncheckedUpdateManyInput = {
   dishId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanItemListRelationFilter = {
@@ -683,31 +683,31 @@ export type MealPlanItemCountOrderByAggregateInput = {
   dishId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   timeSlot?: Prisma.SortOrder
-  deliveryTime?: Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
-  isDelivered?: Prisma.SortOrder
-  deliveredAt?: Prisma.SortOrder
   customNote?: Prisma.SortOrder
-  dishName?: Prisma.SortOrder
-  dishDescription?: Prisma.SortOrder
-  dishCategory?: Prisma.SortOrder
-  ingredients?: Prisma.SortOrder
-  allergens?: Prisma.SortOrder
-  calories?: Prisma.SortOrder
-  protein?: Prisma.SortOrder
-  carbs?: Prisma.SortOrder
-  fats?: Prisma.SortOrder
-  price?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDelivered?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrder
+  allergens?: Prisma.SortOrder
+  calories?: Prisma.SortOrder
+  carbs?: Prisma.SortOrder
+  deliveryTime?: Prisma.SortOrder
+  dishCategory?: Prisma.SortOrder
+  dishDescription?: Prisma.SortOrder
+  dishName?: Prisma.SortOrder
+  fats?: Prisma.SortOrder
+  ingredients?: Prisma.SortOrder
+  price?: Prisma.SortOrder
+  protein?: Prisma.SortOrder
 }
 
 export type MealPlanItemAvgOrderByAggregateInput = {
   calories?: Prisma.SortOrder
-  protein?: Prisma.SortOrder
   carbs?: Prisma.SortOrder
   fats?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  protein?: Prisma.SortOrder
 }
 
 export type MealPlanItemMaxOrderByAggregateInput = {
@@ -716,23 +716,23 @@ export type MealPlanItemMaxOrderByAggregateInput = {
   dishId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   timeSlot?: Prisma.SortOrder
-  deliveryTime?: Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
-  isDelivered?: Prisma.SortOrder
-  deliveredAt?: Prisma.SortOrder
   customNote?: Prisma.SortOrder
-  dishName?: Prisma.SortOrder
-  dishDescription?: Prisma.SortOrder
-  dishCategory?: Prisma.SortOrder
-  ingredients?: Prisma.SortOrder
-  allergens?: Prisma.SortOrder
-  calories?: Prisma.SortOrder
-  protein?: Prisma.SortOrder
-  carbs?: Prisma.SortOrder
-  fats?: Prisma.SortOrder
-  price?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDelivered?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrder
+  allergens?: Prisma.SortOrder
+  calories?: Prisma.SortOrder
+  carbs?: Prisma.SortOrder
+  deliveryTime?: Prisma.SortOrder
+  dishCategory?: Prisma.SortOrder
+  dishDescription?: Prisma.SortOrder
+  dishName?: Prisma.SortOrder
+  fats?: Prisma.SortOrder
+  ingredients?: Prisma.SortOrder
+  price?: Prisma.SortOrder
+  protein?: Prisma.SortOrder
 }
 
 export type MealPlanItemMinOrderByAggregateInput = {
@@ -741,31 +741,31 @@ export type MealPlanItemMinOrderByAggregateInput = {
   dishId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   timeSlot?: Prisma.SortOrder
-  deliveryTime?: Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
-  isDelivered?: Prisma.SortOrder
-  deliveredAt?: Prisma.SortOrder
   customNote?: Prisma.SortOrder
-  dishName?: Prisma.SortOrder
-  dishDescription?: Prisma.SortOrder
-  dishCategory?: Prisma.SortOrder
-  ingredients?: Prisma.SortOrder
-  allergens?: Prisma.SortOrder
-  calories?: Prisma.SortOrder
-  protein?: Prisma.SortOrder
-  carbs?: Prisma.SortOrder
-  fats?: Prisma.SortOrder
-  price?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDelivered?: Prisma.SortOrder
+  deliveredAt?: Prisma.SortOrder
+  allergens?: Prisma.SortOrder
+  calories?: Prisma.SortOrder
+  carbs?: Prisma.SortOrder
+  deliveryTime?: Prisma.SortOrder
+  dishCategory?: Prisma.SortOrder
+  dishDescription?: Prisma.SortOrder
+  dishName?: Prisma.SortOrder
+  fats?: Prisma.SortOrder
+  ingredients?: Prisma.SortOrder
+  price?: Prisma.SortOrder
+  protein?: Prisma.SortOrder
 }
 
 export type MealPlanItemSumOrderByAggregateInput = {
   calories?: Prisma.SortOrder
-  protein?: Prisma.SortOrder
   carbs?: Prisma.SortOrder
   fats?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  protein?: Prisma.SortOrder
 }
 
 export type MealPlanItemCreateNestedManyWithoutDishInput = {
@@ -860,23 +860,23 @@ export type MealPlanItemCreateWithoutDishInput = {
   id?: string
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
   mealPlan: Prisma.MealPlanCreateNestedOneWithoutMealPlanItemsInput
 }
 
@@ -885,23 +885,23 @@ export type MealPlanItemUncheckedCreateWithoutDishInput = {
   mealPlanId: string
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
 }
 
 export type MealPlanItemCreateOrConnectWithoutDishInput = {
@@ -939,46 +939,46 @@ export type MealPlanItemScalarWhereInput = {
   dishId?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   date?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   timeSlot?: Prisma.StringFilter<"MealPlanItem"> | string
-  deliveryTime?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   isSkipped?: Prisma.BoolFilter<"MealPlanItem"> | boolean
-  isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
-  deliveredAt?: Prisma.DateTimeNullableFilter<"MealPlanItem"> | Date | string | null
   customNote?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishName?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishDescription?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  dishCategory?: Prisma.EnumDishCategoryNullableFilter<"MealPlanItem"> | $Enums.DishCategory | null
-  ingredients?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  allergens?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
-  calories?: Prisma.IntNullableFilter<"MealPlanItem"> | number | null
-  protein?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  carbs?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  fats?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
-  price?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
   createdAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
+  isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
+  deliveredAt?: Prisma.DateTimeNullableFilter<"MealPlanItem"> | Date | string | null
+  allergens?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  calories?: Prisma.IntNullableFilter<"MealPlanItem"> | number | null
+  carbs?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  deliveryTime?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  dishCategory?: Prisma.EnumDishCategoryNullableFilter<"MealPlanItem"> | $Enums.DishCategory | null
+  dishDescription?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  dishName?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  fats?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  ingredients?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  price?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
+  protein?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
 }
 
 export type MealPlanItemCreateWithoutMealPlanInput = {
   id?: string
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
   dish?: Prisma.DishCreateNestedOneWithoutMealPlanItemsInput
 }
 
@@ -987,23 +987,23 @@ export type MealPlanItemUncheckedCreateWithoutMealPlanInput = {
   dishId?: string | null
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
 }
 
 export type MealPlanItemCreateOrConnectWithoutMealPlanInput = {
@@ -1037,46 +1037,46 @@ export type MealPlanItemCreateManyDishInput = {
   mealPlanId: string
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
 }
 
 export type MealPlanItemUpdateWithoutDishInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   mealPlan?: Prisma.MealPlanUpdateOneRequiredWithoutMealPlanItemsNestedInput
 }
 
@@ -1085,23 +1085,23 @@ export type MealPlanItemUncheckedUpdateWithoutDishInput = {
   mealPlanId?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanItemUncheckedUpdateManyWithoutDishInput = {
@@ -1109,23 +1109,23 @@ export type MealPlanItemUncheckedUpdateManyWithoutDishInput = {
   mealPlanId?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanItemCreateManyMealPlanInput = {
@@ -1133,46 +1133,46 @@ export type MealPlanItemCreateManyMealPlanInput = {
   dishId?: string | null
   date: Date | string
   timeSlot: string
-  deliveryTime?: string | null
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: Date | string | null
   customNote?: string | null
-  dishName?: string | null
-  dishDescription?: string | null
-  dishCategory?: $Enums.DishCategory | null
-  ingredients?: string | null
-  allergens?: string | null
-  calories?: number | null
-  protein?: number | null
-  carbs?: number | null
-  fats?: number | null
-  price?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDelivered?: boolean
+  deliveredAt?: Date | string | null
+  allergens?: string | null
+  calories?: number | null
+  carbs?: number | null
+  deliveryTime?: string | null
+  dishCategory?: $Enums.DishCategory | null
+  dishDescription?: string | null
+  dishName?: string | null
+  fats?: number | null
+  ingredients?: string | null
+  price?: number | null
+  protein?: number | null
 }
 
 export type MealPlanItemUpdateWithoutMealPlanInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   dish?: Prisma.DishUpdateOneWithoutMealPlanItemsNestedInput
 }
 
@@ -1181,23 +1181,23 @@ export type MealPlanItemUncheckedUpdateWithoutMealPlanInput = {
   dishId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanItemUncheckedUpdateManyWithoutMealPlanInput = {
@@ -1205,23 +1205,23 @@ export type MealPlanItemUncheckedUpdateManyWithoutMealPlanInput = {
   dishId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
-  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
-  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  carbs?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  deliveryTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishCategory?: Prisma.NullableEnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory | null
+  dishDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dishName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fats?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  protein?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 
@@ -1232,25 +1232,25 @@ export type MealPlanItemSelect<ExtArgs extends runtime.Types.Extensions.Internal
   dishId?: boolean
   date?: boolean
   timeSlot?: boolean
-  deliveryTime?: boolean
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: boolean
   customNote?: boolean
-  dishName?: boolean
-  dishDescription?: boolean
-  dishCategory?: boolean
-  ingredients?: boolean
-  allergens?: boolean
-  calories?: boolean
-  protein?: boolean
-  carbs?: boolean
-  fats?: boolean
-  price?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
+  isDelivered?: boolean
+  deliveredAt?: boolean
+  allergens?: boolean
+  calories?: boolean
+  carbs?: boolean
+  deliveryTime?: boolean
+  dishCategory?: boolean
+  dishDescription?: boolean
+  dishName?: boolean
+  fats?: boolean
+  ingredients?: boolean
+  price?: boolean
+  protein?: boolean
   dish?: boolean | Prisma.MealPlanItem$dishArgs<ExtArgs>
+  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlanItem"]>
 
 export type MealPlanItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1259,25 +1259,25 @@ export type MealPlanItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   dishId?: boolean
   date?: boolean
   timeSlot?: boolean
-  deliveryTime?: boolean
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: boolean
   customNote?: boolean
-  dishName?: boolean
-  dishDescription?: boolean
-  dishCategory?: boolean
-  ingredients?: boolean
-  allergens?: boolean
-  calories?: boolean
-  protein?: boolean
-  carbs?: boolean
-  fats?: boolean
-  price?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
+  isDelivered?: boolean
+  deliveredAt?: boolean
+  allergens?: boolean
+  calories?: boolean
+  carbs?: boolean
+  deliveryTime?: boolean
+  dishCategory?: boolean
+  dishDescription?: boolean
+  dishName?: boolean
+  fats?: boolean
+  ingredients?: boolean
+  price?: boolean
+  protein?: boolean
   dish?: boolean | Prisma.MealPlanItem$dishArgs<ExtArgs>
+  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlanItem"]>
 
 export type MealPlanItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1286,25 +1286,25 @@ export type MealPlanItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   dishId?: boolean
   date?: boolean
   timeSlot?: boolean
-  deliveryTime?: boolean
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: boolean
   customNote?: boolean
-  dishName?: boolean
-  dishDescription?: boolean
-  dishCategory?: boolean
-  ingredients?: boolean
-  allergens?: boolean
-  calories?: boolean
-  protein?: boolean
-  carbs?: boolean
-  fats?: boolean
-  price?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
+  isDelivered?: boolean
+  deliveredAt?: boolean
+  allergens?: boolean
+  calories?: boolean
+  carbs?: boolean
+  deliveryTime?: boolean
+  dishCategory?: boolean
+  dishDescription?: boolean
+  dishName?: boolean
+  fats?: boolean
+  ingredients?: boolean
+  price?: boolean
+  protein?: boolean
   dish?: boolean | Prisma.MealPlanItem$dishArgs<ExtArgs>
+  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlanItem"]>
 
 export type MealPlanItemSelectScalar = {
@@ -1313,44 +1313,44 @@ export type MealPlanItemSelectScalar = {
   dishId?: boolean
   date?: boolean
   timeSlot?: boolean
-  deliveryTime?: boolean
   isSkipped?: boolean
-  isDelivered?: boolean
-  deliveredAt?: boolean
   customNote?: boolean
-  dishName?: boolean
-  dishDescription?: boolean
-  dishCategory?: boolean
-  ingredients?: boolean
-  allergens?: boolean
-  calories?: boolean
-  protein?: boolean
-  carbs?: boolean
-  fats?: boolean
-  price?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isDelivered?: boolean
+  deliveredAt?: boolean
+  allergens?: boolean
+  calories?: boolean
+  carbs?: boolean
+  deliveryTime?: boolean
+  dishCategory?: boolean
+  dishDescription?: boolean
+  dishName?: boolean
+  fats?: boolean
+  ingredients?: boolean
+  price?: boolean
+  protein?: boolean
 }
 
-export type MealPlanItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "mealPlanId" | "dishId" | "date" | "timeSlot" | "deliveryTime" | "isSkipped" | "isDelivered" | "deliveredAt" | "customNote" | "dishName" | "dishDescription" | "dishCategory" | "ingredients" | "allergens" | "calories" | "protein" | "carbs" | "fats" | "price" | "createdAt" | "updatedAt", ExtArgs["result"]["mealPlanItem"]>
+export type MealPlanItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "mealPlanId" | "dishId" | "date" | "timeSlot" | "isSkipped" | "customNote" | "createdAt" | "updatedAt" | "isDelivered" | "deliveredAt" | "allergens" | "calories" | "carbs" | "deliveryTime" | "dishCategory" | "dishDescription" | "dishName" | "fats" | "ingredients" | "price" | "protein", ExtArgs["result"]["mealPlanItem"]>
 export type MealPlanItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
   dish?: boolean | Prisma.MealPlanItem$dishArgs<ExtArgs>
+  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
 }
 export type MealPlanItemIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
   dish?: boolean | Prisma.MealPlanItem$dishArgs<ExtArgs>
+  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
 }
 export type MealPlanItemIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
   dish?: boolean | Prisma.MealPlanItem$dishArgs<ExtArgs>
+  mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
 }
 
 export type $MealPlanItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "MealPlanItem"
   objects: {
-    mealPlan: Prisma.$MealPlanPayload<ExtArgs>
     dish: Prisma.$DishPayload<ExtArgs> | null
+    mealPlan: Prisma.$MealPlanPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1358,23 +1358,23 @@ export type $MealPlanItemPayload<ExtArgs extends runtime.Types.Extensions.Intern
     dishId: string | null
     date: Date
     timeSlot: string
-    deliveryTime: string | null
     isSkipped: boolean
-    isDelivered: boolean
-    deliveredAt: Date | null
     customNote: string | null
-    dishName: string | null
-    dishDescription: string | null
-    dishCategory: $Enums.DishCategory | null
-    ingredients: string | null
-    allergens: string | null
-    calories: number | null
-    protein: number | null
-    carbs: number | null
-    fats: number | null
-    price: number | null
     createdAt: Date
     updatedAt: Date
+    isDelivered: boolean
+    deliveredAt: Date | null
+    allergens: string | null
+    calories: number | null
+    carbs: number | null
+    deliveryTime: string | null
+    dishCategory: $Enums.DishCategory | null
+    dishDescription: string | null
+    dishName: string | null
+    fats: number | null
+    ingredients: string | null
+    price: number | null
+    protein: number | null
   }, ExtArgs["result"]["mealPlanItem"]>
   composites: {}
 }
@@ -1769,8 +1769,8 @@ readonly fields: MealPlanItemFieldRefs;
  */
 export interface Prisma__MealPlanItemClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  mealPlan<T extends Prisma.MealPlanDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MealPlanDefaultArgs<ExtArgs>>): Prisma.Prisma__MealPlanClient<runtime.Types.Result.GetResult<Prisma.$MealPlanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   dish<T extends Prisma.MealPlanItem$dishArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MealPlanItem$dishArgs<ExtArgs>>): Prisma.Prisma__DishClient<runtime.Types.Result.GetResult<Prisma.$DishPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  mealPlan<T extends Prisma.MealPlanDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MealPlanDefaultArgs<ExtArgs>>): Prisma.Prisma__MealPlanClient<runtime.Types.Result.GetResult<Prisma.$MealPlanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1805,23 +1805,23 @@ export interface MealPlanItemFieldRefs {
   readonly dishId: Prisma.FieldRef<"MealPlanItem", 'String'>
   readonly date: Prisma.FieldRef<"MealPlanItem", 'DateTime'>
   readonly timeSlot: Prisma.FieldRef<"MealPlanItem", 'String'>
-  readonly deliveryTime: Prisma.FieldRef<"MealPlanItem", 'String'>
   readonly isSkipped: Prisma.FieldRef<"MealPlanItem", 'Boolean'>
-  readonly isDelivered: Prisma.FieldRef<"MealPlanItem", 'Boolean'>
-  readonly deliveredAt: Prisma.FieldRef<"MealPlanItem", 'DateTime'>
   readonly customNote: Prisma.FieldRef<"MealPlanItem", 'String'>
-  readonly dishName: Prisma.FieldRef<"MealPlanItem", 'String'>
-  readonly dishDescription: Prisma.FieldRef<"MealPlanItem", 'String'>
-  readonly dishCategory: Prisma.FieldRef<"MealPlanItem", 'DishCategory'>
-  readonly ingredients: Prisma.FieldRef<"MealPlanItem", 'String'>
-  readonly allergens: Prisma.FieldRef<"MealPlanItem", 'String'>
-  readonly calories: Prisma.FieldRef<"MealPlanItem", 'Int'>
-  readonly protein: Prisma.FieldRef<"MealPlanItem", 'Float'>
-  readonly carbs: Prisma.FieldRef<"MealPlanItem", 'Float'>
-  readonly fats: Prisma.FieldRef<"MealPlanItem", 'Float'>
-  readonly price: Prisma.FieldRef<"MealPlanItem", 'Float'>
   readonly createdAt: Prisma.FieldRef<"MealPlanItem", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"MealPlanItem", 'DateTime'>
+  readonly isDelivered: Prisma.FieldRef<"MealPlanItem", 'Boolean'>
+  readonly deliveredAt: Prisma.FieldRef<"MealPlanItem", 'DateTime'>
+  readonly allergens: Prisma.FieldRef<"MealPlanItem", 'String'>
+  readonly calories: Prisma.FieldRef<"MealPlanItem", 'Int'>
+  readonly carbs: Prisma.FieldRef<"MealPlanItem", 'Float'>
+  readonly deliveryTime: Prisma.FieldRef<"MealPlanItem", 'String'>
+  readonly dishCategory: Prisma.FieldRef<"MealPlanItem", 'DishCategory'>
+  readonly dishDescription: Prisma.FieldRef<"MealPlanItem", 'String'>
+  readonly dishName: Prisma.FieldRef<"MealPlanItem", 'String'>
+  readonly fats: Prisma.FieldRef<"MealPlanItem", 'Float'>
+  readonly ingredients: Prisma.FieldRef<"MealPlanItem", 'String'>
+  readonly price: Prisma.FieldRef<"MealPlanItem", 'Float'>
+  readonly protein: Prisma.FieldRef<"MealPlanItem", 'Float'>
 }
     
 

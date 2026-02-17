@@ -68,8 +68,48 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Aggregate by dish
+    const dishAggregation: Record<string, {
+      dishName: string
+      dishCategory: string | null
+      totalPortions: number
+      customers: Set<string>
+      deliveryAreas: Set<string>
+    }> = {}
+
+    items.forEach(item => {
+      const dishName = item.dishName || item.dish?.name || 'Not Assigned'
+      const dishCategory = item.dishCategory || item.dish?.category || null
+      
+      if (!dishAggregation[dishName]) {
+        dishAggregation[dishName] = {
+          dishName,
+          dishCategory,
+          totalPortions: 0,
+          customers: new Set(),
+          deliveryAreas: new Set(),
+        }
+      }
+
+      dishAggregation[dishName].totalPortions++
+      dishAggregation[dishName].customers.add(item.mealPlan.customer.fullName)
+      if (item.mealPlan.customer.deliveryArea) {
+        dishAggregation[dishName].deliveryAreas.add(item.mealPlan.customer.deliveryArea)
+      }
+    })
+
+    // Convert to array format
+    const aggregated = Object.values(dishAggregation).map(agg => ({
+      dishName: agg.dishName,
+      dishCategory: agg.dishCategory,
+      totalPortions: agg.totalPortions,
+      customerCount: agg.customers.size,
+      deliveryAreas: Array.from(agg.deliveryAreas),
+    }))
+
     return NextResponse.json({
       items,
+      aggregated,
       total: items.length,
       date,
       startTime: startTime || null,

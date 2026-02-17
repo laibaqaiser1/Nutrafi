@@ -27,181 +27,175 @@ export type AggregateMealPlan = {
 }
 
 export type MealPlanAvgAggregateOutputType = {
-  days: number | null
   mealsPerDay: number | null
+  averageMealRate: number | null
   baseAmount: number | null
-  vatAmount: number | null
+  days: number | null
+  remainingMeals: number | null
   totalAmount: number | null
   totalMeals: number | null
-  remainingMeals: number | null
-  averageMealRate: number | null
+  vatAmount: number | null
 }
 
 export type MealPlanSumAggregateOutputType = {
-  days: number | null
   mealsPerDay: number | null
+  averageMealRate: number | null
   baseAmount: number | null
-  vatAmount: number | null
+  days: number | null
+  remainingMeals: number | null
   totalAmount: number | null
   totalMeals: number | null
-  remainingMeals: number | null
-  averageMealRate: number | null
+  vatAmount: number | null
 }
 
 export type MealPlanMinAggregateOutputType = {
   id: string | null
   customerId: string | null
   planId: string | null
-  planType: $Enums.PlanType | null
   startDate: Date | null
   endDate: Date | null
-  days: number | null
   mealsPerDay: number | null
-  timeSlots: string | null
-  baseAmount: number | null
-  vatAmount: number | null
-  totalAmount: number | null
-  totalMeals: number | null
-  remainingMeals: number | null
-  averageMealRate: number | null
   status: string | null
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  averageMealRate: number | null
+  baseAmount: number | null
+  days: number | null
+  planType: $Enums.PlanType | null
+  remainingMeals: number | null
+  totalAmount: number | null
+  totalMeals: number | null
+  vatAmount: number | null
 }
 
 export type MealPlanMaxAggregateOutputType = {
   id: string | null
   customerId: string | null
   planId: string | null
-  planType: $Enums.PlanType | null
   startDate: Date | null
   endDate: Date | null
-  days: number | null
   mealsPerDay: number | null
-  timeSlots: string | null
-  baseAmount: number | null
-  vatAmount: number | null
-  totalAmount: number | null
-  totalMeals: number | null
-  remainingMeals: number | null
-  averageMealRate: number | null
   status: string | null
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  averageMealRate: number | null
+  baseAmount: number | null
+  days: number | null
+  planType: $Enums.PlanType | null
+  remainingMeals: number | null
+  totalAmount: number | null
+  totalMeals: number | null
+  vatAmount: number | null
 }
 
 export type MealPlanCountAggregateOutputType = {
   id: number
   customerId: number
   planId: number
-  planType: number
   startDate: number
   endDate: number
-  days: number
   mealsPerDay: number
-  timeSlots: number
-  baseAmount: number
-  vatAmount: number
-  totalAmount: number
-  totalMeals: number
-  remainingMeals: number
-  averageMealRate: number
   status: number
   notes: number
   createdAt: number
   updatedAt: number
+  averageMealRate: number
+  baseAmount: number
+  days: number
+  planType: number
+  remainingMeals: number
+  totalAmount: number
+  totalMeals: number
+  vatAmount: number
   _all: number
 }
 
 
 export type MealPlanAvgAggregateInputType = {
-  days?: true
   mealsPerDay?: true
+  averageMealRate?: true
   baseAmount?: true
-  vatAmount?: true
+  days?: true
+  remainingMeals?: true
   totalAmount?: true
   totalMeals?: true
-  remainingMeals?: true
-  averageMealRate?: true
+  vatAmount?: true
 }
 
 export type MealPlanSumAggregateInputType = {
-  days?: true
   mealsPerDay?: true
+  averageMealRate?: true
   baseAmount?: true
-  vatAmount?: true
+  days?: true
+  remainingMeals?: true
   totalAmount?: true
   totalMeals?: true
-  remainingMeals?: true
-  averageMealRate?: true
+  vatAmount?: true
 }
 
 export type MealPlanMinAggregateInputType = {
   id?: true
   customerId?: true
   planId?: true
-  planType?: true
   startDate?: true
   endDate?: true
-  days?: true
   mealsPerDay?: true
-  timeSlots?: true
-  baseAmount?: true
-  vatAmount?: true
-  totalAmount?: true
-  totalMeals?: true
-  remainingMeals?: true
-  averageMealRate?: true
   status?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
+  averageMealRate?: true
+  baseAmount?: true
+  days?: true
+  planType?: true
+  remainingMeals?: true
+  totalAmount?: true
+  totalMeals?: true
+  vatAmount?: true
 }
 
 export type MealPlanMaxAggregateInputType = {
   id?: true
   customerId?: true
   planId?: true
-  planType?: true
   startDate?: true
   endDate?: true
-  days?: true
   mealsPerDay?: true
-  timeSlots?: true
-  baseAmount?: true
-  vatAmount?: true
-  totalAmount?: true
-  totalMeals?: true
-  remainingMeals?: true
-  averageMealRate?: true
   status?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
+  averageMealRate?: true
+  baseAmount?: true
+  days?: true
+  planType?: true
+  remainingMeals?: true
+  totalAmount?: true
+  totalMeals?: true
+  vatAmount?: true
 }
 
 export type MealPlanCountAggregateInputType = {
   id?: true
   customerId?: true
   planId?: true
-  planType?: true
   startDate?: true
   endDate?: true
-  days?: true
   mealsPerDay?: true
-  timeSlots?: true
-  baseAmount?: true
-  vatAmount?: true
-  totalAmount?: true
-  totalMeals?: true
-  remainingMeals?: true
-  averageMealRate?: true
   status?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
+  averageMealRate?: true
+  baseAmount?: true
+  days?: true
+  planType?: true
+  remainingMeals?: true
+  totalAmount?: true
+  totalMeals?: true
+  vatAmount?: true
   _all?: true
 }
 
@@ -295,22 +289,21 @@ export type MealPlanGroupByOutputType = {
   id: string
   customerId: string
   planId: string | null
-  planType: $Enums.PlanType
   startDate: Date | null
   endDate: Date | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount: number | null
-  vatAmount: number | null
-  totalAmount: number | null
-  totalMeals: number | null
-  remainingMeals: number | null
-  averageMealRate: number | null
   status: string
   notes: string | null
   createdAt: Date
   updatedAt: Date
+  averageMealRate: number | null
+  baseAmount: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals: number | null
+  totalAmount: number | null
+  totalMeals: number | null
+  vatAmount: number | null
   _count: MealPlanCountAggregateOutputType | null
   _avg: MealPlanAvgAggregateOutputType | null
   _sum: MealPlanSumAggregateOutputType | null
@@ -340,22 +333,21 @@ export type MealPlanWhereInput = {
   id?: Prisma.StringFilter<"MealPlan"> | string
   customerId?: Prisma.StringFilter<"MealPlan"> | string
   planId?: Prisma.StringNullableFilter<"MealPlan"> | string | null
-  planType?: Prisma.EnumPlanTypeFilter<"MealPlan"> | $Enums.PlanType
   startDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
-  days?: Prisma.IntFilter<"MealPlan"> | number
   mealsPerDay?: Prisma.IntFilter<"MealPlan"> | number
-  timeSlots?: Prisma.StringFilter<"MealPlan"> | string
-  baseAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
-  remainingMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
-  averageMealRate?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   status?: Prisma.StringFilter<"MealPlan"> | string
   notes?: Prisma.StringNullableFilter<"MealPlan"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MealPlan"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlan"> | Date | string
+  averageMealRate?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  baseAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  days?: Prisma.IntFilter<"MealPlan"> | number
+  planType?: Prisma.EnumPlanTypeFilter<"MealPlan"> | $Enums.PlanType
+  remainingMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
+  totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
+  vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   plan?: Prisma.XOR<Prisma.PlanNullableScalarRelationFilter, Prisma.PlanWhereInput> | null
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
@@ -366,22 +358,21 @@ export type MealPlanOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
   planId?: Prisma.SortOrderInput | Prisma.SortOrder
-  planType?: Prisma.SortOrder
   startDate?: Prisma.SortOrderInput | Prisma.SortOrder
   endDate?: Prisma.SortOrderInput | Prisma.SortOrder
-  days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
-  timeSlots?: Prisma.SortOrder
-  baseAmount?: Prisma.SortOrderInput | Prisma.SortOrder
-  vatAmount?: Prisma.SortOrderInput | Prisma.SortOrder
-  totalAmount?: Prisma.SortOrderInput | Prisma.SortOrder
-  totalMeals?: Prisma.SortOrderInput | Prisma.SortOrder
-  remainingMeals?: Prisma.SortOrderInput | Prisma.SortOrder
-  averageMealRate?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  averageMealRate?: Prisma.SortOrderInput | Prisma.SortOrder
+  baseAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  days?: Prisma.SortOrder
+  planType?: Prisma.SortOrder
+  remainingMeals?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalMeals?: Prisma.SortOrderInput | Prisma.SortOrder
+  vatAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   customer?: Prisma.CustomerOrderByWithRelationInput
   plan?: Prisma.PlanOrderByWithRelationInput
   mealPlanItems?: Prisma.MealPlanItemOrderByRelationAggregateInput
@@ -395,22 +386,21 @@ export type MealPlanWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.MealPlanWhereInput | Prisma.MealPlanWhereInput[]
   customerId?: Prisma.StringFilter<"MealPlan"> | string
   planId?: Prisma.StringNullableFilter<"MealPlan"> | string | null
-  planType?: Prisma.EnumPlanTypeFilter<"MealPlan"> | $Enums.PlanType
   startDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
-  days?: Prisma.IntFilter<"MealPlan"> | number
   mealsPerDay?: Prisma.IntFilter<"MealPlan"> | number
-  timeSlots?: Prisma.StringFilter<"MealPlan"> | string
-  baseAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
-  remainingMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
-  averageMealRate?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   status?: Prisma.StringFilter<"MealPlan"> | string
   notes?: Prisma.StringNullableFilter<"MealPlan"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MealPlan"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlan"> | Date | string
+  averageMealRate?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  baseAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  days?: Prisma.IntFilter<"MealPlan"> | number
+  planType?: Prisma.EnumPlanTypeFilter<"MealPlan"> | $Enums.PlanType
+  remainingMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
+  totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
+  vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   plan?: Prisma.XOR<Prisma.PlanNullableScalarRelationFilter, Prisma.PlanWhereInput> | null
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
@@ -421,22 +411,21 @@ export type MealPlanOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
   planId?: Prisma.SortOrderInput | Prisma.SortOrder
-  planType?: Prisma.SortOrder
   startDate?: Prisma.SortOrderInput | Prisma.SortOrder
   endDate?: Prisma.SortOrderInput | Prisma.SortOrder
-  days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
-  timeSlots?: Prisma.SortOrder
-  baseAmount?: Prisma.SortOrderInput | Prisma.SortOrder
-  vatAmount?: Prisma.SortOrderInput | Prisma.SortOrder
-  totalAmount?: Prisma.SortOrderInput | Prisma.SortOrder
-  totalMeals?: Prisma.SortOrderInput | Prisma.SortOrder
-  remainingMeals?: Prisma.SortOrderInput | Prisma.SortOrder
-  averageMealRate?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  averageMealRate?: Prisma.SortOrderInput | Prisma.SortOrder
+  baseAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  days?: Prisma.SortOrder
+  planType?: Prisma.SortOrder
+  remainingMeals?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalMeals?: Prisma.SortOrderInput | Prisma.SortOrder
+  vatAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.MealPlanCountOrderByAggregateInput
   _avg?: Prisma.MealPlanAvgOrderByAggregateInput
   _max?: Prisma.MealPlanMaxOrderByAggregateInput
@@ -451,42 +440,40 @@ export type MealPlanScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"MealPlan"> | string
   customerId?: Prisma.StringWithAggregatesFilter<"MealPlan"> | string
   planId?: Prisma.StringNullableWithAggregatesFilter<"MealPlan"> | string | null
-  planType?: Prisma.EnumPlanTypeWithAggregatesFilter<"MealPlan"> | $Enums.PlanType
   startDate?: Prisma.DateTimeNullableWithAggregatesFilter<"MealPlan"> | Date | string | null
   endDate?: Prisma.DateTimeNullableWithAggregatesFilter<"MealPlan"> | Date | string | null
-  days?: Prisma.IntWithAggregatesFilter<"MealPlan"> | number
   mealsPerDay?: Prisma.IntWithAggregatesFilter<"MealPlan"> | number
-  timeSlots?: Prisma.StringWithAggregatesFilter<"MealPlan"> | string
-  baseAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
-  vatAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
-  totalAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
-  totalMeals?: Prisma.IntNullableWithAggregatesFilter<"MealPlan"> | number | null
-  remainingMeals?: Prisma.IntNullableWithAggregatesFilter<"MealPlan"> | number | null
-  averageMealRate?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
   status?: Prisma.StringWithAggregatesFilter<"MealPlan"> | string
   notes?: Prisma.StringNullableWithAggregatesFilter<"MealPlan"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"MealPlan"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"MealPlan"> | Date | string
+  averageMealRate?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
+  baseAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
+  days?: Prisma.IntWithAggregatesFilter<"MealPlan"> | number
+  planType?: Prisma.EnumPlanTypeWithAggregatesFilter<"MealPlan"> | $Enums.PlanType
+  remainingMeals?: Prisma.IntNullableWithAggregatesFilter<"MealPlan"> | number | null
+  totalAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
+  totalMeals?: Prisma.IntNullableWithAggregatesFilter<"MealPlan"> | number | null
+  vatAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
 }
 
 export type MealPlanCreateInput = {
   id?: string
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
@@ -497,44 +484,42 @@ export type MealPlanUncheckedCreateInput = {
   id?: string
   customerId: string
   planId?: string | null
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
@@ -545,22 +530,21 @@ export type MealPlanUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -569,64 +553,61 @@ export type MealPlanCreateManyInput = {
   id?: string
   customerId: string
   planId?: string | null
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
 }
 
 export type MealPlanUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanListRelationFilter = {
@@ -643,88 +624,85 @@ export type MealPlanCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
   planId?: Prisma.SortOrder
-  planType?: Prisma.SortOrder
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
-  days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
-  timeSlots?: Prisma.SortOrder
-  baseAmount?: Prisma.SortOrder
-  vatAmount?: Prisma.SortOrder
-  totalAmount?: Prisma.SortOrder
-  totalMeals?: Prisma.SortOrder
-  remainingMeals?: Prisma.SortOrder
-  averageMealRate?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  averageMealRate?: Prisma.SortOrder
+  baseAmount?: Prisma.SortOrder
+  days?: Prisma.SortOrder
+  planType?: Prisma.SortOrder
+  remainingMeals?: Prisma.SortOrder
+  totalAmount?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
+  vatAmount?: Prisma.SortOrder
 }
 
 export type MealPlanAvgOrderByAggregateInput = {
-  days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  averageMealRate?: Prisma.SortOrder
   baseAmount?: Prisma.SortOrder
-  vatAmount?: Prisma.SortOrder
+  days?: Prisma.SortOrder
+  remainingMeals?: Prisma.SortOrder
   totalAmount?: Prisma.SortOrder
   totalMeals?: Prisma.SortOrder
-  remainingMeals?: Prisma.SortOrder
-  averageMealRate?: Prisma.SortOrder
+  vatAmount?: Prisma.SortOrder
 }
 
 export type MealPlanMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
   planId?: Prisma.SortOrder
-  planType?: Prisma.SortOrder
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
-  days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
-  timeSlots?: Prisma.SortOrder
-  baseAmount?: Prisma.SortOrder
-  vatAmount?: Prisma.SortOrder
-  totalAmount?: Prisma.SortOrder
-  totalMeals?: Prisma.SortOrder
-  remainingMeals?: Prisma.SortOrder
-  averageMealRate?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  averageMealRate?: Prisma.SortOrder
+  baseAmount?: Prisma.SortOrder
+  days?: Prisma.SortOrder
+  planType?: Prisma.SortOrder
+  remainingMeals?: Prisma.SortOrder
+  totalAmount?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
+  vatAmount?: Prisma.SortOrder
 }
 
 export type MealPlanMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
   planId?: Prisma.SortOrder
-  planType?: Prisma.SortOrder
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
-  days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
-  timeSlots?: Prisma.SortOrder
-  baseAmount?: Prisma.SortOrder
-  vatAmount?: Prisma.SortOrder
-  totalAmount?: Prisma.SortOrder
-  totalMeals?: Prisma.SortOrder
-  remainingMeals?: Prisma.SortOrder
-  averageMealRate?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  averageMealRate?: Prisma.SortOrder
+  baseAmount?: Prisma.SortOrder
+  days?: Prisma.SortOrder
+  planType?: Prisma.SortOrder
+  remainingMeals?: Prisma.SortOrder
+  totalAmount?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
+  vatAmount?: Prisma.SortOrder
 }
 
 export type MealPlanSumOrderByAggregateInput = {
-  days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  averageMealRate?: Prisma.SortOrder
   baseAmount?: Prisma.SortOrder
-  vatAmount?: Prisma.SortOrder
+  days?: Prisma.SortOrder
+  remainingMeals?: Prisma.SortOrder
   totalAmount?: Prisma.SortOrder
   totalMeals?: Prisma.SortOrder
-  remainingMeals?: Prisma.SortOrder
-  averageMealRate?: Prisma.SortOrder
+  vatAmount?: Prisma.SortOrder
 }
 
 export type MealPlanScalarRelationFilter = {
@@ -865,22 +843,21 @@ export type MealPlanUpdateOneWithoutPaymentsNestedInput = {
 
 export type MealPlanCreateWithoutCustomerInput = {
   id?: string
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -889,22 +866,21 @@ export type MealPlanCreateWithoutCustomerInput = {
 export type MealPlanUncheckedCreateWithoutCustomerInput = {
   id?: string
   planId?: string | null
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
@@ -942,42 +918,40 @@ export type MealPlanScalarWhereInput = {
   id?: Prisma.StringFilter<"MealPlan"> | string
   customerId?: Prisma.StringFilter<"MealPlan"> | string
   planId?: Prisma.StringNullableFilter<"MealPlan"> | string | null
-  planType?: Prisma.EnumPlanTypeFilter<"MealPlan"> | $Enums.PlanType
   startDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
-  days?: Prisma.IntFilter<"MealPlan"> | number
   mealsPerDay?: Prisma.IntFilter<"MealPlan"> | number
-  timeSlots?: Prisma.StringFilter<"MealPlan"> | string
-  baseAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
-  totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
-  remainingMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
-  averageMealRate?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   status?: Prisma.StringFilter<"MealPlan"> | string
   notes?: Prisma.StringNullableFilter<"MealPlan"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MealPlan"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlan"> | Date | string
+  averageMealRate?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  baseAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  days?: Prisma.IntFilter<"MealPlan"> | number
+  planType?: Prisma.EnumPlanTypeFilter<"MealPlan"> | $Enums.PlanType
+  remainingMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
+  totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
+  vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
 }
 
 export type MealPlanCreateWithoutPlanInput = {
   id?: string
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -986,22 +960,21 @@ export type MealPlanCreateWithoutPlanInput = {
 export type MealPlanUncheckedCreateWithoutPlanInput = {
   id?: string
   customerId: string
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
@@ -1034,22 +1007,21 @@ export type MealPlanUpdateManyWithWhereWithoutPlanInput = {
 
 export type MealPlanCreateWithoutMealPlanItemsInput = {
   id?: string
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -1059,22 +1031,21 @@ export type MealPlanUncheckedCreateWithoutMealPlanItemsInput = {
   id?: string
   customerId: string
   planId?: string | null
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
@@ -1096,22 +1067,21 @@ export type MealPlanUpdateToOneWithWhereWithoutMealPlanItemsInput = {
 
 export type MealPlanUpdateWithoutMealPlanItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1121,43 +1091,41 @@ export type MealPlanUncheckedUpdateWithoutMealPlanItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanCreateWithoutPaymentsInput = {
   id?: string
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
@@ -1167,22 +1135,21 @@ export type MealPlanUncheckedCreateWithoutPaymentsInput = {
   id?: string
   customerId: string
   planId?: string | null
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
@@ -1204,22 +1171,21 @@ export type MealPlanUpdateToOneWithWhereWithoutPaymentsInput = {
 
 export type MealPlanUpdateWithoutPaymentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
@@ -1229,64 +1195,61 @@ export type MealPlanUncheckedUpdateWithoutPaymentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanCreateManyCustomerInput = {
   id?: string
   planId?: string | null
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
 }
 
 export type MealPlanUpdateWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1295,22 +1258,21 @@ export type MealPlanUpdateWithoutCustomerInput = {
 export type MealPlanUncheckedUpdateWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -1318,63 +1280,60 @@ export type MealPlanUncheckedUpdateWithoutCustomerInput = {
 export type MealPlanUncheckedUpdateManyWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 export type MealPlanCreateManyPlanInput = {
   id?: string
   customerId: string
-  planType: $Enums.PlanType
   startDate?: Date | string | null
   endDate?: Date | string | null
-  days: number
   mealsPerDay: number
-  timeSlots: string
-  baseAmount?: number | null
-  vatAmount?: number | null
-  totalAmount?: number | null
-  totalMeals?: number | null
-  remainingMeals?: number | null
-  averageMealRate?: number | null
   status?: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
 }
 
 export type MealPlanUpdateWithoutPlanInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1383,22 +1342,21 @@ export type MealPlanUpdateWithoutPlanInput = {
 export type MealPlanUncheckedUpdateWithoutPlanInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -1406,22 +1364,21 @@ export type MealPlanUncheckedUpdateWithoutPlanInput = {
 export type MealPlanUncheckedUpdateManyWithoutPlanInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
-  timeSlots?: Prisma.StringFieldUpdateOperationsInput | string
-  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
 }
 
 
@@ -1468,22 +1425,21 @@ export type MealPlanSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   id?: boolean
   customerId?: boolean
   planId?: boolean
-  planType?: boolean
   startDate?: boolean
   endDate?: boolean
-  days?: boolean
   mealsPerDay?: boolean
-  timeSlots?: boolean
-  baseAmount?: boolean
-  vatAmount?: boolean
-  totalAmount?: boolean
-  totalMeals?: boolean
-  remainingMeals?: boolean
-  averageMealRate?: boolean
   status?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  averageMealRate?: boolean
+  baseAmount?: boolean
+  days?: boolean
+  planType?: boolean
+  remainingMeals?: boolean
+  totalAmount?: boolean
+  totalMeals?: boolean
+  vatAmount?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
   mealPlanItems?: boolean | Prisma.MealPlan$mealPlanItemsArgs<ExtArgs>
@@ -1495,22 +1451,21 @@ export type MealPlanSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   id?: boolean
   customerId?: boolean
   planId?: boolean
-  planType?: boolean
   startDate?: boolean
   endDate?: boolean
-  days?: boolean
   mealsPerDay?: boolean
-  timeSlots?: boolean
-  baseAmount?: boolean
-  vatAmount?: boolean
-  totalAmount?: boolean
-  totalMeals?: boolean
-  remainingMeals?: boolean
-  averageMealRate?: boolean
   status?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  averageMealRate?: boolean
+  baseAmount?: boolean
+  days?: boolean
+  planType?: boolean
+  remainingMeals?: boolean
+  totalAmount?: boolean
+  totalMeals?: boolean
+  vatAmount?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlan"]>
@@ -1519,22 +1474,21 @@ export type MealPlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   id?: boolean
   customerId?: boolean
   planId?: boolean
-  planType?: boolean
   startDate?: boolean
   endDate?: boolean
-  days?: boolean
   mealsPerDay?: boolean
-  timeSlots?: boolean
-  baseAmount?: boolean
-  vatAmount?: boolean
-  totalAmount?: boolean
-  totalMeals?: boolean
-  remainingMeals?: boolean
-  averageMealRate?: boolean
   status?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  averageMealRate?: boolean
+  baseAmount?: boolean
+  days?: boolean
+  planType?: boolean
+  remainingMeals?: boolean
+  totalAmount?: boolean
+  totalMeals?: boolean
+  vatAmount?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlan"]>
@@ -1543,25 +1497,24 @@ export type MealPlanSelectScalar = {
   id?: boolean
   customerId?: boolean
   planId?: boolean
-  planType?: boolean
   startDate?: boolean
   endDate?: boolean
-  days?: boolean
   mealsPerDay?: boolean
-  timeSlots?: boolean
-  baseAmount?: boolean
-  vatAmount?: boolean
-  totalAmount?: boolean
-  totalMeals?: boolean
-  remainingMeals?: boolean
-  averageMealRate?: boolean
   status?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  averageMealRate?: boolean
+  baseAmount?: boolean
+  days?: boolean
+  planType?: boolean
+  remainingMeals?: boolean
+  totalAmount?: boolean
+  totalMeals?: boolean
+  vatAmount?: boolean
 }
 
-export type MealPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "customerId" | "planId" | "planType" | "startDate" | "endDate" | "days" | "mealsPerDay" | "timeSlots" | "baseAmount" | "vatAmount" | "totalAmount" | "totalMeals" | "remainingMeals" | "averageMealRate" | "status" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["mealPlan"]>
+export type MealPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "customerId" | "planId" | "startDate" | "endDate" | "mealsPerDay" | "status" | "notes" | "createdAt" | "updatedAt" | "averageMealRate" | "baseAmount" | "days" | "planType" | "remainingMeals" | "totalAmount" | "totalMeals" | "vatAmount", ExtArgs["result"]["mealPlan"]>
 export type MealPlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
@@ -1590,22 +1543,21 @@ export type $MealPlanPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     id: string
     customerId: string
     planId: string | null
-    planType: $Enums.PlanType
     startDate: Date | null
     endDate: Date | null
-    days: number
     mealsPerDay: number
-    timeSlots: string
-    baseAmount: number | null
-    vatAmount: number | null
-    totalAmount: number | null
-    totalMeals: number | null
-    remainingMeals: number | null
-    averageMealRate: number | null
     status: string
     notes: string | null
     createdAt: Date
     updatedAt: Date
+    averageMealRate: number | null
+    baseAmount: number | null
+    days: number
+    planType: $Enums.PlanType
+    remainingMeals: number | null
+    totalAmount: number | null
+    totalMeals: number | null
+    vatAmount: number | null
   }, ExtArgs["result"]["mealPlan"]>
   composites: {}
 }
@@ -2036,22 +1988,21 @@ export interface MealPlanFieldRefs {
   readonly id: Prisma.FieldRef<"MealPlan", 'String'>
   readonly customerId: Prisma.FieldRef<"MealPlan", 'String'>
   readonly planId: Prisma.FieldRef<"MealPlan", 'String'>
-  readonly planType: Prisma.FieldRef<"MealPlan", 'PlanType'>
   readonly startDate: Prisma.FieldRef<"MealPlan", 'DateTime'>
   readonly endDate: Prisma.FieldRef<"MealPlan", 'DateTime'>
-  readonly days: Prisma.FieldRef<"MealPlan", 'Int'>
   readonly mealsPerDay: Prisma.FieldRef<"MealPlan", 'Int'>
-  readonly timeSlots: Prisma.FieldRef<"MealPlan", 'String'>
-  readonly baseAmount: Prisma.FieldRef<"MealPlan", 'Float'>
-  readonly vatAmount: Prisma.FieldRef<"MealPlan", 'Float'>
-  readonly totalAmount: Prisma.FieldRef<"MealPlan", 'Float'>
-  readonly totalMeals: Prisma.FieldRef<"MealPlan", 'Int'>
-  readonly remainingMeals: Prisma.FieldRef<"MealPlan", 'Int'>
-  readonly averageMealRate: Prisma.FieldRef<"MealPlan", 'Float'>
   readonly status: Prisma.FieldRef<"MealPlan", 'String'>
   readonly notes: Prisma.FieldRef<"MealPlan", 'String'>
   readonly createdAt: Prisma.FieldRef<"MealPlan", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"MealPlan", 'DateTime'>
+  readonly averageMealRate: Prisma.FieldRef<"MealPlan", 'Float'>
+  readonly baseAmount: Prisma.FieldRef<"MealPlan", 'Float'>
+  readonly days: Prisma.FieldRef<"MealPlan", 'Int'>
+  readonly planType: Prisma.FieldRef<"MealPlan", 'PlanType'>
+  readonly remainingMeals: Prisma.FieldRef<"MealPlan", 'Int'>
+  readonly totalAmount: Prisma.FieldRef<"MealPlan", 'Float'>
+  readonly totalMeals: Prisma.FieldRef<"MealPlan", 'Int'>
+  readonly vatAmount: Prisma.FieldRef<"MealPlan", 'Float'>
 }
     
 
