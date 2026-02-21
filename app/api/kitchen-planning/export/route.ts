@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
+import path from 'path'
+import fs from 'fs'
 
 export async function GET(request: NextRequest) {
   try {
@@ -80,58 +82,88 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Prepare data based on sheet type
-    let excelData: any[] = []
-    let sheetName = 'Kitchen Planning'
-
-    if (sheet === 'chef') {
-      // Chef Sheet - meal details and preparation info
-      excelData = items.map(item => {
+    // Load template for Rider sheet, create new for Chef sheet
+    const workbook = new ExcelJS.Workbook()
+    
+    if (sheet === 'rider') {
+      // Load the template file
+      const templatePath = path.join(process.cwd(), 'templates', 'rider-template.xlsx')
+      
+      if (fs.existsSync(templatePath)) {
+        await workbook.xlsx.readFile(templatePath)
+        const worksheet = workbook.getWorksheet(1) // Get first worksheet
+        
+        if (worksheet) {
+          // Data starts at row 3 (after header row with company name and column headers)
+          let startRow = 3
+          
+          // Clear any existing data rows (keep header rows)
+          if (worksheet.rowCount > 2) {
+            worksheet.spliceRows(3, worksheet.rowCount - 2)
+          }
+          
+          // Fill in data
+          items.forEach((item, index) => {
+            const row = worksheet.getRow(startRow + index)
+            row.getCell(1).value = new Date(item.date).toLocaleDateString() // Date
+            row.getCell(2).value = item.deliveryTime || '' // Delivery Time
+            row.getCell(3).value = item.mealPlan.customer.fullName // Customer Name
+            row.getCell(4).value = item.mealPlan.customer.phone || '' // Contact Number
+            row.getCell(5).value = item.mealPlan.customer.address || '' // Delivery Address
+            row.getCell(6).value = item.mealPlan.customer.deliveryArea || '' // Delivery Area
+            row.getCell(7).value = item.dishName || item.dish?.name || 'Not Assigned' // Dish Name
+            row.commit()
+          })
+        }
+      } else {
+        // Fallback: create new sheet if template doesn't exist
+        const worksheet = workbook.addWorksheet('Rider')
+        worksheet.getCell('A1').value = 'Nutrafi Kitchen Abu Dhabi'
+        worksheet.getRow(2).values = ['Date', 'Delivery Time', 'Customer Name', 'Contact Number', 'Delivery Address', 'Delivery Area', 'Dish Name', '']
+        
+        items.forEach((item, index) => {
+          const row = worksheet.getRow(3 + index)
+          row.values = [
+            new Date(item.date).toLocaleDateString(),
+            item.deliveryTime || '',
+            item.mealPlan.customer.fullName,
+            item.mealPlan.customer.phone || '',
+            item.mealPlan.customer.address || '',
+            item.mealPlan.customer.deliveryArea || '',
+            item.dishName || item.dish?.name || 'Not Assigned',
+            ''
+          ]
+        })
+      }
+    } else if (sheet === 'chef') {
+      // Chef sheet - create new (no template yet)
+      const worksheet = workbook.addWorksheet('Chef')
+      worksheet.getRow(1).values = ['Date', 'Time Slot', 'Delivery Time', 'Customer Name', 'Dish Name', 'Category', 'Ingredients', 'Allergens', 'Calories (kcal)', 'Protein (g)', 'Carbs (g)', 'Fats (g)', 'Instructions', 'Status']
+      
+      items.forEach((item, index) => {
         const instructions = parseInstructions(item.customNote)
-
-        return {
-          'Date': new Date(item.date).toLocaleDateString(),
-          'Time Slot': item.timeSlot,
-          'Delivery Time': item.deliveryTime || '',
-          'Customer Name': item.mealPlan.customer.fullName,
-          'Dish Name': item.dishName || item.dish?.name || 'Not Assigned',
-          'Category': item.dishCategory || item.dish?.category || '',
-          'Ingredients': item.ingredients || item.dish?.ingredients || '',
-          'Allergens': item.allergens || item.dish?.allergens || '',
-          'Calories (kcal)': item.calories || item.dish?.calories || 0,
-          'Protein (g)': item.protein || item.dish?.protein || 0,
-          'Carbs (g)': item.carbs || item.dish?.carbs || 0,
-          'Fats (g)': item.fats || item.dish?.fats || 0,
-          'Instructions': instructions,
-          'Status': item.isDelivered ? 'Delivered' : item.isSkipped ? 'Skipped' : 'Active',
-        }
+        const row = worksheet.getRow(2 + index)
+        row.values = [
+          new Date(item.date).toLocaleDateString(),
+          item.timeSlot,
+          item.deliveryTime || '',
+          item.mealPlan.customer.fullName,
+          item.dishName || item.dish?.name || 'Not Assigned',
+          item.dishCategory || item.dish?.category || '',
+          item.ingredients || item.dish?.ingredients || '',
+          item.allergens || item.dish?.allergens || '',
+          item.calories || item.dish?.calories || 0,
+          item.protein || item.dish?.protein || 0,
+          item.carbs || item.dish?.carbs || 0,
+          item.fats || item.dish?.fats || 0,
+          instructions,
+          item.isDelivered ? 'Delivered' : item.isSkipped ? 'Skipped' : 'Active',
+        ]
       })
-      sheetName = 'Chef'
-    } else if (sheet === 'rider') {
-      // Rider Sheet - delivery information
-      excelData = items.map(item => {
-        return {
-          'Date': new Date(item.date).toLocaleDateString(),
-          'Time Slot': item.timeSlot,
-          'Delivery Time': item.deliveryTime || '',
-          'Customer Name': item.mealPlan.customer.fullName,
-          'Contact Number': item.mealPlan.customer.phone || '',
-          'Delivery Address': item.mealPlan.customer.address || '',
-          'Delivery Area': item.mealPlan.customer.deliveryArea || '',
-          'Dish Name': item.dishName || item.dish?.name || 'Not Assigned',
-          'Status': item.isDelivered ? 'Delivered' : item.isSkipped ? 'Skipped' : 'Active',
-        }
-      })
-      sheetName = 'Rider'
     }
 
-    // Create workbook with single sheet
-    const wb = XLSX.utils.book_new()
-    const ws = XLSX.utils.json_to_sheet(excelData)
-    XLSX.utils.book_append_sheet(wb, ws, sheetName)
-
     // Generate buffer
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+    const buffer = await workbook.xlsx.writeBuffer()
 
     // Generate filename
     const timeRange = startTime && endTime 

@@ -103,6 +103,7 @@ export default function KitchenPlanningPage() {
       if (filters.status) params.append('status', filters.status)
       params.append('sheet', sheetType)
 
+      // Export actual data using template
       const response = await fetch(`/api/kitchen-planning/export?${params.toString()}`)
       if (response.ok) {
         const blob = await response.blob()
@@ -238,7 +239,7 @@ export default function KitchenPlanningPage() {
           <button
             onClick={() => handleExport('rider')}
             disabled={loading || !data || data.items.length === 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
           >
             <svg
               className="w-5 h-5"
@@ -340,13 +341,13 @@ export default function KitchenPlanningPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead style={{ backgroundColor: '#D9F2D0' }}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dish Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Portions</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customers</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Areas</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Dish Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Total Portions</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Customers</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Delivery Areas</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -398,30 +399,30 @@ export default function KitchenPlanningPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead style={{ backgroundColor: '#D9F2D0' }}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                     Time
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                     Dish
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                     Delivery Area
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                     Calories
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                     Macros
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                     Allergens
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
