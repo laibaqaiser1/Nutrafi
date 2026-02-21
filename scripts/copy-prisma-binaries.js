@@ -19,3 +19,4 @@ binaries.forEach(binary => {
 
 console.log('Prisma binaries check complete.');
 
+

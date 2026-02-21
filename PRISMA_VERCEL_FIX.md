@@ -54,3 +54,4 @@ Set `PRISMA_QUERY_ENGINE_LIBRARY` in Vercel environment variables to point to th
 2. Verify the binary file size (should be ~17MB)
 3. Consider switching to default Prisma output location for better Vercel compatibility
 
+

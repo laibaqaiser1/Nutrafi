@@ -94,13 +94,14 @@ export default function KitchenPlanningPage() {
     }
   }
 
-  const handleExport = async () => {
+  const handleExport = async (sheetType: 'chef' | 'rider') => {
     try {
       const params = new URLSearchParams()
       if (filters.date) params.append('date', filters.date)
       if (filters.startTime) params.append('startTime', filters.startTime)
       if (filters.endTime) params.append('endTime', filters.endTime)
       if (filters.status) params.append('status', filters.status)
+      params.append('sheet', sheetType)
 
       const response = await fetch(`/api/kitchen-planning/export?${params.toString()}`)
       if (response.ok) {
@@ -116,7 +117,7 @@ export default function KitchenPlanningPage() {
             : filters.endTime 
               ? `until-${filters.endTime}` 
               : 'all-times'
-        a.download = `kitchen-planning-${filters.date}-${timeRange}.xlsx`
+        a.download = `kitchen-planning-${sheetType}-${filters.date}-${timeRange}.xlsx`
         
         document.body.appendChild(a)
         a.click()
@@ -213,26 +214,48 @@ export default function KitchenPlanningPage() {
             Plan and manage meals by date and time range
           </p>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={loading || !data || data.items.length === 0}
-          className="px-4 py-2 bg-nutrafi-primary text-white rounded-lg hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex gap-3">
+          <button
+            onClick={() => handleExport('chef')}
+            disabled={loading || !data || data.items.length === 0}
+            className="px-4 py-2 bg-nutrafi-primary text-white rounded-lg hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          Download Excel
-        </button>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Download Chef Sheet
+          </button>
+          <button
+            onClick={() => handleExport('rider')}
+            disabled={loading || !data || data.items.length === 0}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Download Rider Sheet
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

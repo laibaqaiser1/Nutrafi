@@ -87,9 +87,6 @@ export default function MealPlanViewPage() {
   const [loading, setLoading] = useState(true)
   const [selectedItem, setSelectedItem] = useState<MealPlan['mealPlanItems'][0] | null>(null)
   const [showModal, setShowModal] = useState(false)
-  const [editingTimeSlot, setEditingTimeSlot] = useState(false)
-  const [timeSlotValue, setTimeSlotValue] = useState('')
-  const [savingTimeSlot, setSavingTimeSlot] = useState(false)
   const [dishes, setDishes] = useState<Dish[]>([])
   const [editingDish, setEditingDish] = useState(false)
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set())
@@ -116,6 +113,11 @@ export default function MealPlanViewPage() {
   const [dishDropdownOpen, setDishDropdownOpen] = useState(false)
   const [dishSearchQuery, setDishSearchQuery] = useState('')
   const [showDishDetails, setShowDishDetails] = useState(false)
+  const [visibleDaysByWeek, setVisibleDaysByWeek] = useState<Record<number, string[]>>({})
+  const [dayMenuOpen, setDayMenuOpen] = useState<{ week: number; date: string } | null>(null)
+  const [weekMenuOpen, setWeekMenuOpen] = useState<number | null>(null)
+  const [addingDay, setAddingDay] = useState(false)
+  const [duplicatingWeek, setDuplicatingWeek] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -139,6 +141,21 @@ export default function MealPlanViewPage() {
       }
     }
   }, [dishDropdownOpen])
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.day-menu-container') && !target.closest('.week-menu-container')) {
+        setDayMenuOpen(null)
+        setWeekMenuOpen(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   const fetchDishes = async () => {
     try {
@@ -169,17 +186,29 @@ export default function MealPlanViewPage() {
         const data = await response.json()
         setMealPlan(data)
         
-        // Initialize visible weeks based on existing meal items
+        // Initialize visible weeks and days based on existing meal items
         if (data.mealPlanItems && data.mealPlanItems.length > 0) {
           const weeks = new Set<number>()
+          const daysByWeek: Record<number, Set<string>> = {}
+          
           data.mealPlanItems.forEach((item: MealPlan['mealPlanItems'][0]) => {
             const week = getWeekNumber(item.date, data.startDate)
             if (week > 0) {
               weeks.add(week)
+              const date = format(new Date(item.date), 'yyyy-MM-dd')
+              if (!daysByWeek[week]) {
+                daysByWeek[week] = new Set()
+              }
+              daysByWeek[week].add(date)
             }
           })
+          
           const weeksArray = Array.from(weeks).sort((a, b) => a - b)
           setVisibleWeeks(weeksArray)
+          
+          // For existing meal plans, we don't restrict visible days - show all days that have items
+          // Only use visibleDaysByWeek for newly added weeks (tracked separately)
+          // We'll leave visibleDaysByWeek empty for existing plans so they show all days
           
           // Only expand the last week by default
           if (weeksArray.length > 0) {
@@ -190,6 +219,7 @@ export default function MealPlanViewPage() {
           // If no items, start with week 1
           setVisibleWeeks([1])
           setExpandedWeeks(new Set([1]))
+          setVisibleDaysByWeek({})
         }
       } else {
         alert('Failed to fetch meal plan')
@@ -243,97 +273,25 @@ export default function MealPlanViewPage() {
     }
   }
 
-  const handleUpdateTimeSlot = async () => {
-    if (!mealPlan || !selectedItem || !timeSlotValue) return
-    
-    setSavingTimeSlot(true)
-    try {
-      // Convert time from HH:MM format to HH:MM format (24-hour)
-      const timeMatch = timeSlotValue.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)
-      let timeSlot = timeSlotValue
-      
-      if (timeMatch) {
-        let hours = parseInt(timeMatch[1])
-        const minutes = timeMatch[2]
-        const ampm = timeMatch[3]?.toUpperCase()
-        
-        if (ampm === 'PM' && hours !== 12) {
-          hours += 12
-        } else if (ampm === 'AM' && hours === 12) {
-          hours = 0
-        }
-        
-        timeSlot = `${hours.toString().padStart(2, '0')}:${minutes}`
-      }
-      
-      // If time slot hasn't changed, just cancel editing
-      if (timeSlot === selectedItem.timeSlot) {
-        setEditingTimeSlot(false)
-        setSavingTimeSlot(false)
-        return
-      }
-      
-      // First, delete the old item if time slot is changing
-      if (timeSlot !== selectedItem.timeSlot) {
-        const deleteResponse = await fetch(`/api/meal-plans/${mealPlan.id}/items/${selectedItem.id}`, {
-          method: 'DELETE',
-        })
-        
-        if (!deleteResponse.ok) {
-          throw new Error('Failed to delete old item')
-        }
-      }
-      
-      // Then create/update with new time slot
-      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: selectedItem.date,
-          timeSlot: timeSlot,
-          dishId: selectedItem.dishId || undefined,
-          dishName: selectedItem.dishName || undefined,
-          ingredients: selectedItem.ingredients || undefined,
-          allergens: selectedItem.allergens || undefined,
-          calories: selectedItem.calories || undefined,
-          protein: selectedItem.protein || undefined,
-          carbs: selectedItem.carbs || undefined,
-          fats: selectedItem.fats || undefined,
-          deliveryTime: selectedItem.deliveryTime || undefined,
-          customNote: selectedItem.customNote || undefined,
-        }),
-      })
-      
-      if (response.ok) {
-        // Refresh meal plan to get updated items
-        await fetchMealPlan(mealPlan.id)
-        setEditingTimeSlot(false)
-        setTimeSlotValue('')
-        setShowModal(false)
-        alert('Time slot updated successfully')
-      } else {
-        const error = await response.json()
-        alert('Failed to update time slot: ' + (error.error || 'Unknown error'))
-      }
-    } catch (error) {
-      console.error('Error updating time slot:', error)
-      alert('Failed to update time slot')
-    } finally {
-      setSavingTimeSlot(false)
-    }
-  }
 
   const handleItemClick = (item: MealPlan['mealPlanItems'][0]) => {
     setSelectedItem(item)
     setShowModal(true)
-    setEditingTimeSlot(false)
-    setTimeSlotValue(item.timeSlot)
     setEditingDish(false)
     setDishDropdownOpen(false)
     setDishSearchQuery('')
     setShowDishDetails(false) // Hide details by default
     // Initialize dish form data from item
     const customNote = parseCustomNote(item.customNote)
+    // Convert timeSlot to deliveryTime format if deliveryTime is not set
+    let deliveryTime = item.deliveryTime || ''
+    if (!deliveryTime && item.timeSlot) {
+      // Convert timeSlot (HH:MM) to deliveryTime format (HH:MM:00)
+      const timeMatch = item.timeSlot.match(/(\d{1,2}):(\d{2})/)
+      if (timeMatch) {
+        deliveryTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`
+      }
+    }
     setDishFormData({
       dishId: item.dishId || '',
       dishName: item.dishName || '',
@@ -347,7 +305,7 @@ export default function MealPlanViewPage() {
       fats: item.fats?.toString() || '',
       price: item.price?.toString() || '',
       deliveryType: customNote?.deliveryType || 'delivery',
-      deliveryTime: item.deliveryTime || '',
+      deliveryTime: deliveryTime,
       location: customNote?.location || mealPlan?.customer.deliveryArea || '',
       customNote: customNote?.note || '',
     })
@@ -443,12 +401,19 @@ export default function MealPlanViewPage() {
       if (dishFormData.location) customNoteObj.location = dishFormData.location
       if (dishFormData.customNote) customNoteObj.note = dishFormData.customNote
 
+      // Convert deliveryTime to timeSlot format (HH:MM)
+      let timeSlot = selectedItem.timeSlot
+      if (dishFormData.deliveryTime) {
+        // deliveryTime is in HH:MM format, use it as timeSlot
+        timeSlot = dishFormData.deliveryTime.substring(0, 5) // Get HH:MM part
+      }
+
       const response = await fetch(`/api/meal-plans/${mealPlan.id}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date: selectedItem.date,
-          timeSlot: selectedItem.timeSlot,
+          timeSlot: timeSlot,
           dishId: dishFormData.dishId || undefined,
           dishName: dishFormData.dishName,
           dishDescription: dishFormData.dishDescription || undefined,
@@ -485,76 +450,85 @@ export default function MealPlanViewPage() {
     }
   }
 
-  // Function to add another week
+  // Function to add another week (only creates first day)
   const addAnotherWeek = async () => {
     if (!mealPlan) return
     
     setAddingWeek(true)
     try {
-      const maxWeek = Math.ceil(mealPlan.days / 7)
-      const nextWeek = Math.max(...visibleWeeks, 0) + 1
+      // Check total days across all weeks - limit to plan days
+      const allDates = new Set<string>()
+      mealPlan.mealPlanItems.forEach(item => {
+        const date = format(new Date(item.date), 'yyyy-MM-dd')
+        allDates.add(date)
+      })
+      const totalDays = allDates.size
+      const maxDays = mealPlan.days || 22
       
-      // Check if adding this week would exceed plan days
-      if (nextWeek > maxWeek) {
-        alert('Cannot add more weeks. Maximum weeks for this plan reached.')
+      if (totalDays >= maxDays) {
+        alert(`Cannot add another week. The meal plan is limited to ${maxDays} days.`)
         setAddingWeek(false)
         return
       }
       
+      const nextWeek = Math.max(...visibleWeeks, 0) + 1
+      
       // Check if adding this week would exceed total meals allowed
       const currentMealsCount = mealPlan.mealPlanItems.length
-      const mealsPerWeek = 7 * mealPlan.mealsPerDay
+      const mealsPerDay = mealPlan.mealsPerDay
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
-      if (currentMealsCount + mealsPerWeek > totalMealsAllowed) {
+      if (currentMealsCount + mealsPerDay > totalMealsAllowed) {
         alert(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
         setAddingWeek(false)
         return
       }
       
-      // Calculate dates for the new week
+      // Calculate dates for the new week - only first day
       const startDate = new Date(mealPlan.startDate)
       const weekStartDay = (nextWeek - 1) * 7
       const weekStartDate = addDays(startDate, weekStartDay)
-      const weekEndDate = addDays(weekStartDate, 6) // 7 days in a week
-      const dates = eachDayOfInterval({ start: weekStartDate, end: weekEndDate })
+      const firstDate = format(weekStartDate, 'yyyy-MM-dd')
       
-      // Generate default time slots (you may want to get these from the plan or use defaults)
+      // Generate default time slots
       const defaultTimeSlots = ['08:00', '13:00', '18:00'].slice(0, mealPlan.mealsPerDay)
       
-      // Create meal items for the new week
-      const mealItemPromises = dates.map(date => {
-        return defaultTimeSlots.map((timeSlot, idx) => {
-          // Convert timeSlot to 24-hour format for deliveryTime
-          const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
-          let deliveryTime = ''
-          if (timeMatch) {
-            let hours = parseInt(timeMatch[1])
-            const minutes = timeMatch[2]
-            deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
-          } else {
-            deliveryTime = timeSlot
-          }
-          
-          return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              date: format(date, 'yyyy-MM-dd'),
-              timeSlot: timeSlot,
-              deliveryType: 'delivery',
-              deliveryTime: deliveryTime,
-              location: mealPlan.customer.deliveryArea || '',
-              isSkipped: false,
-            }),
-          })
+      // Create meal items for only the first day
+      const mealItemPromises = defaultTimeSlots.map((timeSlot) => {
+        const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
+        let deliveryTime = ''
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1])
+          const minutes = timeMatch[2]
+          deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
+        } else {
+          deliveryTime = timeSlot
+        }
+        
+        return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: firstDate,
+            timeSlot: timeSlot,
+            deliveryType: 'delivery',
+            deliveryTime: deliveryTime,
+            location: mealPlan.customer.deliveryArea || '',
+            isSkipped: false,
+          }),
         })
-      }).flat()
+      })
       
       await Promise.all(mealItemPromises)
       
       // Add the new week to visible weeks
       setVisibleWeeks(prev => [...prev, nextWeek].sort((a, b) => a - b))
+      
+      // Add first day to visible days for this week
+      setVisibleDaysByWeek(prev => ({
+        ...prev,
+        [nextWeek]: [firstDate]
+      }))
       
       // Expand the new week
       setExpandedWeeks(prev => {
@@ -566,12 +540,328 @@ export default function MealPlanViewPage() {
       // Refresh meal plan to get new items
       await fetchMealPlan(mealPlan.id)
       
-      alert(`Week ${nextWeek} added successfully!`)
+      alert(`Week ${nextWeek} started! Add more days using the "Add Day" button.`)
     } catch (error) {
       console.error('Error adding week:', error)
       alert('Failed to add week')
     } finally {
       setAddingWeek(false)
+    }
+  }
+
+  // Function to add a day to a week
+  const addDayToWeek = async (week: number) => {
+    if (!mealPlan) return
+    
+    setAddingDay(true)
+    try {
+      // Check total days across all weeks - limit to plan days
+      const allDates = new Set<string>()
+      mealPlan.mealPlanItems.forEach(item => {
+        const date = format(new Date(item.date), 'yyyy-MM-dd')
+        allDates.add(date)
+      })
+      const totalDays = allDates.size
+      const maxDays = mealPlan.days || 22
+      const remainingDays = maxDays - totalDays
+      
+      if (remainingDays <= 0) {
+        alert(`Cannot add another day. The meal plan is limited to ${maxDays} days.`)
+        setAddingDay(false)
+        return
+      }
+      
+      const startDate = new Date(mealPlan.startDate)
+      const weekStartDay = (week - 1) * 7
+      const weekStartDate = addDays(startDate, weekStartDay)
+      
+      // Get existing visible days for this week
+      const existingDays = visibleDaysByWeek[week] || []
+      const daysInWeek = existingDays.length
+      
+      // Check if we've reached 7 days in this week
+      if (daysInWeek >= 7) {
+        alert('A week can only have 7 days.')
+        setAddingDay(false)
+        return
+      }
+      
+      // Check if adding this day would exceed remaining days
+      // Get days already in this week from meal items
+      const weekDates = new Set<string>()
+      mealPlan.mealPlanItems.forEach(item => {
+        const itemWeek = getWeekNumber(item.date, mealPlan.startDate)
+        if (itemWeek === week) {
+          const date = format(new Date(item.date), 'yyyy-MM-dd')
+          weekDates.add(date)
+        }
+      })
+      const currentDaysInWeek = weekDates.size
+      
+      // Calculate how many days we can still add to this week
+      // We can add up to (7 - currentDaysInWeek) days, but not more than remainingDays
+      const daysCanAddToWeek = Math.min(7 - currentDaysInWeek, remainingDays)
+      
+      // We can add a day if we have remaining days and haven't reached the week limit
+      if (daysCanAddToWeek <= 0) {
+        if (remainingDays <= 0) {
+          alert(`Cannot add more days. The meal plan is limited to ${maxDays} days.`)
+        } else {
+          alert(`Cannot add more days to this week. A week can only have 7 days.`)
+        }
+        setAddingDay(false)
+        return
+      }
+      
+      // Check if adding this day would exceed total meals allowed
+      const currentMealsCount = mealPlan.mealPlanItems.length
+      const mealsPerDay = mealPlan.mealsPerDay
+      const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
+      
+      if (currentMealsCount + mealsPerDay > totalMealsAllowed) {
+        alert(`Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+        setAddingDay(false)
+        return
+      }
+      
+      // Calculate the next day index based on current days in week
+      const nextDayIndex = currentDaysInWeek
+      
+      // Calculate the next day date
+      const nextDayDate = addDays(weekStartDate, nextDayIndex)
+      const nextDayDateStr = format(nextDayDate, 'yyyy-MM-dd')
+      
+      // Generate default time slots
+      const defaultTimeSlots = ['08:00', '13:00', '18:00'].slice(0, mealPlan.mealsPerDay)
+      
+      // Create meal items for the new day
+      const mealItemPromises = defaultTimeSlots.map((timeSlot) => {
+        const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
+        let deliveryTime = ''
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1])
+          const minutes = timeMatch[2]
+          deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
+        } else {
+          deliveryTime = timeSlot
+        }
+        
+        return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: nextDayDateStr,
+            timeSlot: timeSlot,
+            deliveryType: 'delivery',
+            deliveryTime: deliveryTime,
+            location: mealPlan.customer.deliveryArea || '',
+            isSkipped: false,
+          }),
+        })
+      })
+      
+      await Promise.all(mealItemPromises)
+      
+      // Add the new day to visible days
+      setVisibleDaysByWeek(prev => ({
+        ...prev,
+        [week]: [...(prev[week] || []), nextDayDateStr].sort()
+      }))
+      
+      // Refresh meal plan to get new items
+      await fetchMealPlan(mealPlan.id)
+    } catch (error) {
+      console.error('Error adding day:', error)
+      alert('Failed to add day')
+    } finally {
+      setAddingDay(false)
+    }
+  }
+
+  // Function to add a meal to a day
+  const addMealToDay = async (date: string, week: number) => {
+    if (!mealPlan) return
+    
+    try {
+      // Get existing meals for this day
+      const existingMeals = mealPlan.mealPlanItems.filter(item => 
+        format(new Date(item.date), 'yyyy-MM-dd') === date
+      )
+      
+      // Check if we've reached the meals per day limit
+      if (existingMeals.length >= mealPlan.mealsPerDay) {
+        alert(`This day already has ${mealPlan.mealsPerDay} meals.`)
+        return
+      }
+      
+      // Check if adding this meal would exceed total meals allowed
+      const currentMealsCount = mealPlan.mealPlanItems.length
+      const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
+      
+      if (currentMealsCount + 1 > totalMealsAllowed) {
+        alert(`Cannot add another meal. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+        return
+      }
+      
+      // Get default time slots and find the next available one
+      const defaultTimeSlots = ['08:00', '13:00', '18:00'].slice(0, mealPlan.mealsPerDay)
+      const existingTimeSlots = existingMeals.map(item => item.timeSlot)
+      const nextTimeSlot = defaultTimeSlots.find(ts => !existingTimeSlots.includes(ts)) || defaultTimeSlots[existingMeals.length]
+      
+      // Convert timeSlot to 24-hour format for deliveryTime
+      const timeMatch = nextTimeSlot.match(/(\d{1,2}):(\d{2})/)
+      let deliveryTime = ''
+      if (timeMatch) {
+        let hours = parseInt(timeMatch[1])
+        const minutes = timeMatch[2]
+        deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
+      } else {
+        deliveryTime = nextTimeSlot
+      }
+      
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: date,
+          timeSlot: nextTimeSlot,
+          deliveryType: 'delivery',
+          deliveryTime: deliveryTime,
+          location: mealPlan.customer.deliveryArea || '',
+          isSkipped: false,
+        }),
+      })
+      
+      if (response.ok) {
+        // Refresh meal plan to get new items
+        await fetchMealPlan(mealPlan.id)
+        setDayMenuOpen(null)
+      } else {
+        alert('Failed to add meal')
+      }
+    } catch (error) {
+      console.error('Error adding meal:', error)
+      alert('Failed to add meal')
+    }
+  }
+
+  // Function to duplicate a week
+  const duplicateWeek = async (sourceWeek: number) => {
+    if (!mealPlan) return
+    
+    setDuplicatingWeek(true)
+    try {
+      const maxWeek = Math.ceil(mealPlan.days / 7)
+      const nextWeek = Math.max(...visibleWeeks, 0) + 1
+      
+      // Check if adding this week would exceed plan days
+      if (nextWeek > maxWeek) {
+        alert('Cannot duplicate week. Maximum weeks for this plan reached.')
+        setDuplicatingWeek(false)
+        return
+      }
+      
+      // Get all items from the source week
+      const sourceItems = mealPlan.mealPlanItems.filter(item => {
+        const week = getWeekNumber(item.date, mealPlan.startDate)
+        return week === sourceWeek
+      })
+      
+      if (sourceItems.length === 0) {
+        alert('No meals found in the source week to duplicate.')
+        setDuplicatingWeek(false)
+        return
+      }
+      
+      // Check if duplicating would exceed total meals allowed
+      const currentMealsCount = mealPlan.mealPlanItems.length
+      const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
+      
+      if (currentMealsCount + sourceItems.length > totalMealsAllowed) {
+        alert(`Cannot duplicate week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+        setDuplicatingWeek(false)
+        return
+      }
+      
+      // Calculate date offset (7 days per week)
+      const startDate = new Date(mealPlan.startDate)
+      const sourceWeekStartDay = (sourceWeek - 1) * 7
+      const targetWeekStartDay = (nextWeek - 1) * 7
+      const dayOffset = targetWeekStartDay - sourceWeekStartDay
+      
+      // Create new items for the next week with same dishes
+      const mealItemPromises = sourceItems.map(item => {
+        const sourceDate = new Date(item.date)
+        const targetDate = addDays(sourceDate, dayOffset)
+        const targetDateStr = format(targetDate, 'yyyy-MM-dd')
+        
+        const customNoteObj: any = {}
+        const customNote = parseCustomNote(item.customNote)
+        if (customNote?.deliveryType) customNoteObj.deliveryType = customNote.deliveryType
+        if (customNote?.location) customNoteObj.location = customNote.location
+        if (customNote?.note) customNoteObj.note = customNote.note
+        
+        return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: targetDateStr,
+            timeSlot: item.timeSlot,
+            dishId: item.dishId || undefined,
+            dishName: item.dishName || undefined,
+            dishDescription: item.dishDescription || undefined,
+            dishCategory: item.dishCategory || undefined,
+            ingredients: item.ingredients || undefined,
+            allergens: item.allergens || undefined,
+            calories: item.calories || undefined,
+            protein: item.protein || undefined,
+            carbs: item.carbs || undefined,
+            fats: item.fats || undefined,
+            price: item.price || undefined,
+            deliveryTime: item.deliveryTime || undefined,
+            deliveryType: customNote?.deliveryType || 'delivery',
+            location: customNote?.location || mealPlan.customer.deliveryArea || '',
+            isSkipped: item.isSkipped,
+            customNote: Object.keys(customNoteObj).length > 0 ? JSON.stringify(customNoteObj) : undefined,
+          }),
+        })
+      })
+      
+      await Promise.all(mealItemPromises)
+      
+      // Add the new week to visible weeks
+      setVisibleWeeks(prev => [...prev, nextWeek].sort((a, b) => a - b))
+      
+      // Get visible days from source week and add to target week
+      const sourceDays = visibleDaysByWeek[sourceWeek] || []
+      const targetDays = sourceDays.map(dateStr => {
+        const sourceDate = new Date(dateStr)
+        const targetDate = addDays(sourceDate, dayOffset)
+        return format(targetDate, 'yyyy-MM-dd')
+      })
+      
+      setVisibleDaysByWeek(prev => ({
+        ...prev,
+        [nextWeek]: targetDays
+      }))
+      
+      // Expand the new week
+      setExpandedWeeks(prev => {
+        const newSet = new Set(prev)
+        newSet.add(nextWeek)
+        return newSet
+      })
+      
+      // Refresh meal plan to get new items
+      await fetchMealPlan(mealPlan.id)
+      
+      setWeekMenuOpen(null)
+      alert(`Week ${nextWeek} duplicated successfully!`)
+    } catch (error) {
+      console.error('Error duplicating week:', error)
+      alert('Failed to duplicate week')
+    } finally {
+      setDuplicatingWeek(false)
     }
   }
 
@@ -855,11 +1145,21 @@ export default function MealPlanViewPage() {
           <h2 className="text-lg font-semibold text-gray-900">Meal Schedule</h2>
           {(() => {
             if (!mealPlan) return null
-            const maxWeek = Math.ceil(mealPlan.days / 7)
             const currentMealsCount = mealPlan.mealPlanItems.length
             const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-            const mealsPerWeek = 7 * mealPlan.mealsPerDay
-            const canAddMoreWeeks = Math.max(...visibleWeeks, 0) < maxWeek && currentMealsCount + mealsPerWeek <= totalMealsAllowed
+            const mealsPerDay = mealPlan.mealsPerDay
+            
+            // Check total days across all weeks - limit to plan days
+            const allDates = new Set<string>()
+            mealPlan.mealPlanItems.forEach(item => {
+              const date = format(new Date(item.date), 'yyyy-MM-dd')
+              allDates.add(date)
+            })
+            const totalDays = allDates.size
+            const maxDays = mealPlan.days || 22
+            
+            // Allow adding week if we have room for at least one more day and one more day's worth of meals
+            const canAddMoreWeeks = totalDays < maxDays && currentMealsCount + mealsPerDay <= totalMealsAllowed
             
             return canAddMoreWeeks ? (
               <button
@@ -903,24 +1203,50 @@ export default function MealPlanViewPage() {
               <div key={week} className="border border-gray-200 rounded-lg overflow-hidden">
                 {/* Week Header */}
                 <div 
-                  className="bg-nutrafi-primary bg-opacity-10 px-6 py-3 border-b border-gray-200 cursor-pointer hover:bg-opacity-20 transition-colors"
-                  onClick={toggleWeek}
+                  className="px-6 py-3 border-b border-gray-200 hover:bg-opacity-20 transition-colors"
+                  style={{ backgroundColor: '#728d53' }}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1" onClick={toggleWeek}>
                       <svg 
-                        className={`w-5 h-5 text-gray-600 transition-transform ${isExpanded ? 'transform rotate-90' : ''}`}
+                        className={`w-5 h-5 text-white transition-transform cursor-pointer ${isExpanded ? 'transform rotate-90' : ''}`}
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
-                      <h3 className="text-md font-semibold text-gray-900">Week {week}</h3>
+                      <h3 className="text-md font-semibold text-white cursor-pointer">Week {week}</h3>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <span className="font-semibold text-nutrafi-primary">{weekTotal.calories} kcal</span>
+                    <div className="text-sm text-white font-semibold">
+                      <span className="font-bold">{weekTotal.calories} kcal</span>
                       {' '}• P: {weekTotal.protein.toFixed(1)}g | C: {weekTotal.carbs.toFixed(1)}g | F: {weekTotal.fats.toFixed(1)}g
+                    </div>
+                    {/* Week Dots Menu */}
+                    <div className="relative week-menu-container ml-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setWeekMenuOpen(weekMenuOpen === week ? null : week)
+                        }}
+                        className="text-white hover:text-gray-200 text-xl font-bold px-2"
+                      >
+                        :
+                      </button>
+                      {weekMenuOpen === week && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              duplicateWeek(week)
+                            }}
+                            disabled={duplicatingWeek}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                          >
+                            {duplicatingWeek ? 'Duplicating...' : 'Duplicate Week'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -936,83 +1262,186 @@ export default function MealPlanViewPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dish</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calories</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {Object.keys(weekDates).length > 0 ? Object.entries(weekDates).sort().map(([date, items]) => {
-                        const dayTotal = dailyTotals[date]
-                        return (
-                          <React.Fragment key={date}>
-                            {items.map((item, index) => (
-                              <tr 
-                                key={item.id}
-                                onClick={() => handleItemClick(item)}
-                                className="cursor-pointer hover:bg-gray-50 transition-colors"
-                              >
-                                {index === 0 && (
-                                  <>
-                                    <td 
-                                      rowSpan={items.length + 1}
-                                      className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top border-r border-gray-200"
-                                    >
-                                      <div>{getDayName(item.date)}</div>
-                                      <div className="text-xs text-gray-500 mt-1">{format(new Date(item.date), 'MMM dd, yyyy')}</div>
-                                    </td>
-                                  </>
-                                )}
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {formatTime12Hour(item.timeSlot)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {item.dishName || '-'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {item.calories !== null ? `${item.calories} kcal` : '-'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {item.isSkipped ? (
-                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                      Skipped
-                                    </span>
-                                  ) : item.isDelivered ? (
-                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                      Delivered
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
-                                      Active
-                                    </span>
+                      {(() => {
+                        // Always show all days that have items
+                        // visibleDaysByWeek is only used for tracking newly added days, not for filtering
+                        const allDates = Object.keys(weekDates).sort()
+                        
+                        return allDates.length > 0 ? allDates.map((date) => {
+                          const items = weekDates[date] || []
+                          const dayTotal = dailyTotals[date] || { calories: 0, protein: 0, carbs: 0, fats: 0 }
+                          const mealsCount = items.length
+                          const hasMissingMeals = mealsCount < mealPlan.mealsPerDay
+                          
+                          return (
+                            <React.Fragment key={date}>
+                              {items.length > 0 ? items.map((item, index) => (
+                                <tr 
+                                  key={item.id}
+                                  onClick={() => handleItemClick(item)}
+                                  className="cursor-pointer hover:bg-gray-50 transition-colors"
+                                >
+                                  {index === 0 && (
+                                    <>
+                                      <td 
+                                        rowSpan={items.length + 1}
+                                        className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top border-r border-gray-200"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div>
+                                            <div>{getDayName(item.date)}</div>
+                                            <div className="text-xs text-gray-500 mt-1">{format(new Date(item.date), 'MMM dd, yyyy')}</div>
+                                          </div>
+                                          {/* +Meal Button - show if there's at least one meal */}
+                                          {hasMissingMeals && index === 0 && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                addMealToDay(date, week)
+                                              }}
+                                              className="px-2 py-1 text-xs bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium"
+                                            >
+                                              + meal
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </>
                                   )}
-                                </td>
-                              </tr>
-                            ))}
-                            {/* Daily Total Row */}
-                            <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
-                              <td></td>
-                              <td colSpan={2} className="px-6 py-3 text-sm text-gray-700 text-left">
-                                Daily Total:
-                              </td>
-                              <td className="px-6 py-3 text-left">
-                                <span className="px-3 py-1.5 bg-gray-800 text-white font-bold rounded-md text-sm">
-                                  {dayTotal.calories} kcal
-                                </span>
-                              </td>
-                              <td className="px-6 py-3 text-sm text-gray-600 text-left">
-                                P: {dayTotal.protein.toFixed(1)}g | C: {dayTotal.carbs.toFixed(1)}g | F: {dayTotal.fats.toFixed(1)}g
-                              </td>
-                            </tr>
-                          </React.Fragment>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {formatTime12Hour(item.timeSlot)}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {item.dishName || '-'}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {item.calories !== null ? `${item.calories} kcal` : '-'}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {item.isSkipped ? (
+                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        Skipped
+                                      </span>
+                                    ) : item.isDelivered ? (
+                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        Delivered
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
+                                        Active
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td></td>
+                                </tr>
+                              )) : (
+                                // Empty day row
+                                <tr>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top border-r border-gray-200">
+                                    <div className="flex items-center gap-2">
+                                      <div>
+                                        <div>{getDayName(date)}</div>
+                                        <div className="text-xs text-gray-500 mt-1">{format(new Date(date), 'MMM dd, yyyy')}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td colSpan={5} className="px-6 py-4 text-sm text-gray-500">
+                                    No meals for this day
+                                  </td>
+                                </tr>
+                              )}
+                              {/* Daily Total Row */}
+                              {items.length > 0 && (
+                                <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
+                                  <td></td>
+                                  <td colSpan={2} className="px-6 py-3 text-sm text-gray-700 text-left">
+                                    Daily Total:
+                                  </td>
+                                  <td className="px-6 py-3 text-left">
+                                    <span className="px-3 py-1.5 text-white font-bold rounded-md text-sm" style={{ backgroundColor: '#728d53' }}>
+                                      {dayTotal.calories} kcal
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-3 text-sm text-gray-600 text-left">
+                                    P: {dayTotal.protein.toFixed(1)}g | C: {dayTotal.carbs.toFixed(1)}g | F: {dayTotal.fats.toFixed(1)}g
+                                  </td>
+                                  <td></td>
+                                </tr>
+                              )}
+                              {/* Add Next Day Button - show below the daily total if we can still add days */}
+                              {(() => {
+                                // Check if this is the last day in the sorted list
+                                const sortedDates = Object.keys(weekDates).sort()
+                                const isLastDay = date === sortedDates[sortedDates.length - 1]
+                                
+                                if (!isLastDay) return null
+                                
+                                // Check total days across all weeks - limit to plan days
+                                const allDates = new Set<string>()
+                                mealPlan.mealPlanItems.forEach(item => {
+                                  const itemDate = format(new Date(item.date), 'yyyy-MM-dd')
+                                  allDates.add(itemDate)
+                                })
+                                const totalDays = allDates.size
+                                const maxDays = mealPlan.days || 22
+                                const remainingDays = maxDays - totalDays
+                                
+                                // Get days already in this week
+                                const weekDatesSet = new Set<string>()
+                                mealPlan.mealPlanItems.forEach(item => {
+                                  const itemWeek = getWeekNumber(item.date, mealPlan.startDate)
+                                  if (itemWeek === week) {
+                                    const date = format(new Date(item.date), 'yyyy-MM-dd')
+                                    weekDatesSet.add(date)
+                                  }
+                                })
+                                const currentDaysInWeek = weekDatesSet.size
+                                
+                                // Can add day if: week has less than 7 days AND we have remaining days
+                                const canAddDayInWeek = currentDaysInWeek < 7
+                                const canAddDay = canAddDayInWeek && remainingDays > 0
+                                
+                                const currentMealsCount = mealPlan.mealPlanItems.length
+                                const mealsPerDay = mealPlan.mealsPerDay
+                                const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
+                                const canAddMoreMeals = currentMealsCount + mealsPerDay <= totalMealsAllowed
+                                
+                                return canAddDay && canAddMoreMeals ? (
+                                  <tr>
+                                    <td colSpan={6} className="px-6 py-4 text-center">
+                                      <button
+                                        onClick={() => addDayToWeek(week)}
+                                        disabled={addingDay}
+                                        className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 disabled:opacity-50 text-sm mx-auto"
+                                      >
+                                        {addingDay ? 'Adding...' : (
+                                          <>
+                                            <span>+</span>
+                                            <span>Add Next Day</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ) : null
+                              })()}
+                            </React.Fragment>
+                          )
+                        }) : (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                              No days added to this week yet. Click "Add Day" to start.
+                            </td>
+                          </tr>
                         )
-                      }) : (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
-                            No meals generated for this week yet. Meals will be generated when you add dishes.
-                          </td>
-                        </tr>
-                      )}
+                      })()}
                       {/* Week Total Row */}
                       <tr className="bg-nutrafi-primary bg-opacity-20 font-bold border-t-2 border-nutrafi-primary">
-                        <td colSpan={5} className="px-6 py-4 text-left">
+                        <td colSpan={6} className="px-6 py-4 text-left">
                           <div className="flex items-center gap-4">
                             <span className="text-sm text-gray-900">Week {week} Total:</span>
                             <span className="text-sm text-nutrafi-primary font-bold">
@@ -1093,44 +1522,7 @@ export default function MealPlanViewPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Time Slot</label>
-                  {editingTimeSlot ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <input
-                        type="time"
-                        value={timeSlotValue}
-                        onChange={(e) => setTimeSlotValue(e.target.value)}
-                        className="px-2 py-1 text-sm border border-gray-300 rounded-md w-32"
-                        disabled={savingTimeSlot}
-                      />
-                      <button
-                        onClick={handleUpdateTimeSlot}
-                        disabled={savingTimeSlot}
-                        className="px-3 py-1 text-sm bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50"
-                      >
-                        {savingTimeSlot ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingTimeSlot(false)
-                          setTimeSlotValue(selectedItem.timeSlot)
-                        }}
-                        disabled={savingTimeSlot}
-                        className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-900 font-semibold">{formatTime12Hour(selectedItem.timeSlot)}</p>
-                      <button
-                        onClick={() => setEditingTimeSlot(true)}
-                        className="text-xs text-nutrafi-primary hover:text-nutrafi-dark underline"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                  )}
+                  <p className="text-sm text-gray-900 font-semibold">{formatTime12Hour(selectedItem.timeSlot)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Status</label>
@@ -1241,8 +1633,8 @@ export default function MealPlanViewPage() {
               })()}
             </div>
 
-            {/* Add Dish Form for Empty Meals */}
-            {((!selectedItem.dishName || selectedItem.dishName?.trim() === '') && (!selectedItem.dishId || selectedItem.dishId === '')) && editingDish && (
+            {/* Add/Edit Dish Form */}
+            {editingDish && (
               <div className="border-t border-gray-200 pt-4 px-6 pb-4 space-y-4 bg-gray-50">
                 <h4 className="text-md font-semibold text-gray-900 mb-3">Add Dish to This Meal</h4>
                 
@@ -1532,6 +1924,37 @@ export default function MealPlanViewPage() {
                       className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50"
                     >
                       {savingDish ? 'Saving...' : 'Save Dish'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingDish(false)
+                        handleItemClick(selectedItem) // Reset form data
+                      }}
+                      disabled={savingDish}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 font-medium disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+                {/* Edit Dish button - show when dish exists and not editing */}
+                {((selectedItem.dishName && selectedItem.dishName.trim() !== '') || (selectedItem.dishId && selectedItem.dishId !== '')) && !editingDish && (
+                  <button
+                    onClick={() => setEditingDish(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                  >
+                    Edit Dish
+                  </button>
+                )}
+                {/* Save/Cancel when editing existing dish */}
+                {((selectedItem.dishName && selectedItem.dishName.trim() !== '') || (selectedItem.dishId && selectedItem.dishId !== '')) && editingDish && (
+                  <>
+                    <button
+                      onClick={handleSaveDish}
+                      disabled={savingDish}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50"
+                    >
+                      {savingDish ? 'Saving...' : 'Save Changes'}
                     </button>
                     <button
                       onClick={() => {
