@@ -136,30 +136,77 @@ export async function GET(request: NextRequest) {
         })
       }
     } else if (sheet === 'chef') {
-      // Chef sheet - create new (no template yet)
-      const worksheet = workbook.addWorksheet('Chef')
-      worksheet.getRow(1).values = ['Date', 'Time Slot', 'Delivery Time', 'Customer Name', 'Dish Name', 'Category', 'Ingredients', 'Allergens', 'Calories (kcal)', 'Protein (g)', 'Carbs (g)', 'Fats (g)', 'Instructions', 'Status']
+      // Load the chef template file
+      const templatePath = path.join(process.cwd(), 'templates', 'chef-template.xlsx')
       
-      items.forEach((item, index) => {
-        const instructions = parseInstructions(item.customNote)
-        const row = worksheet.getRow(2 + index)
-        row.values = [
-          new Date(item.date).toLocaleDateString(),
-          item.timeSlot,
-          item.deliveryTime || '',
-          item.mealPlan.customer.fullName,
-          item.dishName || item.dish?.name || 'Not Assigned',
-          item.dishCategory || item.dish?.category || '',
-          item.ingredients || item.dish?.ingredients || '',
-          item.allergens || item.dish?.allergens || '',
-          item.calories || item.dish?.calories || 0,
-          item.protein || item.dish?.protein || 0,
-          item.carbs || item.dish?.carbs || 0,
-          item.fats || item.dish?.fats || 0,
-          instructions,
-          item.isDelivered ? 'Delivered' : item.isSkipped ? 'Skipped' : 'Active',
-        ]
-      })
+      if (fs.existsSync(templatePath)) {
+        await workbook.xlsx.readFile(templatePath)
+        const worksheet = workbook.getWorksheet(1) // Get first worksheet
+        
+        if (worksheet) {
+          // Data starts at row 3 (after header row with company name and column headers)
+          let startRow = 3
+          
+          // Clear any existing data rows (keep header rows)
+          if (worksheet.rowCount > 2) {
+            worksheet.spliceRows(3, worksheet.rowCount - 2)
+          }
+          
+          // Fill in data - columns start from column 1 (A) to match headers
+          // Headers: A=empty, B=Date, C=Time Slot, D=Delivery Time, E=Customer Name, F=Dish Name, G=Instructions, H=Ingredients, I=Allergens, J=Calories, K=Protein, L=Carbs, M=Fats
+          items.forEach((item, index) => {
+            const instructions = parseInstructions(item.customNote)
+            const row = worksheet.getRow(startRow + index)
+            // Column 1 (A) is empty, data starts at column 2 (B) - but ExcelJS might be 0-indexed, so we use 1-based
+            // Actually, let's match exactly: if headers are at B, C, D... then data should be at B, C, D...
+            // But user says data is one cell right, so maybe headers are actually at A, B, C... and we should start at A
+            // Let me check: template shows first empty item, then Date at position 2
+            // So headers are: [empty, Date, Time Slot, ...] which is columns A, B, C...
+            // But ExcelJS getCell(1) = column A, getCell(2) = column B
+            // So if Date header is at column B (index 2), data should be at column B (index 2) ✓
+            // But user says it's one cell right, so maybe the template actually has Date at column A?
+            // Let me try starting at column 1 (A) instead
+            row.getCell(1).value = new Date(item.date).toLocaleDateString() // Date
+            row.getCell(2).value = item.timeSlot // Time Slot
+            row.getCell(3).value = item.deliveryTime || '' // Delivery Time
+            row.getCell(4).value = item.mealPlan.customer.fullName // Customer Name
+            row.getCell(5).value = item.dishName || item.dish?.name || 'Not Assigned' // Dish Name
+            row.getCell(6).value = instructions // Instructions
+            row.getCell(7).value = item.ingredients || item.dish?.ingredients || '' // Ingredients
+            row.getCell(8).value = item.allergens || item.dish?.allergens || '' // Allergens
+            row.getCell(9).value = item.calories || item.dish?.calories || 0 // Calories (kcal)
+            row.getCell(10).value = item.protein || item.dish?.protein || 0 // Protein (g)
+            row.getCell(11).value = item.carbs || item.dish?.carbs || 0 // Carbs (g)
+            row.getCell(12).value = item.fats || item.dish?.fats || 0 // Fats (g)
+            row.commit()
+          })
+        }
+      } else {
+        // Fallback: create new sheet if template doesn't exist
+        const worksheet = workbook.addWorksheet('Chef')
+        worksheet.getRow(1).values = ['Date', 'Time Slot', 'Delivery Time', 'Customer Name', 'Dish Name', 'Category', 'Ingredients', 'Allergens', 'Calories (kcal)', 'Protein (g)', 'Carbs (g)', 'Fats (g)', 'Instructions', 'Status']
+        
+        items.forEach((item, index) => {
+          const instructions = parseInstructions(item.customNote)
+          const row = worksheet.getRow(2 + index)
+          row.values = [
+            new Date(item.date).toLocaleDateString(),
+            item.timeSlot,
+            item.deliveryTime || '',
+            item.mealPlan.customer.fullName,
+            item.dishName || item.dish?.name || 'Not Assigned',
+            item.dishCategory || item.dish?.category || '',
+            item.ingredients || item.dish?.ingredients || '',
+            item.allergens || item.dish?.allergens || '',
+            item.calories || item.dish?.calories || 0,
+            item.protein || item.dish?.protein || 0,
+            item.carbs || item.dish?.carbs || 0,
+            item.fats || item.dish?.fats || 0,
+            instructions,
+            item.isDelivered ? 'Delivered' : item.isSkipped ? 'Skipped' : 'Active',
+          ]
+        })
+      }
     }
 
     // Generate buffer

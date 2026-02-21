@@ -161,14 +161,14 @@ export default function CustomersPage() {
             <div className="text-center py-8 text-gray-500">No customers found</div>
           ) : (
             <table className="w-full divide-y divide-gray-200 table-fixed">
-              <thead className="bg-gray-50">
+              <thead style={{ backgroundColor: '#D9F2D0' }}>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '20%' }}>Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '15%' }}>Phone</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '25%' }}>Area</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '20%' }}>Active Plan</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '10%' }}>Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '10%' }}>Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '20%' }}>Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '15%' }}>Phone</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '25%' }}>Area</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '20%' }}>Active Plan</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '10%' }}>Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '10%' }}>Actions</th>
                 </tr>
               </thead>
                 <tbody className="bg-white divide-y divide-gray-200">

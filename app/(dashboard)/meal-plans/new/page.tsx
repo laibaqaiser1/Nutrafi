@@ -68,6 +68,9 @@ export default function NewMealPlanPage() {
   const [openDishDropdowns, setOpenDishDropdowns] = useState<Set<string>>(new Set())
   const [visibleWeeks, setVisibleWeeks] = useState<number[]>([1]) // Start with only week 1 visible
   const [totalMealsAllowed, setTotalMealsAllowed] = useState<number>(0) // Total meals allowed by plan
+  const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set()) // Track collapsed weeks
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set()) // Track collapsed days
+  const [visibleDaysByWeek, setVisibleDaysByWeek] = useState<Record<number, string[]>>({}) // Track visible days per week
   
   const [formData, setFormData] = useState({
     customerId: '',
@@ -540,9 +543,110 @@ export default function NewMealPlanPage() {
       // Combine existing meals (from non-visible weeks) with new meals (from visible weeks)
       const allMeals = [...existingMeals, ...newMeals]
       
+      // Initialize visibleDaysByWeek - only show first day for each week
+      const newVisibleDaysByWeek: Record<number, string[]> = { ...visibleDaysByWeek }
+      visibleWeeks.forEach(week => {
+        if (!newVisibleDaysByWeek[week]) {
+          // Find the first date for this week
+          const weekStartDay = (week - 1) * 7
+          const weekStartDate = addDays(startDate, weekStartDay)
+          const firstDateStr = format(weekStartDate, 'yyyy-MM-dd')
+          newVisibleDaysByWeek[week] = [firstDateStr]
+        }
+      })
+      setVisibleDaysByWeek(newVisibleDaysByWeek)
+      
       setFormData(prev => ({ ...prev, meals: allMeals, endDate: format(endDate, 'yyyy-MM-dd') }))
     } catch (error) {
       console.error('Error generating meals:', error)
+    }
+  }
+
+  // Function to add a day to a week
+  const addDayToWeek = (week: number) => {
+    if (!formData.startDate || !formData.days) return
+    
+    const startDate = new Date(formData.startDate)
+    const days = parseInt(formData.days)
+    const weekStartDay = (week - 1) * 7
+    const weekEndDay = Math.min(weekStartDay + 6, days - 1)
+    const weekStartDate = addDays(startDate, weekStartDay)
+    const weekEndDate = addDays(startDate, weekEndDay)
+    const allWeekDates = eachDayOfInterval({ start: weekStartDate, end: weekEndDate })
+    const allWeekDateStrs = allWeekDates.map(d => format(d, 'yyyy-MM-dd'))
+    
+    // Get currently visible days for this week
+    const currentVisibleDays = visibleDaysByWeek[week] || []
+    
+    // Find the next day to add (first day that's not visible)
+    const nextDay = allWeekDateStrs.find(dateStr => !currentVisibleDays.includes(dateStr))
+    
+    if (!nextDay) {
+      alert('All days for this week are already visible.')
+      return
+    }
+    
+    // Add the day to visible days
+    setVisibleDaysByWeek(prev => ({
+      ...prev,
+      [week]: [...currentVisibleDays, nextDay].sort()
+    }))
+    
+    // Generate meals for this day if they don't exist
+    const timeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
+    if (timeSlots.length === 0) return
+    
+    const selectedCustomer = customers.find(c => c.id === formData.customerId)
+    const mealsPerDay = parseInt(formData.mealsPerDay)
+    const dayTimeSlots = timeSlots.slice(0, mealsPerDay)
+    
+    // Check if meals already exist for this day
+    const existingMealKeys = new Set<string>()
+    formData.meals.forEach(meal => {
+      existingMealKeys.add(`${meal.date}-${meal.timeSlot}`)
+    })
+    
+    // Generate meals for the new day
+    const newMeals: typeof formData.meals = []
+    dayTimeSlots.forEach((timeSlot: string) => {
+      const mealKey = `${nextDay}-${timeSlot}`
+      
+      if (existingMealKeys.has(mealKey)) {
+        return
+      }
+      existingMealKeys.add(mealKey)
+      
+      // Convert timeSlot to 24-hour format for deliveryTime
+      const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
+      let deliveryTime = ''
+      if (timeMatch) {
+        let hours = parseInt(timeMatch[1])
+        const minutes = timeMatch[2]
+        if (timeSlot.toUpperCase().includes('PM') && hours !== 12) {
+          hours += 12
+        } else if (timeSlot.toUpperCase().includes('AM') && hours === 12) {
+          hours = 0
+        }
+        deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
+      } else {
+        deliveryTime = timeSlot
+      }
+      
+      newMeals.push({
+        date: nextDay,
+        timeSlot,
+        dishId: '',
+        deliveryType: formData.deliveryType as 'delivery' | 'pickup',
+        deliveryTime: deliveryTime,
+        location: selectedCustomer?.deliveryArea || '',
+        isSkipped: false,
+        showDishFields: false,
+        customNote: '',
+      })
+    })
+    
+    if (newMeals.length > 0) {
+      setFormData(prev => ({ ...prev, meals: [...prev.meals, ...newMeals] }))
     }
   }
   
@@ -576,13 +680,19 @@ export default function NewMealPlanPage() {
     const updatedVisibleWeeks = [...visibleWeeks, nextWeek].sort((a, b) => a - b)
     setVisibleWeeks(updatedVisibleWeeks)
     
-    // Generate meals for the new week immediately
-    // Calculate the date range for the new week
+    // Initialize visible days for the new week - only show first day
     const weekStartDay = (nextWeek - 1) * 7
-    const weekEndDay = Math.min(weekStartDay + 6, days - 1)
     const weekStartDate = addDays(startDate, weekStartDay)
+    const firstDateStr = format(weekStartDate, 'yyyy-MM-dd')
+    setVisibleDaysByWeek(prev => ({
+      ...prev,
+      [nextWeek]: [firstDateStr]
+    }))
+    
+    // Generate meals for the new week immediately - only for the first day
+    const weekEndDay = Math.min(weekStartDay + 6, days - 1)
     const weekEndDate = addDays(startDate, weekEndDay)
-    const weekDates = eachDayOfInterval({ start: weekStartDate, end: weekEndDate })
+    const weekDates = [weekStartDate] // Only first day initially
     
     // Get time slots
     const timeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
@@ -840,7 +950,7 @@ export default function NewMealPlanPage() {
     : parseFloat(formData.pricePerMeal || '0') * totalMeals
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-[95%] mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Create New Meal Plan</h1>
 
       {/* Progress Steps */}
@@ -1418,10 +1528,32 @@ export default function NewMealPlanPage() {
                     return (
                       <div key={week} className="border border-gray-300 rounded-lg overflow-hidden bg-white">
                         {/* Week Header */}
-                        <div className={`bg-gray-100 px-4 py-3 flex items-center justify-between border-b border-gray-300 ${isWeekSkipped ? 'opacity-60' : ''}`}>
+                        <div className={`px-4 py-3 flex items-center justify-between border-b border-gray-300 ${isWeekSkipped ? 'opacity-60' : ''}`} style={{ backgroundColor: '#728d53' }}>
                           <div className="flex items-center gap-3">
-                            <h3 className="font-semibold text-gray-900">Week {week}</h3>
-                            <span className="text-sm text-gray-500">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newCollapsed = new Set(collapsedWeeks)
+                                if (newCollapsed.has(week)) {
+                                  newCollapsed.delete(week)
+                                } else {
+                                  newCollapsed.add(week)
+                                }
+                                setCollapsedWeeks(newCollapsed)
+                              }}
+                              className="text-white hover:text-gray-200 focus:outline-none"
+                            >
+                              <svg
+                                className={`w-5 h-5 transition-transform ${collapsedWeeks.has(week) ? '' : 'rotate-90'}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                            <h3 className="font-semibold text-white">Week {week}</h3>
+                            <span className="text-sm text-white">
                               ({weekDates.length} days, {weekDates.length * parseInt(formData.mealsPerDay)} meals)
                             </span>
                           </div>
@@ -1432,21 +1564,47 @@ export default function NewMealPlanPage() {
                               onChange={() => toggleSkipWeek(week)}
                               className="w-4 h-4 text-nutrafi-primary rounded focus:ring-nutrafi-primary"
                             />
-                            <span className="text-sm text-gray-600">Skip Week</span>
+                            <span className="text-sm text-white font-medium">Skip Week</span>
                           </label>
                         </div>
                         
                         {/* Week Content */}
-                        {!isWeekSkipped && (
+                        {!isWeekSkipped && !collapsedWeeks.has(week) && (
                           <div className="p-4 space-y-4">
-                            {weekDates.length > 0 ? weekDates.map((date) => {
-                              const meals = weekMeals[date] || []
-                              const isDaySkipped = formData.skippedDays.includes(date)
+                            {(() => {
+                              // Filter to only show visible days for this week
+                              const visibleDays = visibleDaysByWeek[week] || []
+                              const filteredDates = weekDates.filter(date => visibleDays.includes(date))
+                              return filteredDates.length > 0 ? filteredDates.map((date) => {
+                                const meals = weekMeals[date] || []
+                                const isDaySkipped = formData.skippedDays.includes(date)
                               
                               return (
-                                <div key={date} className={`border-2 border-gray-400 rounded-md p-4 ${isDaySkipped ? 'opacity-50 bg-gray-50' : 'bg-white'}`}>
+                                <div key={date} className={`border-2 border-gray-700 rounded-md p-4 ${isDaySkipped ? 'opacity-50 bg-gray-50' : 'bg-white'}`}>
                                   <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const newCollapsed = new Set(collapsedDays)
+                                          if (newCollapsed.has(date)) {
+                                            newCollapsed.delete(date)
+                                          } else {
+                                            newCollapsed.add(date)
+                                          }
+                                          setCollapsedDays(newCollapsed)
+                                        }}
+                                        className="text-gray-600 hover:text-gray-800 focus:outline-none"
+                                      >
+                                        <svg
+                                          className={`w-4 h-4 transition-transform ${collapsedDays.has(date) ? '' : 'rotate-90'}`}
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                      </button>
                                       <h4 className="font-medium text-gray-900">
                                         <span className="font-bold">{getDayName(date)}</span> - {format(new Date(date), 'MMM dd, yyyy')}
                                       </h4>
@@ -1478,20 +1636,28 @@ export default function NewMealPlanPage() {
                                     </label>
                                   </div>
                                   
-                                  {!isDaySkipped && (
+                                  {!isDaySkipped && !collapsedDays.has(date) && (
                                     <div className="space-y-3">
                                       {meals.map((meal, idx) => {
                                         const mealKey = `${meal.date}-${meal.timeSlot}`
                                         const isExpanded = expandedMealFields.has(mealKey) || meal.showDishFields
                                         // Second meal (idx === 1) gets custom green background
                                         const isSecondMeal = idx === 1
+                                        const mealLabels = ['First Meal', 'Second Meal', 'Third Meal', 'Fourth Meal', 'Fifth Meal']
+                                        const mealLabel = mealLabels[idx] || `Meal ${idx + 1}`
                                         
                                         return (
                                           <div 
                                             key={idx} 
-                                            className="border border-gray-200 rounded-md"
-                                            style={isSecondMeal ? { backgroundColor: 'rgba(183, 199, 135, 0.15)' } : { backgroundColor: '#f9fafb' }}
+                                            className="border border-gray-200 rounded-md overflow-hidden"
+                                            style={isSecondMeal ? { backgroundColor: '#D9F2D0' } : { backgroundColor: '#f9fafb' }}
                                           >
+                                            {/* Meal Label Header */}
+                                            <div className={`px-3 py-2 border-b border-gray-200 ${isSecondMeal ? 'bg-[#D9F2D0]' : 'bg-gray-100'}`}>
+                                              <span className={`text-xs font-bold uppercase tracking-wide ${isSecondMeal ? 'text-gray-800' : 'text-gray-700'}`}>
+                                                {mealLabel}
+                                              </span>
+                                            </div>
                                             <div className="p-3 space-y-3">
                                               {/* First Row: Select Dish, Delivery Type, Delivery Time, Location */}
                                               <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
@@ -1715,7 +1881,7 @@ export default function NewMealPlanPage() {
                                             {isExpanded && (
                                               <div 
                                                 className="border-t border-gray-200 p-4 space-y-3"
-                                                style={isSecondMeal ? { backgroundColor: 'rgba(183, 199, 135, 0.15)' } : { backgroundColor: '#ffffff' }}
+                                                style={isSecondMeal ? { backgroundColor: '#D9F2D0' } : { backgroundColor: '#ffffff' }}
                                               >
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                   <div>
@@ -1825,11 +1991,42 @@ export default function NewMealPlanPage() {
                                   )}
                                 </div>
                               )
-                            }) : (
-                              <div className="text-center text-sm text-gray-500 py-4">
-                                No meals generated for this week yet. Meals will be generated when you add dishes.
-                              </div>
-                            )}
+                              }) : (
+                                <div className="text-center text-sm text-gray-500 py-4">
+                                  No meals generated for this week yet. Meals will be generated when you add dishes.
+                                </div>
+                              )
+                            })()}
+                            
+                            {/* Add Day Button */}
+                            {(() => {
+                              if (!formData.startDate || !formData.days) return null
+                              const startDate = new Date(formData.startDate)
+                              const weekStartDay = (week - 1) * 7
+                              const weekStartDate = addDays(startDate, weekStartDay)
+                              const weekEndDay = Math.min(weekStartDay + 6, parseInt(formData.days) - 1)
+                              const weekEndDate = addDays(startDate, weekEndDay)
+                              const allWeekDates = eachDayOfInterval({ start: weekStartDate, end: weekEndDate })
+                              const allWeekDateStrs = allWeekDates.map(d => format(d, 'yyyy-MM-dd'))
+                              const visibleDays = visibleDaysByWeek[week] || []
+                              const hasMoreDays = allWeekDateStrs.length > visibleDays.length
+                              
+                              if (hasMoreDays) {
+                                return (
+                                  <div className="mt-4 flex justify-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => addDayToWeek(week)}
+                                      className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2"
+                                    >
+                                      <span>+</span>
+                                      <span>Add Day</span>
+                                    </button>
+                                  </div>
+                                )
+                              }
+                              return null
+                            })()}
                           </div>
                         )}
                       </div>
@@ -1863,9 +2060,31 @@ export default function NewMealPlanPage() {
                     const isDaySkipped = formData.skippedDays.includes(date)
                     
                     return (
-                      <div key={date} className={`border-2 border-gray-400 rounded-md p-4 ${isDaySkipped ? 'opacity-50 bg-gray-50' : 'bg-white'}`}>
+                      <div key={date} className={`border-2 border-gray-700 rounded-md p-4 ${isDaySkipped ? 'opacity-50 bg-gray-50' : 'bg-white'}`}>
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newCollapsed = new Set(collapsedDays)
+                                if (newCollapsed.has(date)) {
+                                  newCollapsed.delete(date)
+                                } else {
+                                  newCollapsed.add(date)
+                                }
+                                setCollapsedDays(newCollapsed)
+                              }}
+                              className="text-gray-600 hover:text-gray-800 focus:outline-none"
+                            >
+                              <svg
+                                className={`w-4 h-4 transition-transform ${collapsedDays.has(date) ? '' : 'rotate-90'}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
                             <h4 className="font-medium text-gray-900">
                               <span className="font-bold">{getDayName(date)}</span> - {format(new Date(date), 'MMM dd, yyyy')}
                             </h4>
@@ -1897,20 +2116,28 @@ export default function NewMealPlanPage() {
                           </label>
                         </div>
                         
-                        {!isDaySkipped && (
+                        {!isDaySkipped && !collapsedDays.has(date) && (
                           <div className="space-y-3">
                             {meals.map((meal, idx) => {
                               const mealKey = `${meal.date}-${meal.timeSlot}`
                               const isExpanded = expandedMealFields.has(mealKey) || meal.showDishFields
                               // Second meal (idx === 1) gets custom green background
                               const isSecondMeal = idx === 1
+                              const mealLabels = ['First Meal', 'Second Meal', 'Third Meal', 'Fourth Meal', 'Fifth Meal']
+                              const mealLabel = mealLabels[idx] || `Meal ${idx + 1}`
                               
                                         return (
                                           <div 
                                             key={idx} 
-                                            className="border border-gray-200 rounded-md"
-                                            style={isSecondMeal ? { backgroundColor: 'rgba(183, 199, 135, 0.15)' } : { backgroundColor: '#f9fafb' }}
+                                            className="border border-gray-200 rounded-md overflow-hidden"
+                                            style={isSecondMeal ? { backgroundColor: '#D9F2D0' } : { backgroundColor: '#f9fafb' }}
                                           >
+                                            {/* Meal Label Header */}
+                                            <div className={`px-3 py-2 border-b border-gray-200 ${isSecondMeal ? 'bg-[#D9F2D0]' : 'bg-gray-100'}`}>
+                                              <span className={`text-xs font-bold uppercase tracking-wide ${isSecondMeal ? 'text-gray-800' : 'text-gray-700'}`}>
+                                                {mealLabel}
+                                              </span>
+                                            </div>
                                             <div className="p-3 space-y-3">
                                               {/* First Row: Select Dish, Delivery Type, Delivery Time, Location */}
                                               <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
@@ -2134,7 +2361,7 @@ export default function NewMealPlanPage() {
                                   {isExpanded && (
                                     <div 
                                       className="border-t border-gray-200 p-4 space-y-3"
-                                      style={isSecondMeal ? { backgroundColor: 'rgba(183, 199, 135, 0.15)' } : { backgroundColor: '#ffffff' }}
+                                      style={isSecondMeal ? { backgroundColor: '#D9F2D0' } : { backgroundColor: '#ffffff' }}
                                     >
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div>

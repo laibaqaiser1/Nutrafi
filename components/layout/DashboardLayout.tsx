@@ -40,14 +40,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   })
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-white shadow-lg border-r border-[#e8ede0] transition-all duration-300 ${
+      <aside className={`bg-white shadow-lg border-r border-[#e8ede0] transition-all duration-300 flex-shrink-0 ${
         sidebarOpen ? 'w-64' : 'w-20'
       }`}>
-        <div className="flex flex-col h-screen">
+        <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-4 border-b border-[#e8ede0]">
+          <div className="flex items-center justify-between p-4 border-b border-[#e8ede0] flex-shrink-0">
             <Link href="/dashboard" className="flex items-center space-x-3">
               <Image
                 src="/nutrafi_logo.png"
@@ -84,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-4">
+          <nav className="flex-1 py-4 overflow-hidden">
             <div className="px-2 space-y-1">
               {filteredNavigation.length === 0 ? (
                 <div className="px-4 py-2 text-xs text-gray-500">
@@ -112,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
 
           {/* User Info & Sign Out */}
-          <div className="border-t border-[#e8ede0] p-4">
+          <div className="border-t border-[#e8ede0] p-4 flex-shrink-0">
             <div className="mb-3">
               {sidebarOpen && (
                 <div className="text-xs text-gray-500 mb-1">
@@ -143,9 +143,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Bar (optional, can be removed if not needed) */}
-        <header className="bg-white shadow-sm border-b border-[#e8ede0] h-16 flex items-center justify-end px-6">
+        <header className="bg-white shadow-sm border-b border-[#e8ede0] h-16 flex items-center justify-end px-6 flex-shrink-0">
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-700 hidden md:block">
               {session?.user?.name} ({session?.user?.role})
