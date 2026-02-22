@@ -1433,8 +1433,43 @@ export default function MealPlanViewPage() {
                           )
                         }) : (
                           <tr>
-                            <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
-                              No days added to this week yet. Click "Add Day" to start.
+                            <td colSpan={6} className="px-6 py-8 text-center">
+                              <div className="flex flex-col items-center gap-3">
+                                <p className="text-sm text-gray-500 mb-2">
+                                  No days added to this week yet.
+                                </p>
+                                {(() => {
+                                  // Check if we can add a day
+                                  const allDates = new Set<string>()
+                                  mealPlan.mealPlanItems.forEach(item => {
+                                    const date = format(new Date(item.date), 'yyyy-MM-dd')
+                                    allDates.add(date)
+                                  })
+                                  const totalDays = allDates.size
+                                  const maxDays = mealPlan.days || 22
+                                  const remainingDays = maxDays - totalDays
+                                  
+                                  const currentMealsCount = mealPlan.mealPlanItems.length
+                                  const mealsPerDay = mealPlan.mealsPerDay
+                                  const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
+                                  const canAddMoreMeals = currentMealsCount + mealsPerDay <= totalMealsAllowed
+                                  
+                                  return remainingDays > 0 && canAddMoreMeals ? (
+                                    <button
+                                      onClick={() => addDayToWeek(week)}
+                                      disabled={addingDay}
+                                      className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 disabled:opacity-50 text-sm"
+                                    >
+                                      {addingDay ? 'Adding...' : (
+                                        <>
+                                          <span>+</span>
+                                          <span>Add Day</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  ) : null
+                                })()}
+                              </div>
                             </td>
                           </tr>
                         )
