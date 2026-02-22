@@ -1330,6 +1330,10 @@ export default function MealPlanViewPage() {
                                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                                         Delivered
                                       </span>
+                                    ) : (!item.dishId && !item.dishName) ? (
+                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
+                                        Inactive
+                                      </span>
                                     ) : (
                                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
                                         Active
@@ -1569,6 +1573,10 @@ export default function MealPlanViewPage() {
                     ) : selectedItem.isDelivered ? (
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                         Delivered
+                      </span>
+                    ) : (!selectedItem.dishId && !selectedItem.dishName) ? (
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
+                        Inactive
                       </span>
                     ) : (
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
