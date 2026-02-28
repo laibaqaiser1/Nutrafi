@@ -72,15 +72,15 @@ export default function PlansPage() {
       ) : (
         <div className="bg-white shadow overflow-hidden sm:rounded">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead style={{ backgroundColor: '#D9F2D0' }}>
+            <thead className="bg-nutrafi-primary">
               <tr>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Name</th>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Type</th>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Days</th>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Meals/Day</th>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Price (AED)</th>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Status</th>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Actions</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Name</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Type</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Days</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Meals/Day</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Price (AED)</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

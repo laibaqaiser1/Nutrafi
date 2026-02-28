@@ -271,12 +271,10 @@ export default function MealPlanViewPage() {
         }
         // Update selected item if it's the one being marked
         if (selectedItem && selectedItem.id === itemId) {
-          setSelectedItem({
-            ...selectedItem,
-            isDelivered: data.mealPlanItem.isDelivered,
-            deliveredAt: data.mealPlanItem.deliveredAt,
-          })
+          setShowModal(false)
+          setSelectedItem(null)
         }
+        toast.success(isDelivered ? 'Marked as delivered' : 'Marked as not delivered')
       } else {
         toast.error('Failed to update delivery status')
       }
@@ -304,8 +302,10 @@ export default function MealPlanViewPage() {
           ),
         })
         if (selectedItem && selectedItem.id === itemId) {
-          setSelectedItem({ ...selectedItem, isSkipped: data.isSkipped ?? isSkipped })
+          setShowModal(false)
+          setSelectedItem(null)
         }
+        toast.success(isSkipped ? 'Meal marked as skipped' : 'Meal unskipped')
       } else {
         toast.error('Failed to update skip status')
       }

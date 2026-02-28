@@ -365,30 +365,30 @@ export default function KitchenPlanningPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead style={{ backgroundColor: '#D9F2D0' }}>
+              <thead className="bg-nutrafi-primary">
                 <tr>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Time
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Dish
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Delivery Area
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Calories
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Macros
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Allergens
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Status
                   </th>
                 </tr>

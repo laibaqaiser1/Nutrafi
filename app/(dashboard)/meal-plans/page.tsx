@@ -99,16 +99,16 @@ export default function MealPlansPage() {
           ) : (
             <div className="bg-white shadow overflow-hidden sm:rounded lg:rounded-md">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead style={{ backgroundColor: '#D9F2D0' }}>
+                <thead className="bg-nutrafi-primary">
                   <tr>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Customer</th>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Start Date</th>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">End Date</th>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Meals/Day</th>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Total Meals</th>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Remaining Meals</th>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Status</th>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Actions</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Customer</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Start Date</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">End Date</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Meals/Day</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Total Meals</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Remaining Meals</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">

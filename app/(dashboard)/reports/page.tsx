@@ -209,10 +209,10 @@ export default function ReportsPage() {
         {popularDishes.length > 0 ? (
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead>
-              <tr className="bg-[#f0f4e8]">
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-semibold text-nutrafi-dark uppercase tracking-wider">Dish Name</th>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-semibold text-nutrafi-dark uppercase tracking-wider">Category</th>
-                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-semibold text-nutrafi-dark uppercase tracking-wider">Total Orders</th>
+              <tr className="bg-nutrafi-primary">
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Dish Name</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Category</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Total Orders</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
