@@ -166,7 +166,7 @@ export function DashboardCharts({
                 innerRadius={60}
                 outerRadius={90}
                 paddingAngle={2}
-                label={({ name, value }) => `${name}: ${value}`}
+                label={({ name, value }) => `${name ?? '—'}: ${value ?? 0}`}
               >
                 {customersByStatus.map((row) => (
                   <Cell

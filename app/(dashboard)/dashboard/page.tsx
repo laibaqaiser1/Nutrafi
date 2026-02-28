@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth-helpers'
 import { redirect } from 'next/navigation'
-import { startOfDay, subDays, format } from 'date-fns'
+import { startOfDay, format } from 'date-fns'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 
 async function getDashboardStats() {
@@ -29,13 +29,18 @@ async function getDashboardStats() {
 }
 
 async function getChartData() {
-  const today = startOfDay(new Date())
-  const start = subDays(today, 6)
+  const now = new Date()
+  const todayStart = new Date(now)
+  todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date(now)
+  todayEnd.setHours(23, 59, 59, 999)
+  const start = new Date(todayStart)
+  start.setDate(start.getDate() - 6)
 
   const [mealItems, customerCounts] = await Promise.all([
     prisma.mealPlanItem.findMany({
       where: {
-        date: { gte: start, lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) },
+        date: { gte: start, lte: todayEnd },
         isSkipped: false,
       },
       select: { date: true },
@@ -48,19 +53,28 @@ async function getChartData() {
 
   const dayMap = new Map<string, number>()
   for (let i = 6; i >= 0; i--) {
-    const d = subDays(today, i)
+    const d = new Date(todayStart)
+    d.setDate(d.getDate() - i)
     dayMap.set(format(d, 'yyyy-MM-dd'), 0)
   }
   for (const item of mealItems) {
-    const key = format(startOfDay(item.date), 'yyyy-MM-dd')
+    const itemDate = new Date(item.date)
+    const key = itemDate >= todayStart && itemDate <= todayEnd
+      ? format(todayStart, 'yyyy-MM-dd')
+      : format(startOfDay(itemDate), 'yyyy-MM-dd')
     if (dayMap.has(key)) dayMap.set(key, (dayMap.get(key) ?? 0) + 1)
   }
 
-  const mealsPerDay = Array.from(dayMap.entries()).map(([date, meals]) => ({
-    date,
-    meals,
-    label: format(new Date(date + 'T00:00:00'), 'EEE'),
-  }))
+  const sortedDates = Array.from(dayMap.keys()).sort()
+  const mealsPerDay = sortedDates.map((date) => {
+    const [y, m, day] = date.split('-').map(Number)
+    const dateObj = new Date(y, m - 1, day)
+    return {
+      date,
+      meals: dayMap.get(date) ?? 0,
+      label: format(dateObj, 'EEE'),
+    }
+  })
 
   const customersByStatus = customerCounts.map((c) => ({
     status: c.status,
