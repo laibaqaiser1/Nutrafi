@@ -5,8 +5,16 @@ import { z } from 'zod'
 import { eachDayOfInterval, format } from 'date-fns'
 
 const mealPlanSchema = z.object({
-  customerId: z.string(),
-  planId: z.string().optional(),
+  customerId: z.union([z.string(), z.number()]).transform((v) => {
+    const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+    if (Number.isNaN(n) || n < 1) throw new z.ZodError([{ code: 'custom', path: ['customerId'], message: 'Invalid customer ID' }])
+    return n
+  }),
+  planId: z.union([z.string(), z.number()]).transform((v) => {
+    if (v === '' || v === null || v === undefined) return undefined
+    const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+    return Number.isNaN(n) ? undefined : n
+  }).optional(),
   planType: z.enum(['WEEKLY', 'MONTHLY', 'CUSTOM']).optional(),
   startDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   endDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
@@ -35,7 +43,10 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     const where: any = {}
-    if (customerId) where.customerId = customerId
+    if (customerId) {
+      const cid = parseInt(customerId, 10)
+      if (!Number.isNaN(cid)) where.customerId = cid
+    }
     // Only filter by status when a specific status is requested; otherwise show all
     if (status && ['ACTIVE', 'PAUSED', 'CANCELLED'].includes(status)) {
       where.status = status
@@ -152,7 +163,7 @@ export async function POST(request: NextRequest) {
     // Create meal plan (timeSlots not stored - meal items are created separately when dishes are assigned)
     const mealPlanData: any = {
       customerId: data.customerId,
-      planId: data.planId,
+      planId: data.planId ?? null,
       planType: planType,
       days: days,
       mealsPerDay: data.mealsPerDay,
@@ -170,7 +181,7 @@ export async function POST(request: NextRequest) {
     if (data.endDate) {
       mealPlanData.endDate = data.endDate
     }
-    
+
     const mealPlan = await prisma.mealPlan.create({
       data: mealPlanData,
     })

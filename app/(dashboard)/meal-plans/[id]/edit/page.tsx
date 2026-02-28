@@ -351,11 +351,12 @@ export default function EditMealPlanPage() {
   }
 
   const handleDeleteMeal = async (itemId: string) => {
-    if (!mealPlan || !confirm('Remove this meal from the plan? This cannot be undone.')) return
+    if (!mealPlan) return
     try {
       const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${itemId}`, { method: 'DELETE' })
       if (response.ok) {
         await fetchMealPlan(mealPlan.id)
+        toast.success('Meal removed from plan.')
       } else {
         const err = await response.json()
         toast.error(err?.error || 'Failed to delete meal')

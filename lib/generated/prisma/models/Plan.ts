@@ -27,19 +27,21 @@ export type AggregatePlan = {
 }
 
 export type PlanAvgAggregateOutputType = {
+  id: number | null
   days: number | null
   mealsPerDay: number | null
   price: number | null
 }
 
 export type PlanSumAggregateOutputType = {
+  id: number | null
   days: number | null
   mealsPerDay: number | null
   price: number | null
 }
 
 export type PlanMinAggregateOutputType = {
-  id: string | null
+  id: number | null
   name: string | null
   planType: $Enums.PlanType | null
   days: number | null
@@ -52,7 +54,7 @@ export type PlanMinAggregateOutputType = {
 }
 
 export type PlanMaxAggregateOutputType = {
-  id: string | null
+  id: number | null
   name: string | null
   planType: $Enums.PlanType | null
   days: number | null
@@ -80,12 +82,14 @@ export type PlanCountAggregateOutputType = {
 
 
 export type PlanAvgAggregateInputType = {
+  id?: true
   days?: true
   mealsPerDay?: true
   price?: true
 }
 
 export type PlanSumAggregateInputType = {
+  id?: true
   days?: true
   mealsPerDay?: true
   price?: true
@@ -218,7 +222,7 @@ export type PlanGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 }
 
 export type PlanGroupByOutputType = {
-  id: string
+  id: number
   name: string
   planType: $Enums.PlanType
   days: number
@@ -254,7 +258,7 @@ export type PlanWhereInput = {
   AND?: Prisma.PlanWhereInput | Prisma.PlanWhereInput[]
   OR?: Prisma.PlanWhereInput[]
   NOT?: Prisma.PlanWhereInput | Prisma.PlanWhereInput[]
-  id?: Prisma.StringFilter<"Plan"> | string
+  id?: Prisma.IntFilter<"Plan"> | number
   name?: Prisma.StringFilter<"Plan"> | string
   planType?: Prisma.EnumPlanTypeFilter<"Plan"> | $Enums.PlanType
   days?: Prisma.IntFilter<"Plan"> | number
@@ -284,7 +288,7 @@ export type PlanOrderByWithRelationInput = {
 }
 
 export type PlanWhereUniqueInput = Prisma.AtLeast<{
-  id?: string
+  id?: number
   AND?: Prisma.PlanWhereInput | Prisma.PlanWhereInput[]
   OR?: Prisma.PlanWhereInput[]
   NOT?: Prisma.PlanWhereInput | Prisma.PlanWhereInput[]
@@ -323,7 +327,7 @@ export type PlanScalarWhereWithAggregatesInput = {
   AND?: Prisma.PlanScalarWhereWithAggregatesInput | Prisma.PlanScalarWhereWithAggregatesInput[]
   OR?: Prisma.PlanScalarWhereWithAggregatesInput[]
   NOT?: Prisma.PlanScalarWhereWithAggregatesInput | Prisma.PlanScalarWhereWithAggregatesInput[]
-  id?: Prisma.StringWithAggregatesFilter<"Plan"> | string
+  id?: Prisma.IntWithAggregatesFilter<"Plan"> | number
   name?: Prisma.StringWithAggregatesFilter<"Plan"> | string
   planType?: Prisma.EnumPlanTypeWithAggregatesFilter<"Plan"> | $Enums.PlanType
   days?: Prisma.IntWithAggregatesFilter<"Plan"> | number
@@ -336,7 +340,6 @@ export type PlanScalarWhereWithAggregatesInput = {
 }
 
 export type PlanCreateInput = {
-  id?: string
   name: string
   planType: $Enums.PlanType
   days: number
@@ -351,7 +354,7 @@ export type PlanCreateInput = {
 }
 
 export type PlanUncheckedCreateInput = {
-  id?: string
+  id?: number
   name: string
   planType: $Enums.PlanType
   days: number
@@ -366,7 +369,6 @@ export type PlanUncheckedCreateInput = {
 }
 
 export type PlanUpdateInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
@@ -381,7 +383,7 @@ export type PlanUpdateInput = {
 }
 
 export type PlanUncheckedUpdateInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
@@ -396,7 +398,7 @@ export type PlanUncheckedUpdateInput = {
 }
 
 export type PlanCreateManyInput = {
-  id?: string
+  id?: number
   name: string
   planType: $Enums.PlanType
   days: number
@@ -409,7 +411,6 @@ export type PlanCreateManyInput = {
 }
 
 export type PlanUpdateManyMutationInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
@@ -422,7 +423,7 @@ export type PlanUpdateManyMutationInput = {
 }
 
 export type PlanUncheckedUpdateManyInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
@@ -448,6 +449,7 @@ export type PlanCountOrderByAggregateInput = {
 }
 
 export type PlanAvgOrderByAggregateInput = {
+  id?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
   price?: Prisma.SortOrder
@@ -480,6 +482,7 @@ export type PlanMinOrderByAggregateInput = {
 }
 
 export type PlanSumOrderByAggregateInput = {
+  id?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
   price?: Prisma.SortOrder
@@ -531,7 +534,6 @@ export type PlanUpdateOneWithoutPaymentsNestedInput = {
 }
 
 export type PlanCreateWithoutMealPlansInput = {
-  id?: string
   name: string
   planType: $Enums.PlanType
   days: number
@@ -545,7 +547,7 @@ export type PlanCreateWithoutMealPlansInput = {
 }
 
 export type PlanUncheckedCreateWithoutMealPlansInput = {
-  id?: string
+  id?: number
   name: string
   planType: $Enums.PlanType
   days: number
@@ -575,7 +577,6 @@ export type PlanUpdateToOneWithWhereWithoutMealPlansInput = {
 }
 
 export type PlanUpdateWithoutMealPlansInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
@@ -589,7 +590,7 @@ export type PlanUpdateWithoutMealPlansInput = {
 }
 
 export type PlanUncheckedUpdateWithoutMealPlansInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
@@ -603,7 +604,6 @@ export type PlanUncheckedUpdateWithoutMealPlansInput = {
 }
 
 export type PlanCreateWithoutPaymentsInput = {
-  id?: string
   name: string
   planType: $Enums.PlanType
   days: number
@@ -617,7 +617,7 @@ export type PlanCreateWithoutPaymentsInput = {
 }
 
 export type PlanUncheckedCreateWithoutPaymentsInput = {
-  id?: string
+  id?: number
   name: string
   planType: $Enums.PlanType
   days: number
@@ -647,7 +647,6 @@ export type PlanUpdateToOneWithWhereWithoutPaymentsInput = {
 }
 
 export type PlanUpdateWithoutPaymentsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
@@ -661,7 +660,7 @@ export type PlanUpdateWithoutPaymentsInput = {
 }
 
 export type PlanUncheckedUpdateWithoutPaymentsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
@@ -785,7 +784,7 @@ export type $PlanPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     payments: Prisma.$PaymentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: string
+    id: number
     name: string
     planType: $Enums.PlanType
     days: number
@@ -1220,7 +1219,7 @@ export interface Prisma__PlanClient<T, Null = never, ExtArgs extends runtime.Typ
  * Fields of the Plan model
  */
 export interface PlanFieldRefs {
-  readonly id: Prisma.FieldRef<"Plan", 'String'>
+  readonly id: Prisma.FieldRef<"Plan", 'Int'>
   readonly name: Prisma.FieldRef<"Plan", 'String'>
   readonly planType: Prisma.FieldRef<"Plan", 'PlanType'>
   readonly days: Prisma.FieldRef<"Plan", 'Int'>

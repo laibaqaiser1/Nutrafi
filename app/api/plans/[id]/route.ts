@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -20,7 +21,11 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession()
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 })
+    }
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -46,7 +51,11 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession()
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 })
+    }
     if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -75,7 +84,11 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession()
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 })
+    }
     if (!session || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

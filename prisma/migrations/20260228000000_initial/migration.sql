@@ -1,18 +1,21 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'MANAGER', 'CHEF');
 
 -- CreateEnum
-CREATE TYPE "DishCategory" AS ENUM ('BREAKFAST', 'LUNCH', 'DINNER', 'SNACK', 'SMOOTHIE', 'JUICE');
+CREATE TYPE "DishCategory" AS ENUM ('BREAKFAST', 'LUNCH', 'DINNER', 'SNACK', 'SMOOTHIE', 'JUICE', 'LUNCH_DINNER');
 
 -- CreateEnum
 CREATE TYPE "PlanType" AS ENUM ('WEEKLY', 'MONTHLY', 'CUSTOM');
 
 -- CreateEnum
-CREATE TYPE "CustomerStatus" AS ENUM ('ACTIVE', 'PAUSED', 'CANCELLED');
+CREATE TYPE "CustomerStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'PAUSED', 'CANCELLED');
 
 -- CreateTable
 CREATE TABLE "User" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -25,7 +28,7 @@ CREATE TABLE "User" (
 
 -- CreateTable
 CREATE TABLE "Dish" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "category" "DishCategory" NOT NULL,
@@ -45,17 +48,12 @@ CREATE TABLE "Dish" (
 
 -- CreateTable
 CREATE TABLE "Customer" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "fullName" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
     "email" TEXT,
     "address" TEXT NOT NULL,
     "deliveryArea" TEXT NOT NULL,
-    "planType" "PlanType" NOT NULL,
-    "mealsPerDay" INTEGER NOT NULL,
-    "timeSlots" TEXT NOT NULL,
-    "startDate" TIMESTAMP(3) NOT NULL,
-    "endDate" TIMESTAMP(3),
     "status" "CustomerStatus" NOT NULL DEFAULT 'ACTIVE',
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -66,7 +64,7 @@ CREATE TABLE "Customer" (
 
 -- CreateTable
 CREATE TABLE "Plan" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "planType" "PlanType" NOT NULL,
     "days" INTEGER NOT NULL,
@@ -82,46 +80,62 @@ CREATE TABLE "Plan" (
 
 -- CreateTable
 CREATE TABLE "MealPlan" (
-    "id" TEXT NOT NULL,
-    "customerId" TEXT NOT NULL,
-    "planId" TEXT,
-    "startDate" TIMESTAMP(3) NOT NULL,
-    "endDate" TIMESTAMP(3) NOT NULL,
+    "id" SERIAL NOT NULL,
+    "customerId" INTEGER NOT NULL,
+    "planId" INTEGER,
+    "startDate" TIMESTAMP(3),
+    "endDate" TIMESTAMP(3),
     "mealsPerDay" INTEGER NOT NULL,
-    "timeSlots" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'ACTIVE',
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "averageMealRate" DOUBLE PRECISION,
+    "baseAmount" DOUBLE PRECISION,
+    "days" INTEGER NOT NULL,
+    "planType" "PlanType" NOT NULL,
+    "remainingMeals" INTEGER,
+    "totalAmount" DOUBLE PRECISION,
+    "totalMeals" INTEGER,
+    "vatAmount" DOUBLE PRECISION,
 
     CONSTRAINT "MealPlan_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "MealPlanItem" (
-    "id" TEXT NOT NULL,
-    "mealPlanId" TEXT NOT NULL,
-    "dishId" TEXT,
+    "id" SERIAL NOT NULL,
+    "mealPlanId" INTEGER NOT NULL,
+    "dishId" INTEGER,
     "date" TIMESTAMP(3) NOT NULL,
     "timeSlot" TEXT NOT NULL,
     "isSkipped" BOOLEAN NOT NULL DEFAULT false,
     "customNote" TEXT,
-    "overrideCalories" INTEGER,
-    "overrideProtein" DOUBLE PRECISION,
-    "overrideCarbs" DOUBLE PRECISION,
-    "overrideFats" DOUBLE PRECISION,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "isDelivered" BOOLEAN NOT NULL DEFAULT false,
+    "deliveredAt" TIMESTAMP(3),
+    "allergens" TEXT,
+    "calories" INTEGER,
+    "carbs" DOUBLE PRECISION,
+    "deliveryTime" TEXT,
+    "dishCategory" "DishCategory",
+    "dishDescription" TEXT,
+    "dishName" TEXT,
+    "fats" DOUBLE PRECISION,
+    "ingredients" TEXT,
+    "price" DOUBLE PRECISION,
+    "protein" DOUBLE PRECISION,
 
     CONSTRAINT "MealPlanItem_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Payment" (
-    "id" TEXT NOT NULL,
-    "customerId" TEXT NOT NULL,
-    "mealPlanId" TEXT,
-    "planId" TEXT,
+    "id" SERIAL NOT NULL,
+    "customerId" INTEGER NOT NULL,
+    "mealPlanId" INTEGER,
+    "planId" INTEGER,
     "amount" DOUBLE PRECISION NOT NULL,
     "paymentDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "paymentMethod" TEXT,
@@ -152,13 +166,13 @@ CREATE INDEX "Dish_name_idx" ON "Dish"("name");
 CREATE INDEX "Customer_status_idx" ON "Customer"("status");
 
 -- CreateIndex
-CREATE INDEX "Customer_planType_idx" ON "Customer"("planType");
-
--- CreateIndex
 CREATE INDEX "Customer_deliveryArea_idx" ON "Customer"("deliveryArea");
 
 -- CreateIndex
 CREATE INDEX "Customer_phone_idx" ON "Customer"("phone");
+
+-- CreateIndex
+CREATE INDEX "Customer_fullName_idx" ON "Customer"("fullName");
 
 -- CreateIndex
 CREATE INDEX "Plan_isActive_idx" ON "Plan"("isActive");
@@ -176,6 +190,9 @@ CREATE INDEX "MealPlan_endDate_idx" ON "MealPlan"("endDate");
 CREATE INDEX "MealPlan_status_idx" ON "MealPlan"("status");
 
 -- CreateIndex
+CREATE INDEX "MealPlan_planType_idx" ON "MealPlan"("planType");
+
+-- CreateIndex
 CREATE INDEX "MealPlanItem_mealPlanId_idx" ON "MealPlanItem"("mealPlanId");
 
 -- CreateIndex
@@ -188,7 +205,7 @@ CREATE INDEX "MealPlanItem_timeSlot_idx" ON "MealPlanItem"("timeSlot");
 CREATE INDEX "MealPlanItem_dishId_idx" ON "MealPlanItem"("dishId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "MealPlanItem_mealPlanId_date_timeSlot_key" ON "MealPlanItem"("mealPlanId", "date", "timeSlot");
+CREATE INDEX "MealPlanItem_dishCategory_idx" ON "MealPlanItem"("dishCategory");
 
 -- CreateIndex
 CREATE INDEX "Payment_customerId_idx" ON "Payment"("customerId");
@@ -209,10 +226,10 @@ ALTER TABLE "MealPlan" ADD CONSTRAINT "MealPlan_customerId_fkey" FOREIGN KEY ("c
 ALTER TABLE "MealPlan" ADD CONSTRAINT "MealPlan_planId_fkey" FOREIGN KEY ("planId") REFERENCES "Plan"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MealPlanItem" ADD CONSTRAINT "MealPlanItem_mealPlanId_fkey" FOREIGN KEY ("mealPlanId") REFERENCES "MealPlan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "MealPlanItem" ADD CONSTRAINT "MealPlanItem_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "Dish"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MealPlanItem" ADD CONSTRAINT "MealPlanItem_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "Dish"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "MealPlanItem" ADD CONSTRAINT "MealPlanItem_mealPlanId_fkey" FOREIGN KEY ("mealPlanId") REFERENCES "MealPlan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -22,7 +23,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid payment ID' }, { status: 400 })
+    }
     const body = await request.json()
     const data = paymentUpdateSchema.parse(body)
 

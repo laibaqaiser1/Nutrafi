@@ -32,12 +32,9 @@ export default function NewCustomerPage() {
       })
 
       if (response.ok) {
-        const customer = await response.json()
-        if (confirm('Customer created successfully! Would you like to create a meal plan for this customer?')) {
-          router.push(`/meal-plans/new?customerId=${customer.id}`)
-        } else {
-          router.push('/customers')
-        }
+        await response.json()
+        toast.success('Customer created successfully!')
+        router.push('/customers')
       } else {
         const error = await response.json()
         toast.error('Error: ' + JSON.stringify(error))

@@ -11,7 +11,7 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
   name      String
@@ -23,7 +23,7 @@ model User {
 }
 
 model Dish {
-  id            String         @id @default(cuid())
+  id            Int             @id @default(autoincrement())
   name          String
   description   String?
   category      DishCategory
@@ -34,9 +34,9 @@ model Dish {
   carbs         Float
   fats          Float
   price         Float?
-  status        String         @default("ACTIVE")
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  status        String          @default("ACTIVE")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   mealPlanItems MealPlanItem[]
 
   @@index([category])
@@ -45,16 +45,16 @@ model Dish {
 }
 
 model Customer {
-  id           String         @id @default(cuid())
+  id           Int             @id @default(autoincrement())
   fullName     String
   phone        String
   email        String?
   address      String
   deliveryArea String
-  status       CustomerStatus @default(ACTIVE)
+  status       CustomerStatus  @default(ACTIVE)
   notes        String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
   mealPlans    MealPlan[]
   payments     Payment[]
 
@@ -65,7 +65,7 @@ model Customer {
 }
 
 model Plan {
-  id          String     @id @default(cuid())
+  id          Int        @id @default(autoincrement())
   name        String
   planType    PlanType
   days        Int
@@ -82,9 +82,9 @@ model Plan {
 }
 
 model MealPlan {
-  id              String         @id @default(cuid())
-  customerId      String
-  planId          String?
+  id              Int             @id @default(autoincrement())
+  customerId      Int
+  planId          Int?
   startDate       DateTime?
   endDate         DateTime?
   mealsPerDay     Int
@@ -113,16 +113,16 @@ model MealPlan {
 }
 
 model MealPlanItem {
-  id              String        @id @default(cuid())
-  mealPlanId      String
-  dishId          String?
+  id              Int          @id @default(autoincrement())
+  mealPlanId      Int
+  dishId          Int?
   date            DateTime
   timeSlot        String
-  isSkipped       Boolean       @default(false)
+  isSkipped       Boolean      @default(false)
   customNote      String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  isDelivered     Boolean       @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  isDelivered     Boolean      @default(false)
   deliveredAt     DateTime?
   allergens       String?
   calories        Int?
@@ -135,8 +135,8 @@ model MealPlanItem {
   ingredients     String?
   price           Float?
   protein         Float?
-  dish            Dish?         @relation(fields: [dishId], references: [id])
-  mealPlan        MealPlan      @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  dish            Dish?        @relation(fields: [dishId], references: [id])
+  mealPlan        MealPlan     @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
 
   @@index([mealPlanId])
   @@index([date])
@@ -146,20 +146,20 @@ model MealPlanItem {
 }
 
 model Payment {
-  id            String    @id @default(cuid())
-  customerId    String
-  mealPlanId    String?
-  planId        String?
+  id            Int        @id @default(autoincrement())
+  customerId    Int
+  mealPlanId    Int?
+  planId        Int?
   amount        Float
-  paymentDate   DateTime  @default(now())
+  paymentDate   DateTime   @default(now())
   paymentMethod String?
-  status        String    @default("PENDING")
+  status        String     @default("PENDING")
   notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  mealPlan      MealPlan? @relation(fields: [mealPlanId], references: [id])
-  plan          Plan?     @relation(fields: [planId], references: [id])
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  customer      Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  mealPlan      MealPlan?  @relation(fields: [mealPlanId], references: [id])
+  plan          Plan?      @relation(fields: [planId], references: [id])
 
   @@index([customerId])
   @@index([mealPlanId])

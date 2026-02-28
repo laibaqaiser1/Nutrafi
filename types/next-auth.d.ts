@@ -4,7 +4,7 @@ import 'next-auth'
 declare module 'next-auth' {
   interface Session {
     user: {
-      id: string
+      id: number
       email: string
       name: string
       role: UserRole
@@ -12,6 +12,7 @@ declare module 'next-auth' {
   }
 
   interface User {
+    id: number
     role: UserRole
   }
 }
@@ -19,7 +20,7 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     role: UserRole
-    id: string
+    id: number
   }
 }
 

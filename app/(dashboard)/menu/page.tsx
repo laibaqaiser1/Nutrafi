@@ -88,15 +88,18 @@ export default function MenuPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this dish?')) return
-
     try {
       const response = await fetch(`/api/menu/${id}`, { method: 'DELETE' })
       if (response.ok) {
         fetchDishes()
+        toast.success('Dish deleted.')
+      } else {
+        const err = await response.json()
+        toast.error(err?.error || 'Failed to delete dish')
       }
     } catch (error) {
       console.error('Error deleting dish:', error)
+      toast.error('Failed to delete dish')
     }
   }
 

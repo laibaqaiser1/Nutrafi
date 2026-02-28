@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const mealPlanItemUpdateSchema = z.object({
   date: z.string().transform((str) => new Date(str)).optional(),
   timeSlot: z.string().optional(),
-  dishId: z.string().optional().nullable(),
+  dishId: z.union([z.string(), z.number()]).transform((v) => {
+    if (v === '' || v === null || v === undefined) return null
+    const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+    return Number.isNaN(n) ? null : n
+  }).optional().nullable(),
   dishName: z.string().optional().nullable(),
   dishDescription: z.string().optional().nullable(),
   dishCategory: z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'LUNCH_DINNER', 'SNACK', 'SMOOTHIE', 'JUICE']).optional().nullable(),
@@ -31,9 +36,15 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession()
-    const { id, itemId } = await params
     if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id: idParam, itemId: itemIdParam } = await params
+    const id = parseIdParam(idParam)
+    const itemId = parseIdParam(itemIdParam)
+    if (id === null || itemId === null) {
+      return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
 
     const item = await prisma.mealPlanItem.findUnique({
@@ -123,11 +134,12 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession()
-    const { id, itemId } = await params
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { id: idParam, itemId: itemIdParam } = await params
+    const id = parseIdParam(idParam)
+    const itemId = parseIdParam(itemIdParam)
+    if (id === null || itemId === null) {
+      return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
-
     // Verify the item belongs to this meal plan
     const item = await prisma.mealPlanItem.findUnique({
       where: { id: itemId },

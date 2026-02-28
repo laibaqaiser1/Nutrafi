@@ -77,28 +77,33 @@ export default function CustomersPage() {
   }
 
   const handleDisable = async (id: string) => {
-    if (!confirm('Are you sure you want to disable this customer?')) return
-
     try {
       const response = await fetch(`/api/customers/${id}/pause`, { method: 'POST' })
       if (response.ok) {
         fetchCustomers()
+        toast.success('Customer disabled.')
+      } else {
+        toast.error('Failed to disable customer')
       }
     } catch (error) {
       console.error('Error disabling customer:', error)
+      toast.error('Failed to disable customer')
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this customer? This will also delete all associated meal plans.')) return
-
     try {
       const response = await fetch(`/api/customers/${id}`, { method: 'DELETE' })
       if (response.ok) {
         fetchCustomers()
+        toast.success('Customer deleted.')
+      } else {
+        const err = await response.json()
+        toast.error(err?.error || 'Failed to delete customer')
       }
     } catch (error) {
       console.error('Error deleting customer:', error)
+      toast.error('Failed to delete customer')
     }
   }
 

@@ -27,18 +27,26 @@ export type AggregatePayment = {
 }
 
 export type PaymentAvgAggregateOutputType = {
+  id: number | null
+  customerId: number | null
+  mealPlanId: number | null
+  planId: number | null
   amount: number | null
 }
 
 export type PaymentSumAggregateOutputType = {
+  id: number | null
+  customerId: number | null
+  mealPlanId: number | null
+  planId: number | null
   amount: number | null
 }
 
 export type PaymentMinAggregateOutputType = {
-  id: string | null
-  customerId: string | null
-  mealPlanId: string | null
-  planId: string | null
+  id: number | null
+  customerId: number | null
+  mealPlanId: number | null
+  planId: number | null
   amount: number | null
   paymentDate: Date | null
   paymentMethod: string | null
@@ -49,10 +57,10 @@ export type PaymentMinAggregateOutputType = {
 }
 
 export type PaymentMaxAggregateOutputType = {
-  id: string | null
-  customerId: string | null
-  mealPlanId: string | null
-  planId: string | null
+  id: number | null
+  customerId: number | null
+  mealPlanId: number | null
+  planId: number | null
   amount: number | null
   paymentDate: Date | null
   paymentMethod: string | null
@@ -79,10 +87,18 @@ export type PaymentCountAggregateOutputType = {
 
 
 export type PaymentAvgAggregateInputType = {
+  id?: true
+  customerId?: true
+  mealPlanId?: true
+  planId?: true
   amount?: true
 }
 
 export type PaymentSumAggregateInputType = {
+  id?: true
+  customerId?: true
+  mealPlanId?: true
+  planId?: true
   amount?: true
 }
 
@@ -216,10 +232,10 @@ export type PaymentGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
 }
 
 export type PaymentGroupByOutputType = {
-  id: string
-  customerId: string
-  mealPlanId: string | null
-  planId: string | null
+  id: number
+  customerId: number
+  mealPlanId: number | null
+  planId: number | null
   amount: number
   paymentDate: Date
   paymentMethod: string | null
@@ -253,10 +269,10 @@ export type PaymentWhereInput = {
   AND?: Prisma.PaymentWhereInput | Prisma.PaymentWhereInput[]
   OR?: Prisma.PaymentWhereInput[]
   NOT?: Prisma.PaymentWhereInput | Prisma.PaymentWhereInput[]
-  id?: Prisma.StringFilter<"Payment"> | string
-  customerId?: Prisma.StringFilter<"Payment"> | string
-  mealPlanId?: Prisma.StringNullableFilter<"Payment"> | string | null
-  planId?: Prisma.StringNullableFilter<"Payment"> | string | null
+  id?: Prisma.IntFilter<"Payment"> | number
+  customerId?: Prisma.IntFilter<"Payment"> | number
+  mealPlanId?: Prisma.IntNullableFilter<"Payment"> | number | null
+  planId?: Prisma.IntNullableFilter<"Payment"> | number | null
   amount?: Prisma.FloatFilter<"Payment"> | number
   paymentDate?: Prisma.DateTimeFilter<"Payment"> | Date | string
   paymentMethod?: Prisma.StringNullableFilter<"Payment"> | string | null
@@ -287,13 +303,13 @@ export type PaymentOrderByWithRelationInput = {
 }
 
 export type PaymentWhereUniqueInput = Prisma.AtLeast<{
-  id?: string
+  id?: number
   AND?: Prisma.PaymentWhereInput | Prisma.PaymentWhereInput[]
   OR?: Prisma.PaymentWhereInput[]
   NOT?: Prisma.PaymentWhereInput | Prisma.PaymentWhereInput[]
-  customerId?: Prisma.StringFilter<"Payment"> | string
-  mealPlanId?: Prisma.StringNullableFilter<"Payment"> | string | null
-  planId?: Prisma.StringNullableFilter<"Payment"> | string | null
+  customerId?: Prisma.IntFilter<"Payment"> | number
+  mealPlanId?: Prisma.IntNullableFilter<"Payment"> | number | null
+  planId?: Prisma.IntNullableFilter<"Payment"> | number | null
   amount?: Prisma.FloatFilter<"Payment"> | number
   paymentDate?: Prisma.DateTimeFilter<"Payment"> | Date | string
   paymentMethod?: Prisma.StringNullableFilter<"Payment"> | string | null
@@ -329,10 +345,10 @@ export type PaymentScalarWhereWithAggregatesInput = {
   AND?: Prisma.PaymentScalarWhereWithAggregatesInput | Prisma.PaymentScalarWhereWithAggregatesInput[]
   OR?: Prisma.PaymentScalarWhereWithAggregatesInput[]
   NOT?: Prisma.PaymentScalarWhereWithAggregatesInput | Prisma.PaymentScalarWhereWithAggregatesInput[]
-  id?: Prisma.StringWithAggregatesFilter<"Payment"> | string
-  customerId?: Prisma.StringWithAggregatesFilter<"Payment"> | string
-  mealPlanId?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
-  planId?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
+  id?: Prisma.IntWithAggregatesFilter<"Payment"> | number
+  customerId?: Prisma.IntWithAggregatesFilter<"Payment"> | number
+  mealPlanId?: Prisma.IntNullableWithAggregatesFilter<"Payment"> | number | null
+  planId?: Prisma.IntNullableWithAggregatesFilter<"Payment"> | number | null
   amount?: Prisma.FloatWithAggregatesFilter<"Payment"> | number
   paymentDate?: Prisma.DateTimeWithAggregatesFilter<"Payment"> | Date | string
   paymentMethod?: Prisma.StringNullableWithAggregatesFilter<"Payment"> | string | null
@@ -343,7 +359,6 @@ export type PaymentScalarWhereWithAggregatesInput = {
 }
 
 export type PaymentCreateInput = {
-  id?: string
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -357,10 +372,10 @@ export type PaymentCreateInput = {
 }
 
 export type PaymentUncheckedCreateInput = {
-  id?: string
-  customerId: string
-  mealPlanId?: string | null
-  planId?: string | null
+  id?: number
+  customerId: number
+  mealPlanId?: number | null
+  planId?: number | null
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -371,7 +386,6 @@ export type PaymentUncheckedCreateInput = {
 }
 
 export type PaymentUpdateInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -385,10 +399,10 @@ export type PaymentUpdateInput = {
 }
 
 export type PaymentUncheckedUpdateInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  mealPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  mealPlanId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -399,10 +413,10 @@ export type PaymentUncheckedUpdateInput = {
 }
 
 export type PaymentCreateManyInput = {
-  id?: string
-  customerId: string
-  mealPlanId?: string | null
-  planId?: string | null
+  id?: number
+  customerId: number
+  mealPlanId?: number | null
+  planId?: number | null
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -413,7 +427,6 @@ export type PaymentCreateManyInput = {
 }
 
 export type PaymentUpdateManyMutationInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -424,10 +437,10 @@ export type PaymentUpdateManyMutationInput = {
 }
 
 export type PaymentUncheckedUpdateManyInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  mealPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  mealPlanId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -462,6 +475,10 @@ export type PaymentCountOrderByAggregateInput = {
 }
 
 export type PaymentAvgOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  customerId?: Prisma.SortOrder
+  mealPlanId?: Prisma.SortOrder
+  planId?: Prisma.SortOrder
   amount?: Prisma.SortOrder
 }
 
@@ -494,6 +511,10 @@ export type PaymentMinOrderByAggregateInput = {
 }
 
 export type PaymentSumOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  customerId?: Prisma.SortOrder
+  mealPlanId?: Prisma.SortOrder
+  planId?: Prisma.SortOrder
   amount?: Prisma.SortOrder
 }
 
@@ -624,7 +645,6 @@ export type PaymentUncheckedUpdateManyWithoutMealPlanNestedInput = {
 }
 
 export type PaymentCreateWithoutCustomerInput = {
-  id?: string
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -637,9 +657,9 @@ export type PaymentCreateWithoutCustomerInput = {
 }
 
 export type PaymentUncheckedCreateWithoutCustomerInput = {
-  id?: string
-  mealPlanId?: string | null
-  planId?: string | null
+  id?: number
+  mealPlanId?: number | null
+  planId?: number | null
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -679,10 +699,10 @@ export type PaymentScalarWhereInput = {
   AND?: Prisma.PaymentScalarWhereInput | Prisma.PaymentScalarWhereInput[]
   OR?: Prisma.PaymentScalarWhereInput[]
   NOT?: Prisma.PaymentScalarWhereInput | Prisma.PaymentScalarWhereInput[]
-  id?: Prisma.StringFilter<"Payment"> | string
-  customerId?: Prisma.StringFilter<"Payment"> | string
-  mealPlanId?: Prisma.StringNullableFilter<"Payment"> | string | null
-  planId?: Prisma.StringNullableFilter<"Payment"> | string | null
+  id?: Prisma.IntFilter<"Payment"> | number
+  customerId?: Prisma.IntFilter<"Payment"> | number
+  mealPlanId?: Prisma.IntNullableFilter<"Payment"> | number | null
+  planId?: Prisma.IntNullableFilter<"Payment"> | number | null
   amount?: Prisma.FloatFilter<"Payment"> | number
   paymentDate?: Prisma.DateTimeFilter<"Payment"> | Date | string
   paymentMethod?: Prisma.StringNullableFilter<"Payment"> | string | null
@@ -693,7 +713,6 @@ export type PaymentScalarWhereInput = {
 }
 
 export type PaymentCreateWithoutPlanInput = {
-  id?: string
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -706,9 +725,9 @@ export type PaymentCreateWithoutPlanInput = {
 }
 
 export type PaymentUncheckedCreateWithoutPlanInput = {
-  id?: string
-  customerId: string
-  mealPlanId?: string | null
+  id?: number
+  customerId: number
+  mealPlanId?: number | null
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -745,7 +764,6 @@ export type PaymentUpdateManyWithWhereWithoutPlanInput = {
 }
 
 export type PaymentCreateWithoutMealPlanInput = {
-  id?: string
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -758,9 +776,9 @@ export type PaymentCreateWithoutMealPlanInput = {
 }
 
 export type PaymentUncheckedCreateWithoutMealPlanInput = {
-  id?: string
-  customerId: string
-  planId?: string | null
+  id?: number
+  customerId: number
+  planId?: number | null
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -797,9 +815,9 @@ export type PaymentUpdateManyWithWhereWithoutMealPlanInput = {
 }
 
 export type PaymentCreateManyCustomerInput = {
-  id?: string
-  mealPlanId?: string | null
-  planId?: string | null
+  id?: number
+  mealPlanId?: number | null
+  planId?: number | null
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -810,7 +828,6 @@ export type PaymentCreateManyCustomerInput = {
 }
 
 export type PaymentUpdateWithoutCustomerInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -823,9 +840,9 @@ export type PaymentUpdateWithoutCustomerInput = {
 }
 
 export type PaymentUncheckedUpdateWithoutCustomerInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  mealPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  mealPlanId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -836,9 +853,9 @@ export type PaymentUncheckedUpdateWithoutCustomerInput = {
 }
 
 export type PaymentUncheckedUpdateManyWithoutCustomerInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  mealPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  mealPlanId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -849,9 +866,9 @@ export type PaymentUncheckedUpdateManyWithoutCustomerInput = {
 }
 
 export type PaymentCreateManyPlanInput = {
-  id?: string
-  customerId: string
-  mealPlanId?: string | null
+  id?: number
+  customerId: number
+  mealPlanId?: number | null
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -862,7 +879,6 @@ export type PaymentCreateManyPlanInput = {
 }
 
 export type PaymentUpdateWithoutPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -875,9 +891,9 @@ export type PaymentUpdateWithoutPlanInput = {
 }
 
 export type PaymentUncheckedUpdateWithoutPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  mealPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  mealPlanId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -888,9 +904,9 @@ export type PaymentUncheckedUpdateWithoutPlanInput = {
 }
 
 export type PaymentUncheckedUpdateManyWithoutPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  mealPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  mealPlanId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -901,9 +917,9 @@ export type PaymentUncheckedUpdateManyWithoutPlanInput = {
 }
 
 export type PaymentCreateManyMealPlanInput = {
-  id?: string
-  customerId: string
-  planId?: string | null
+  id?: number
+  customerId: number
+  planId?: number | null
   amount: number
   paymentDate?: Date | string
   paymentMethod?: string | null
@@ -914,7 +930,6 @@ export type PaymentCreateManyMealPlanInput = {
 }
 
 export type PaymentUpdateWithoutMealPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -927,9 +942,9 @@ export type PaymentUpdateWithoutMealPlanInput = {
 }
 
 export type PaymentUncheckedUpdateWithoutMealPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -940,9 +955,9 @@ export type PaymentUncheckedUpdateWithoutMealPlanInput = {
 }
 
 export type PaymentUncheckedUpdateManyWithoutMealPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   paymentDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1044,10 +1059,10 @@ export type $PaymentPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     plan: Prisma.$PlanPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: string
-    customerId: string
-    mealPlanId: string | null
-    planId: string | null
+    id: number
+    customerId: number
+    mealPlanId: number | null
+    planId: number | null
     amount: number
     paymentDate: Date
     paymentMethod: string | null
@@ -1481,10 +1496,10 @@ export interface Prisma__PaymentClient<T, Null = never, ExtArgs extends runtime.
  * Fields of the Payment model
  */
 export interface PaymentFieldRefs {
-  readonly id: Prisma.FieldRef<"Payment", 'String'>
-  readonly customerId: Prisma.FieldRef<"Payment", 'String'>
-  readonly mealPlanId: Prisma.FieldRef<"Payment", 'String'>
-  readonly planId: Prisma.FieldRef<"Payment", 'String'>
+  readonly id: Prisma.FieldRef<"Payment", 'Int'>
+  readonly customerId: Prisma.FieldRef<"Payment", 'Int'>
+  readonly mealPlanId: Prisma.FieldRef<"Payment", 'Int'>
+  readonly planId: Prisma.FieldRef<"Payment", 'Int'>
   readonly amount: Prisma.FieldRef<"Payment", 'Float'>
   readonly paymentDate: Prisma.FieldRef<"Payment", 'DateTime'>
   readonly paymentMethod: Prisma.FieldRef<"Payment", 'String'>

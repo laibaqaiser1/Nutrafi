@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -24,7 +25,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 })
+    }
     const customer = await prisma.customer.findUnique({
       where: { id },
       include: {
@@ -60,7 +65,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 })
+    }
     const body = await request.json()
     const data = customerSchema.parse(body)
 
@@ -93,7 +102,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 })
+    }
     await prisma.customer.delete({
       where: { id },
     })

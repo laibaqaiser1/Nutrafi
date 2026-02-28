@@ -27,6 +27,9 @@ export type AggregateMealPlan = {
 }
 
 export type MealPlanAvgAggregateOutputType = {
+  id: number | null
+  customerId: number | null
+  planId: number | null
   mealsPerDay: number | null
   averageMealRate: number | null
   baseAmount: number | null
@@ -38,6 +41,9 @@ export type MealPlanAvgAggregateOutputType = {
 }
 
 export type MealPlanSumAggregateOutputType = {
+  id: number | null
+  customerId: number | null
+  planId: number | null
   mealsPerDay: number | null
   averageMealRate: number | null
   baseAmount: number | null
@@ -49,9 +55,9 @@ export type MealPlanSumAggregateOutputType = {
 }
 
 export type MealPlanMinAggregateOutputType = {
-  id: string | null
-  customerId: string | null
-  planId: string | null
+  id: number | null
+  customerId: number | null
+  planId: number | null
   startDate: Date | null
   endDate: Date | null
   mealsPerDay: number | null
@@ -70,9 +76,9 @@ export type MealPlanMinAggregateOutputType = {
 }
 
 export type MealPlanMaxAggregateOutputType = {
-  id: string | null
-  customerId: string | null
-  planId: string | null
+  id: number | null
+  customerId: number | null
+  planId: number | null
   startDate: Date | null
   endDate: Date | null
   mealsPerDay: number | null
@@ -114,6 +120,9 @@ export type MealPlanCountAggregateOutputType = {
 
 
 export type MealPlanAvgAggregateInputType = {
+  id?: true
+  customerId?: true
+  planId?: true
   mealsPerDay?: true
   averageMealRate?: true
   baseAmount?: true
@@ -125,6 +134,9 @@ export type MealPlanAvgAggregateInputType = {
 }
 
 export type MealPlanSumAggregateInputType = {
+  id?: true
+  customerId?: true
+  planId?: true
   mealsPerDay?: true
   averageMealRate?: true
   baseAmount?: true
@@ -286,9 +298,9 @@ export type MealPlanGroupByArgs<ExtArgs extends runtime.Types.Extensions.Interna
 }
 
 export type MealPlanGroupByOutputType = {
-  id: string
-  customerId: string
-  planId: string | null
+  id: number
+  customerId: number
+  planId: number | null
   startDate: Date | null
   endDate: Date | null
   mealsPerDay: number
@@ -330,9 +342,9 @@ export type MealPlanWhereInput = {
   AND?: Prisma.MealPlanWhereInput | Prisma.MealPlanWhereInput[]
   OR?: Prisma.MealPlanWhereInput[]
   NOT?: Prisma.MealPlanWhereInput | Prisma.MealPlanWhereInput[]
-  id?: Prisma.StringFilter<"MealPlan"> | string
-  customerId?: Prisma.StringFilter<"MealPlan"> | string
-  planId?: Prisma.StringNullableFilter<"MealPlan"> | string | null
+  id?: Prisma.IntFilter<"MealPlan"> | number
+  customerId?: Prisma.IntFilter<"MealPlan"> | number
+  planId?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   startDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   mealsPerDay?: Prisma.IntFilter<"MealPlan"> | number
@@ -380,12 +392,12 @@ export type MealPlanOrderByWithRelationInput = {
 }
 
 export type MealPlanWhereUniqueInput = Prisma.AtLeast<{
-  id?: string
+  id?: number
   AND?: Prisma.MealPlanWhereInput | Prisma.MealPlanWhereInput[]
   OR?: Prisma.MealPlanWhereInput[]
   NOT?: Prisma.MealPlanWhereInput | Prisma.MealPlanWhereInput[]
-  customerId?: Prisma.StringFilter<"MealPlan"> | string
-  planId?: Prisma.StringNullableFilter<"MealPlan"> | string | null
+  customerId?: Prisma.IntFilter<"MealPlan"> | number
+  planId?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   startDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   mealsPerDay?: Prisma.IntFilter<"MealPlan"> | number
@@ -437,9 +449,9 @@ export type MealPlanScalarWhereWithAggregatesInput = {
   AND?: Prisma.MealPlanScalarWhereWithAggregatesInput | Prisma.MealPlanScalarWhereWithAggregatesInput[]
   OR?: Prisma.MealPlanScalarWhereWithAggregatesInput[]
   NOT?: Prisma.MealPlanScalarWhereWithAggregatesInput | Prisma.MealPlanScalarWhereWithAggregatesInput[]
-  id?: Prisma.StringWithAggregatesFilter<"MealPlan"> | string
-  customerId?: Prisma.StringWithAggregatesFilter<"MealPlan"> | string
-  planId?: Prisma.StringNullableWithAggregatesFilter<"MealPlan"> | string | null
+  id?: Prisma.IntWithAggregatesFilter<"MealPlan"> | number
+  customerId?: Prisma.IntWithAggregatesFilter<"MealPlan"> | number
+  planId?: Prisma.IntNullableWithAggregatesFilter<"MealPlan"> | number | null
   startDate?: Prisma.DateTimeNullableWithAggregatesFilter<"MealPlan"> | Date | string | null
   endDate?: Prisma.DateTimeNullableWithAggregatesFilter<"MealPlan"> | Date | string | null
   mealsPerDay?: Prisma.IntWithAggregatesFilter<"MealPlan"> | number
@@ -458,7 +470,6 @@ export type MealPlanScalarWhereWithAggregatesInput = {
 }
 
 export type MealPlanCreateInput = {
-  id?: string
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -481,9 +492,9 @@ export type MealPlanCreateInput = {
 }
 
 export type MealPlanUncheckedCreateInput = {
-  id?: string
-  customerId: string
-  planId?: string | null
+  id?: number
+  customerId: number
+  planId?: number | null
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -504,7 +515,6 @@ export type MealPlanUncheckedCreateInput = {
 }
 
 export type MealPlanUpdateInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -527,9 +537,9 @@ export type MealPlanUpdateInput = {
 }
 
 export type MealPlanUncheckedUpdateInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -550,9 +560,9 @@ export type MealPlanUncheckedUpdateInput = {
 }
 
 export type MealPlanCreateManyInput = {
-  id?: string
-  customerId: string
-  planId?: string | null
+  id?: number
+  customerId: number
+  planId?: number | null
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -571,7 +581,6 @@ export type MealPlanCreateManyInput = {
 }
 
 export type MealPlanUpdateManyMutationInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -590,9 +599,9 @@ export type MealPlanUpdateManyMutationInput = {
 }
 
 export type MealPlanUncheckedUpdateManyInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -642,6 +651,9 @@ export type MealPlanCountOrderByAggregateInput = {
 }
 
 export type MealPlanAvgOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  customerId?: Prisma.SortOrder
+  planId?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
   averageMealRate?: Prisma.SortOrder
   baseAmount?: Prisma.SortOrder
@@ -695,6 +707,9 @@ export type MealPlanMinOrderByAggregateInput = {
 }
 
 export type MealPlanSumOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  customerId?: Prisma.SortOrder
+  planId?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
   averageMealRate?: Prisma.SortOrder
   baseAmount?: Prisma.SortOrder
@@ -842,7 +857,6 @@ export type MealPlanUpdateOneWithoutPaymentsNestedInput = {
 }
 
 export type MealPlanCreateWithoutCustomerInput = {
-  id?: string
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -864,8 +878,8 @@ export type MealPlanCreateWithoutCustomerInput = {
 }
 
 export type MealPlanUncheckedCreateWithoutCustomerInput = {
-  id?: string
-  planId?: string | null
+  id?: number
+  planId?: number | null
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -915,9 +929,9 @@ export type MealPlanScalarWhereInput = {
   AND?: Prisma.MealPlanScalarWhereInput | Prisma.MealPlanScalarWhereInput[]
   OR?: Prisma.MealPlanScalarWhereInput[]
   NOT?: Prisma.MealPlanScalarWhereInput | Prisma.MealPlanScalarWhereInput[]
-  id?: Prisma.StringFilter<"MealPlan"> | string
-  customerId?: Prisma.StringFilter<"MealPlan"> | string
-  planId?: Prisma.StringNullableFilter<"MealPlan"> | string | null
+  id?: Prisma.IntFilter<"MealPlan"> | number
+  customerId?: Prisma.IntFilter<"MealPlan"> | number
+  planId?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   startDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   endDate?: Prisma.DateTimeNullableFilter<"MealPlan"> | Date | string | null
   mealsPerDay?: Prisma.IntFilter<"MealPlan"> | number
@@ -936,7 +950,6 @@ export type MealPlanScalarWhereInput = {
 }
 
 export type MealPlanCreateWithoutPlanInput = {
-  id?: string
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -958,8 +971,8 @@ export type MealPlanCreateWithoutPlanInput = {
 }
 
 export type MealPlanUncheckedCreateWithoutPlanInput = {
-  id?: string
-  customerId: string
+  id?: number
+  customerId: number
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -1006,7 +1019,6 @@ export type MealPlanUpdateManyWithWhereWithoutPlanInput = {
 }
 
 export type MealPlanCreateWithoutMealPlanItemsInput = {
-  id?: string
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -1028,9 +1040,9 @@ export type MealPlanCreateWithoutMealPlanItemsInput = {
 }
 
 export type MealPlanUncheckedCreateWithoutMealPlanItemsInput = {
-  id?: string
-  customerId: string
-  planId?: string | null
+  id?: number
+  customerId: number
+  planId?: number | null
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -1066,7 +1078,6 @@ export type MealPlanUpdateToOneWithWhereWithoutMealPlanItemsInput = {
 }
 
 export type MealPlanUpdateWithoutMealPlanItemsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1088,9 +1099,9 @@ export type MealPlanUpdateWithoutMealPlanItemsInput = {
 }
 
 export type MealPlanUncheckedUpdateWithoutMealPlanItemsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1110,7 +1121,6 @@ export type MealPlanUncheckedUpdateWithoutMealPlanItemsInput = {
 }
 
 export type MealPlanCreateWithoutPaymentsInput = {
-  id?: string
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -1132,9 +1142,9 @@ export type MealPlanCreateWithoutPaymentsInput = {
 }
 
 export type MealPlanUncheckedCreateWithoutPaymentsInput = {
-  id?: string
-  customerId: string
-  planId?: string | null
+  id?: number
+  customerId: number
+  planId?: number | null
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -1170,7 +1180,6 @@ export type MealPlanUpdateToOneWithWhereWithoutPaymentsInput = {
 }
 
 export type MealPlanUpdateWithoutPaymentsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1192,9 +1201,9 @@ export type MealPlanUpdateWithoutPaymentsInput = {
 }
 
 export type MealPlanUncheckedUpdateWithoutPaymentsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1214,8 +1223,8 @@ export type MealPlanUncheckedUpdateWithoutPaymentsInput = {
 }
 
 export type MealPlanCreateManyCustomerInput = {
-  id?: string
-  planId?: string | null
+  id?: number
+  planId?: number | null
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -1234,7 +1243,6 @@ export type MealPlanCreateManyCustomerInput = {
 }
 
 export type MealPlanUpdateWithoutCustomerInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1256,8 +1264,8 @@ export type MealPlanUpdateWithoutCustomerInput = {
 }
 
 export type MealPlanUncheckedUpdateWithoutCustomerInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1278,8 +1286,8 @@ export type MealPlanUncheckedUpdateWithoutCustomerInput = {
 }
 
 export type MealPlanUncheckedUpdateManyWithoutCustomerInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1298,8 +1306,8 @@ export type MealPlanUncheckedUpdateManyWithoutCustomerInput = {
 }
 
 export type MealPlanCreateManyPlanInput = {
-  id?: string
-  customerId: string
+  id?: number
+  customerId: number
   startDate?: Date | string | null
   endDate?: Date | string | null
   mealsPerDay: number
@@ -1318,7 +1326,6 @@ export type MealPlanCreateManyPlanInput = {
 }
 
 export type MealPlanUpdateWithoutPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1340,8 +1347,8 @@ export type MealPlanUpdateWithoutPlanInput = {
 }
 
 export type MealPlanUncheckedUpdateWithoutPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1362,8 +1369,8 @@ export type MealPlanUncheckedUpdateWithoutPlanInput = {
 }
 
 export type MealPlanUncheckedUpdateManyWithoutPlanInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
   startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1540,9 +1547,9 @@ export type $MealPlanPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     payments: Prisma.$PaymentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: string
-    customerId: string
-    planId: string | null
+    id: number
+    customerId: number
+    planId: number | null
     startDate: Date | null
     endDate: Date | null
     mealsPerDay: number
@@ -1985,9 +1992,9 @@ export interface Prisma__MealPlanClient<T, Null = never, ExtArgs extends runtime
  * Fields of the MealPlan model
  */
 export interface MealPlanFieldRefs {
-  readonly id: Prisma.FieldRef<"MealPlan", 'String'>
-  readonly customerId: Prisma.FieldRef<"MealPlan", 'String'>
-  readonly planId: Prisma.FieldRef<"MealPlan", 'String'>
+  readonly id: Prisma.FieldRef<"MealPlan", 'Int'>
+  readonly customerId: Prisma.FieldRef<"MealPlan", 'Int'>
+  readonly planId: Prisma.FieldRef<"MealPlan", 'Int'>
   readonly startDate: Prisma.FieldRef<"MealPlan", 'DateTime'>
   readonly endDate: Prisma.FieldRef<"MealPlan", 'DateTime'>
   readonly mealsPerDay: Prisma.FieldRef<"MealPlan", 'Int'>

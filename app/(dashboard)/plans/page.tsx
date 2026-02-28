@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface Plan {
   id: string
@@ -15,6 +16,7 @@ interface Plan {
 }
 
 export default function PlansPage() {
+  const toast = useNotification()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -38,15 +40,18 @@ export default function PlansPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this plan?')) return
-
     try {
       const response = await fetch(`/api/plans/${id}`, { method: 'DELETE' })
       if (response.ok) {
         fetchPlans()
+        toast.success('Plan deleted.')
+      } else {
+        const err = await response.json()
+        toast.error(err?.error || 'Failed to delete plan')
       }
     } catch (error) {
       console.error('Error deleting plan:', error)
+      toast.error('Failed to delete plan')
     }
   }
 

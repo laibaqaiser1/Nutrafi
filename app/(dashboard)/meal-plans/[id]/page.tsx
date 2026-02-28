@@ -318,7 +318,7 @@ export default function MealPlanViewPage() {
   }
 
   const handleDeleteMeal = async (itemId: string) => {
-    if (!mealPlan || !confirm('Remove this meal from the plan? This cannot be undone.')) return
+    if (!mealPlan) return
     try {
       const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${itemId}`, { method: 'DELETE' })
       if (response.ok) {
@@ -330,6 +330,7 @@ export default function MealPlanViewPage() {
           setShowModal(false)
           setSelectedItem(null)
         }
+        toast.success('Meal removed from plan.')
       } else {
         const err = await response.json()
         toast.error(err?.error || 'Failed to delete meal')
@@ -875,7 +876,7 @@ export default function MealPlanViewPage() {
       const targetWeekStartDay = (nextWeek - 1) * 7
       const dayOffset = targetWeekStartDay - sourceWeekStartDay
       
-      // Create new items for the next week with same dishes
+      // Create new items for the next week with same dishes (keep original time slots)
       const mealItemPromises = sourceItems.map(item => {
         const sourceDate = new Date(item.date)
         const targetDate = addDays(sourceDate, dayOffset)
@@ -1323,15 +1324,18 @@ export default function MealPlanViewPage() {
                         </svg>
                       </button>
                       {weekMenuOpen === week && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border-2 border-gray-300">
+                        <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg z-50 border border-gray-200 overflow-hidden">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               duplicateWeek(week)
                             }}
                             disabled={duplicatingWeek}
-                            className="w-full text-left px-3 py-1.5 lg:px-4 lg:py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                            className="w-full text-left px-4 py-3 text-sm font-semibold bg-white text-nutrafi-primary border-2 border-nutrafi-primary hover:bg-nutrafi-primary hover:text-white disabled:opacity-50 flex items-center gap-2"
                           >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
                             {duplicatingWeek ? 'Duplicating...' : 'Duplicate Week'}
                           </button>
                         </div>
@@ -1591,21 +1595,6 @@ export default function MealPlanViewPage() {
           ) : (
             <div className="text-center py-8 text-gray-500">
               No weeks available. Click "Add Another Week" to start.
-            </div>
-          )}
-          
-          {/* Grand Total Row */}
-          {visibleWeeks.length > 0 && (
-            <div className="bg-nutrafi-primary rounded-lg px-2 py-2 lg:px-4 lg:py-3 border border-nutrafi-primary/50">
-              <div className="flex items-center gap-2 text-white">
-                <span className="text-sm font-semibold">Grand Total:</span>
-                <span className="text-sm font-bold">
-                  {grandTotals.calories} kcal
-                </span>
-                <span className="text-sm text-white/90">
-                  P: {grandTotals.protein.toFixed(1)}g | C: {grandTotals.carbs.toFixed(1)}g | F: {grandTotals.fats.toFixed(1)}g
-                </span>
-              </div>
             </div>
           )}
         </div>
@@ -2105,7 +2094,7 @@ export default function MealPlanViewPage() {
                     </svg>
                   </button>
                   {actionsMenuOpen && (
-                    <div className="absolute left-0 top-full mt-1 z-50 min-w-[180px] rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
+                    <div className="absolute left-0 bottom-full mb-1 z-50 min-w-[180px] rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
                       <button
                         type="button"
                         onClick={() => {

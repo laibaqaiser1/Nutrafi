@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { CustomerStatus } from '@/lib/generated/prisma/enums'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 
 // POST - Pause customer subscription
@@ -14,7 +15,11 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid customer ID' }, { status: 400 })
+    }
     const customer = await prisma.customer.update({
       where: { id },
       data: { status: CustomerStatus.PAUSED },

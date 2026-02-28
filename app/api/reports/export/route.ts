@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       orderBy: { _count: { dishId: 'desc' } },
       take: 50,
     })
-    const dishIds = popularDishesGroup.map(d => d.dishId).filter(Boolean) as string[]
+    const dishIds = popularDishesGroup.map(d => d.dishId).filter((id): id is number => id != null)
     const dishes = await prisma.dish.findMany({ where: { id: { in: dishIds } } })
     const popularDishes = popularDishesGroup.map(pd => ({
       dish: dishes.find(d => d.id === pd.dishId),

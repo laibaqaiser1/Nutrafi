@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 
 // POST - Mark meal plan item as delivered
@@ -9,9 +10,15 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession()
-    const { id, itemId } = await params
     if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id: idParam, itemId: itemIdParam } = await params
+    const id = parseIdParam(idParam)
+    const itemId = parseIdParam(itemIdParam)
+    if (id === null || itemId === null) {
+      return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
 
     // Update meal plan item to mark as delivered
@@ -63,9 +70,15 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession()
-    const { id, itemId } = await params
     if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id: idParam, itemId: itemIdParam } = await params
+    const id = parseIdParam(idParam)
+    const itemId = parseIdParam(itemIdParam)
+    if (id === null || itemId === null) {
+      return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
 
     // Update meal plan item to unmark as delivered

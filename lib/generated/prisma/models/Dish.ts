@@ -27,6 +27,7 @@ export type AggregateDish = {
 }
 
 export type DishAvgAggregateOutputType = {
+  id: number | null
   calories: number | null
   protein: number | null
   carbs: number | null
@@ -35,6 +36,7 @@ export type DishAvgAggregateOutputType = {
 }
 
 export type DishSumAggregateOutputType = {
+  id: number | null
   calories: number | null
   protein: number | null
   carbs: number | null
@@ -43,7 +45,7 @@ export type DishSumAggregateOutputType = {
 }
 
 export type DishMinAggregateOutputType = {
-  id: string | null
+  id: number | null
   name: string | null
   description: string | null
   category: $Enums.DishCategory | null
@@ -60,7 +62,7 @@ export type DishMinAggregateOutputType = {
 }
 
 export type DishMaxAggregateOutputType = {
-  id: string | null
+  id: number | null
   name: string | null
   description: string | null
   category: $Enums.DishCategory | null
@@ -96,6 +98,7 @@ export type DishCountAggregateOutputType = {
 
 
 export type DishAvgAggregateInputType = {
+  id?: true
   calories?: true
   protein?: true
   carbs?: true
@@ -104,6 +107,7 @@ export type DishAvgAggregateInputType = {
 }
 
 export type DishSumAggregateInputType = {
+  id?: true
   calories?: true
   protein?: true
   carbs?: true
@@ -250,7 +254,7 @@ export type DishGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 }
 
 export type DishGroupByOutputType = {
-  id: string
+  id: number
   name: string
   description: string | null
   category: $Enums.DishCategory
@@ -290,7 +294,7 @@ export type DishWhereInput = {
   AND?: Prisma.DishWhereInput | Prisma.DishWhereInput[]
   OR?: Prisma.DishWhereInput[]
   NOT?: Prisma.DishWhereInput | Prisma.DishWhereInput[]
-  id?: Prisma.StringFilter<"Dish"> | string
+  id?: Prisma.IntFilter<"Dish"> | number
   name?: Prisma.StringFilter<"Dish"> | string
   description?: Prisma.StringNullableFilter<"Dish"> | string | null
   category?: Prisma.EnumDishCategoryFilter<"Dish"> | $Enums.DishCategory
@@ -326,7 +330,7 @@ export type DishOrderByWithRelationInput = {
 }
 
 export type DishWhereUniqueInput = Prisma.AtLeast<{
-  id?: string
+  id?: number
   AND?: Prisma.DishWhereInput | Prisma.DishWhereInput[]
   OR?: Prisma.DishWhereInput[]
   NOT?: Prisma.DishWhereInput | Prisma.DishWhereInput[]
@@ -372,7 +376,7 @@ export type DishScalarWhereWithAggregatesInput = {
   AND?: Prisma.DishScalarWhereWithAggregatesInput | Prisma.DishScalarWhereWithAggregatesInput[]
   OR?: Prisma.DishScalarWhereWithAggregatesInput[]
   NOT?: Prisma.DishScalarWhereWithAggregatesInput | Prisma.DishScalarWhereWithAggregatesInput[]
-  id?: Prisma.StringWithAggregatesFilter<"Dish"> | string
+  id?: Prisma.IntWithAggregatesFilter<"Dish"> | number
   name?: Prisma.StringWithAggregatesFilter<"Dish"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"Dish"> | string | null
   category?: Prisma.EnumDishCategoryWithAggregatesFilter<"Dish"> | $Enums.DishCategory
@@ -389,7 +393,6 @@ export type DishScalarWhereWithAggregatesInput = {
 }
 
 export type DishCreateInput = {
-  id?: string
   name: string
   description?: string | null
   category: $Enums.DishCategory
@@ -407,7 +410,7 @@ export type DishCreateInput = {
 }
 
 export type DishUncheckedCreateInput = {
-  id?: string
+  id?: number
   name: string
   description?: string | null
   category: $Enums.DishCategory
@@ -425,7 +428,6 @@ export type DishUncheckedCreateInput = {
 }
 
 export type DishUpdateInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   category?: Prisma.EnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory
@@ -443,7 +445,7 @@ export type DishUpdateInput = {
 }
 
 export type DishUncheckedUpdateInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   category?: Prisma.EnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory
@@ -461,7 +463,7 @@ export type DishUncheckedUpdateInput = {
 }
 
 export type DishCreateManyInput = {
-  id?: string
+  id?: number
   name: string
   description?: string | null
   category: $Enums.DishCategory
@@ -478,7 +480,6 @@ export type DishCreateManyInput = {
 }
 
 export type DishUpdateManyMutationInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   category?: Prisma.EnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory
@@ -495,7 +496,7 @@ export type DishUpdateManyMutationInput = {
 }
 
 export type DishUncheckedUpdateManyInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   category?: Prisma.EnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory
@@ -529,6 +530,7 @@ export type DishCountOrderByAggregateInput = {
 }
 
 export type DishAvgOrderByAggregateInput = {
+  id?: Prisma.SortOrder
   calories?: Prisma.SortOrder
   protein?: Prisma.SortOrder
   carbs?: Prisma.SortOrder
@@ -571,6 +573,7 @@ export type DishMinOrderByAggregateInput = {
 }
 
 export type DishSumOrderByAggregateInput = {
+  id?: Prisma.SortOrder
   calories?: Prisma.SortOrder
   protein?: Prisma.SortOrder
   carbs?: Prisma.SortOrder
@@ -589,14 +592,6 @@ export type NullableStringFieldUpdateOperationsInput = {
 
 export type EnumDishCategoryFieldUpdateOperationsInput = {
   set?: $Enums.DishCategory
-}
-
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
 }
 
 export type FloatFieldUpdateOperationsInput = {
@@ -632,7 +627,6 @@ export type DishUpdateOneWithoutMealPlanItemsNestedInput = {
 }
 
 export type DishCreateWithoutMealPlanItemsInput = {
-  id?: string
   name: string
   description?: string | null
   category: $Enums.DishCategory
@@ -649,7 +643,7 @@ export type DishCreateWithoutMealPlanItemsInput = {
 }
 
 export type DishUncheckedCreateWithoutMealPlanItemsInput = {
-  id?: string
+  id?: number
   name: string
   description?: string | null
   category: $Enums.DishCategory
@@ -682,7 +676,6 @@ export type DishUpdateToOneWithWhereWithoutMealPlanItemsInput = {
 }
 
 export type DishUpdateWithoutMealPlanItemsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   category?: Prisma.EnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory
@@ -699,7 +692,7 @@ export type DishUpdateWithoutMealPlanItemsInput = {
 }
 
 export type DishUncheckedUpdateWithoutMealPlanItemsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   category?: Prisma.EnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory
@@ -830,7 +823,7 @@ export type $DishPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     mealPlanItems: Prisma.$MealPlanItemPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: string
+    id: number
     name: string
     description: string | null
     category: $Enums.DishCategory
@@ -1268,7 +1261,7 @@ export interface Prisma__DishClient<T, Null = never, ExtArgs extends runtime.Typ
  * Fields of the Dish model
  */
 export interface DishFieldRefs {
-  readonly id: Prisma.FieldRef<"Dish", 'String'>
+  readonly id: Prisma.FieldRef<"Dish", 'Int'>
   readonly name: Prisma.FieldRef<"Dish", 'String'>
   readonly description: Prisma.FieldRef<"Dish", 'String'>
   readonly category: Prisma.FieldRef<"Dish", 'DishCategory'>

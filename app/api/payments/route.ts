@@ -4,9 +4,21 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const paymentSchema = z.object({
-  customerId: z.string(),
-  mealPlanId: z.string().optional(),
-  planId: z.string().optional(),
+  customerId: z.union([z.string(), z.number()]).transform((v) => {
+    const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+    if (Number.isNaN(n) || n < 1) throw new z.ZodError([{ code: 'custom', path: ['customerId'], message: 'Invalid customer ID' }])
+    return n
+  }),
+  mealPlanId: z.union([z.string(), z.number()]).transform((v) => {
+    if (v === '' || v === null || v === undefined) return undefined
+    const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+    return Number.isNaN(n) ? undefined : n
+  }).optional(),
+  planId: z.union([z.string(), z.number()]).transform((v) => {
+    if (v === '' || v === null || v === undefined) return undefined
+    const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+    return Number.isNaN(n) ? undefined : n
+  }).optional(),
   amount: z.number().min(0),
   paymentDate: z.string().transform((str) => new Date(str)).optional(),
   paymentMethod: z.string().optional(),
@@ -27,7 +39,10 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
 
     const where: any = {}
-    if (customerId) where.customerId = customerId
+    if (customerId) {
+      const cid = parseInt(customerId, 10)
+      if (!Number.isNaN(cid)) where.customerId = cid
+    }
     if (status) where.status = status
 
     const payments = await prisma.payment.findMany({
@@ -62,7 +77,16 @@ export async function POST(request: NextRequest) {
     })
 
     const payment = await prisma.payment.create({
-      data,
+      data: {
+        customerId: data.customerId,
+        mealPlanId: data.mealPlanId ?? null,
+        planId: data.planId ?? null,
+        amount: data.amount,
+        paymentDate: data.paymentDate ?? new Date(),
+        paymentMethod: data.paymentMethod ?? null,
+        status: data.status,
+        notes: data.notes ?? null,
+      },
       include: {
         customer: true,
         mealPlan: true,

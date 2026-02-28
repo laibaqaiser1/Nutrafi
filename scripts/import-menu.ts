@@ -1,5 +1,6 @@
 import AdmZip from 'adm-zip'
 import { parseStringPromise } from 'xml2js'
+import * as XLSX from 'xlsx'
 import { prisma } from '../lib/prisma'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -236,12 +237,9 @@ async function parseODSFile(filePath: string): Promise<ParsedRow[]> {
       if (cellIndex > 9) break
     }
     
-    // Only add rows that have at least a name and calories
-    if (rowData.name && rowData.calories !== undefined) {
-      // Validate that we have at least some nutritional data
-      if (rowData.protein === undefined && rowData.carbs === undefined && rowData.fats === undefined) {
-        console.log(`⚠ Warning: Row "${rowData.name}" has calories but no macro nutrients`)
-      }
+    // Only add rows that have at least a name (header row is skipped by index)
+    if (rowData.name) {
+      if (rowData.calories === undefined) rowData.calories = 0
       rows.push(rowData)
     }
   }
@@ -249,17 +247,163 @@ async function parseODSFile(filePath: string): Promise<ParsedRow[]> {
   return rows
 }
 
+// Column header names (case-insensitive) that map to our fields
+const XLSX_HEADERS: Record<string, keyof ParsedRow> = {
+  serial: 'serialNumber',
+  no: 'serialNumber',
+  sr: 'serialNumber',
+  's.no': 'serialNumber',
+  name: 'name',
+  dish: 'name',
+  item: 'name',
+  description: 'labels',
+  labels: 'labels',
+  desc: 'labels',
+  ingredients: 'ingredients',
+  allergens: 'allergens',
+  calories: 'calories',
+  protein: 'protein',
+  carbs: 'carbs',
+  fats: 'fats',
+  category: 'categoryIndicator',
+  type: 'categoryIndicator',
+  indicator: 'categoryIndicator',
+}
+
+function parseXLSXFile(filePath: string): ParsedRow[] {
+  const workbook = XLSX.readFile(filePath, { type: 'file' })
+  const sheetName = workbook.SheetNames[0]
+  const sheet = workbook.Sheets[sheetName]
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false }) as (string | number)[][]
+
+  if (!rows.length) return []
+
+  const headerRow = rows[0].map((h) => String(h || '').trim().toLowerCase())
+  const colMap: Partial<Record<keyof ParsedRow, number>> = {}
+
+  headerRow.forEach((header, index) => {
+    const key = header.replace(/\s+/g, '').replace(/\./g, '')
+    if (XLSX_HEADERS[key]) {
+      colMap[XLSX_HEADERS[key]] = index
+    }
+  })
+
+  // Fallback: if no headers matched, assume same column order as ODS (0=Serial, 1=Name, 2=Labels, ...)
+  const useFallback = !colMap.name && !colMap.labels && headerRow.some((h) => h === '')
+  if (useFallback) {
+    colMap.serialNumber = 0
+    colMap.name = 1
+    colMap.labels = 2
+    colMap.ingredients = 3
+    colMap.allergens = 4
+    colMap.calories = 5
+    colMap.protein = 6
+    colMap.carbs = 7
+    colMap.fats = 8
+    colMap.categoryIndicator = 9
+  }
+
+  const parsed: ParsedRow[] = []
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]
+    if (!Array.isArray(row)) continue
+
+    const getVal = (key: keyof ParsedRow): string | number | undefined => {
+      const idx = colMap[key]
+      if (idx === undefined) return undefined
+      const v = row[idx]
+      if (v === undefined || v === null || v === '') return undefined
+      return v
+    }
+
+    const name = String(getVal('name') ?? '').trim()
+    if (!name) continue
+    // Skip header/title rows
+    if (/^(name|dish|item|s\.?\s*no|serial|no\.?)$/i.test(name)) continue
+    if (/nutrafi kitchen\s*[–-]\s*menu$/i.test(name) || /^menu\s*$/i.test(name)) continue
+
+    const caloriesVal = getVal('calories')
+    const calories = caloriesVal !== undefined ? (typeof caloriesVal === 'number' ? caloriesVal : parseFloat(String(caloriesVal))) : undefined
+
+    const rowData: ParsedRow = { name }
+    if (colMap.serialNumber !== undefined && row[colMap.serialNumber] !== undefined) {
+      const n = Number(row[colMap.serialNumber])
+      if (!isNaN(n)) rowData.serialNumber = n
+    }
+    const labels = getVal('labels')
+    if (labels !== undefined) rowData.labels = String(labels).trim()
+    const ingredients = getVal('ingredients')
+    if (ingredients !== undefined) rowData.ingredients = String(ingredients).trim()
+    const allergens = getVal('allergens')
+    if (allergens !== undefined) rowData.allergens = String(allergens).trim()
+    rowData.calories = calories !== undefined && !isNaN(calories) ? Math.round(calories) : 0
+    const protein = getVal('protein')
+    if (protein !== undefined) {
+      const n = typeof protein === 'number' ? protein : parseFloat(String(protein))
+      if (!isNaN(n)) rowData.protein = n
+    }
+    const carbs = getVal('carbs')
+    if (carbs !== undefined) {
+      const n = typeof carbs === 'number' ? carbs : parseFloat(String(carbs))
+      if (!isNaN(n)) rowData.carbs = n
+    }
+    const fats = getVal('fats')
+    if (fats !== undefined) {
+      const n = typeof fats === 'number' ? fats : parseFloat(String(fats))
+      if (!isNaN(n)) rowData.fats = n
+    }
+    const cat = getVal('categoryIndicator')
+    if (cat !== undefined) rowData.categoryIndicator = String(cat).trim()
+
+    parsed.push(rowData)
+  }
+  return parsed
+}
+
 async function importMenu() {
   try {
-    const filePath = path.join(process.cwd(), 'nutrafi menu.ods')
-    
-    if (!fs.existsSync(filePath)) {
-      console.error(`File not found: ${filePath}`)
+    const fileArg = process.argv[2]
+    const candidates = fileArg
+      ? [path.isAbsolute(fileArg) ? fileArg : path.join(process.cwd(), fileArg)]
+      : [
+          path.join(process.cwd(), 'Menu.xlsx'),
+          path.join(process.cwd(), 'menu.xlsx'),
+          path.join(process.cwd(), 'nutrafi menu.ods'),
+        ]
+
+    let filePath: string | null = null
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        filePath = p
+        break
+      }
+    }
+
+    if (!filePath) {
+      console.error('No menu file found.')
+      if (fileArg) {
+        console.error(`  Looked at: ${candidates[0]}`)
+      } else {
+        console.error('  Looked for: Menu.xlsx, menu.xlsx, nutrafi menu.ods in project root.')
+        console.error('  Usage: npm run db:import-menu [path/to/Menu.xlsx]')
+      }
       process.exit(1)
     }
-    
-    console.log('Parsing ODS file...')
-    const rows = await parseODSFile(filePath)
+
+    const ext = path.extname(filePath).toLowerCase()
+    let rows: ParsedRow[]
+
+    if (ext === '.xlsx' || ext === '.xls') {
+      console.log('Parsing XLSX file...')
+      rows = parseXLSXFile(filePath)
+    } else if (ext === '.ods') {
+      console.log('Parsing ODS file...')
+      rows = await parseODSFile(filePath)
+    } else {
+      console.error(`Unsupported format: ${ext}. Use .xlsx or .ods`)
+      process.exit(1)
+    }
+
     console.log(`Found ${rows.length} menu items`)
     
     let imported = 0
@@ -268,59 +412,27 @@ async function importMenu() {
     
     for (const row of rows) {
       try {
-        // Validate required fields
         if (!row.name) {
           console.log(`⚠ Skipping row: Missing name`)
           skipped++
           continue
         }
-        
-        if (row.calories === undefined || row.calories === null) {
-          console.log(`⚠ Skipping "${row.name}": Missing calories`)
-          skipped++
-          continue
-        }
-        
-        // Validate nutritional values
+
         const protein = row.protein !== undefined && row.protein !== null ? row.protein : 0
         const carbs = row.carbs !== undefined && row.carbs !== null ? row.carbs : 0
         const fats = row.fats !== undefined && row.fats !== null ? row.fats : 0
-        
-        // Warn if nutritional values are missing
-        if (protein === 0 && carbs === 0 && fats === 0) {
-          console.log(`⚠ Warning: "${row.name}" has all nutritional values as 0`)
-        }
-        
-        // Check if dish already exists
-        const existing = await prisma.dish.findFirst({
-          where: {
-            name: {
-              equals: row.name,
-              mode: 'insensitive'
-            }
-          }
-        })
-        
-        if (existing) {
-          console.log(`⊘ Skipping existing dish: ${row.name}`)
-          skipped++
-          continue
-        }
-        
+        const calories = row.calories !== undefined && row.calories !== null ? Math.round(row.calories) : 0
+
         // Determine category
         const category = determineCategory(row.name, row.categoryIndicator)
         
-        // Clean and prepare ingredients
         const ingredients = row.ingredients 
           ? row.ingredients.trim().replace(/\s+/g, ' ') 
           : undefined
-        
-        // Clean allergens
         const allergens = row.allergens 
           ? row.allergens.trim() 
           : undefined
         
-        // Create dish with all nutritional details
         const dish = await prisma.dish.create({
           data: {
             name: row.name.trim(),
@@ -328,7 +440,7 @@ async function importMenu() {
             category: category,
             ingredients: ingredients,
             allergens: allergens,
-            calories: Math.round(row.calories),
+            calories,
             protein: parseFloat(protein.toFixed(1)),
             carbs: parseFloat(carbs.toFixed(1)),
             fats: parseFloat(fats.toFixed(1)),

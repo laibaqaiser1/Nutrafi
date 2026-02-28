@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 
 // GET - Get daily totals for a meal plan
@@ -9,7 +10,11 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession()
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid meal plan ID' }, { status: 400 })
+    }
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

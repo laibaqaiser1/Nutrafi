@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const mealPlanItemSchema = z.object({
   date: z.string().transform((str) => new Date(str)),
   timeSlot: z.string(),
-  dishId: z.string().optional(), // Reference to menu dish (template)
+  dishId: z.union([z.string(), z.number()]).transform((v) => {
+    const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+    return Number.isNaN(n) ? undefined : n
+  }).optional(),
   // Custom dish details (can be customized per customer)
   dishName: z.string().optional(),
   dishDescription: z.string().optional(),
@@ -32,7 +36,11 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession()
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid meal plan ID' }, { status: 400 })
+    }
     if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -78,15 +86,6 @@ export async function POST(
       }
     }
 
-    // Find existing meal plan item (no compound unique; use findFirst)
-    const existingItem = await prisma.mealPlanItem.findFirst({
-      where: {
-        mealPlanId: id,
-        date: data.date,
-        timeSlot: data.timeSlot,
-      },
-    })
-
     // Prepare custom note - merge user notes with delivery info
     const customNoteObj: any = {}
     if (data.deliveryType) customNoteObj.deliveryType = data.deliveryType
@@ -100,26 +99,17 @@ export async function POST(
       isSkipped: data.isSkipped !== undefined ? data.isSkipped : undefined,
     }
 
-    if (existingItem) {
-      // Update existing item - merge with existing dish data if not provided
-      const updated = await prisma.mealPlanItem.update({
-        where: { id: existingItem.id },
-        data: updateData,
-      })
-      return NextResponse.json(updated)
-    } else {
-      // Create new item
-      const created = await prisma.mealPlanItem.create({
-        data: {
-          mealPlanId: id,
-          date: data.date,
-          timeSlot: data.timeSlot,
-          isSkipped: data.isSkipped || false,
-          ...updateData,
-        },
-      })
-      return NextResponse.json(created)
-    }
+    // Always create a new item (allows multiple meals per date+timeSlot, e.g. duplicate week)
+    const created = await prisma.mealPlanItem.create({
+      data: {
+        mealPlanId: id,
+        date: data.date,
+        timeSlot: data.timeSlot,
+        isSkipped: data.isSkipped || false,
+        ...updateData,
+      },
+    })
+    return NextResponse.json(created)
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })

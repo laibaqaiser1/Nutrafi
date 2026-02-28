@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const mealPlanUpdateSchema = z.object({
-  planId: z.string().optional(),
+  planId: z.union([z.string(), z.number()]).transform((v) => {
+    if (v === '' || v === null || v === undefined) return null
+    const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+    return Number.isNaN(n) ? null : n
+  }).optional().nullable(),
   planType: z.enum(['WEEKLY', 'MONTHLY', 'CUSTOM']).optional(),
   startDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   endDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
@@ -21,7 +26,11 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession()
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid meal plan ID' }, { status: 400 })
+    }
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -100,7 +109,11 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession()
-    const { id } = await params
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid meal plan ID' }, { status: 400 })
+    }
     if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -119,7 +132,7 @@ export async function PUT(
 
     // Use UncheckedUpdateInput to allow setting planId directly
     const updateData: {
-      planId?: string | null
+      planId?: number | null
       planType?: 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
       startDate?: Date | null
       endDate?: Date | null
@@ -133,8 +146,7 @@ export async function PUT(
     } = {}
     
     if (data.planId !== undefined) {
-      // planId can be set directly - empty string or null means custom plan (no predefined plan)
-      updateData.planId = data.planId === '' || data.planId === null ? null : data.planId
+      updateData.planId = data.planId ?? null
     }
     if (data.planType !== undefined) updateData.planType = data.planType
     if (data.startDate !== undefined) {

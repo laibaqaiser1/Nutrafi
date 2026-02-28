@@ -182,7 +182,7 @@ export default function NewMealPlanPage() {
 
   useEffect(() => {
     if (formData.planId) {
-      const selectedPlan = plans.find(p => p.id === formData.planId)
+      const selectedPlan = plans.find(p => p.id == formData.planId)
       if (selectedPlan) {
         const totalMeals = selectedPlan.days * selectedPlan.mealsPerDay
         setTotalMealsAllowed(totalMeals)
@@ -199,6 +199,16 @@ export default function NewMealPlanPage() {
       }
     }
   }, [formData.planId, plans])
+  
+  // Pre-fill payment amount from selected plan price when in predefined mode
+  useEffect(() => {
+    if (planMode === 'predefined' && formData.planId) {
+      const plan = plans.find(p => p.id == formData.planId)
+      if (plan != null) {
+        setFormData(prev => ({ ...prev, paymentAmount: String(plan.price) }))
+      }
+    }
+  }, [planMode, formData.planId, plans])
   
   // Also handle custom plans - total meals only; time slots stay as one (or user-added)
   useEffect(() => {
@@ -300,7 +310,7 @@ export default function NewMealPlanPage() {
   }
 
   const updateMeal = (date: string, timeSlot: string, field: string, value: any, mealIndex?: number) => {
-    const selectedCustomer = customers.find(c => c.id === formData.customerId)
+    const selectedCustomer = customers.find(c => c.id == formData.customerId)
     let occurrenceIndex = 0
     const newMeals = formData.meals.map(meal => {
       if (meal.date === date && meal.timeSlot === timeSlot) {
@@ -392,7 +402,7 @@ export default function NewMealPlanPage() {
         return
       }
       
-      const selectedCustomer = customers.find(c => c.id === formData.customerId)
+      const selectedCustomer = customers.find(c => c.id == formData.customerId)
       const mealsPerDay = parseInt(formData.mealsPerDay)
 
       // Meal keys: date + meal index (multiple meals per day can share same time slot)
@@ -505,7 +515,7 @@ export default function NewMealPlanPage() {
     const timeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
     if (timeSlots.length === 0) return
     
-    const selectedCustomer = customers.find(c => c.id === formData.customerId)
+    const selectedCustomer = customers.find(c => c.id == formData.customerId)
     const mealsPerDay = parseInt(formData.mealsPerDay)
     const existingForDay = formData.meals.filter(m => m.date === nextDay).length
     if (existingForDay > 0) return // Day already has meals
@@ -538,6 +548,25 @@ export default function NewMealPlanPage() {
     }
     
     setFormData(prev => ({ ...prev, meals: [...prev.meals, ...newMeals] }))
+  }
+
+  // Function to remove a day from a week (if accidentally added)
+  const removeDayFromWeek = (week: number, date: string) => {
+    const currentVisibleDays = visibleDaysByWeek[week] || []
+    if (currentVisibleDays.length <= 1) {
+      toast.info('Keep at least one day in the week. Skip the day instead if you don\'t need meals for it.')
+      return
+    }
+    setVisibleDaysByWeek(prev => ({
+      ...prev,
+      [week]: (prev[week] || []).filter(d => d !== date).sort()
+    }))
+    setFormData(prev => ({
+      ...prev,
+      meals: prev.meals.filter(m => m.date !== date),
+      skippedDays: prev.skippedDays.filter(d => d !== date),
+    }))
+    toast.success('Day removed.')
   }
   
   // Function to add another week
@@ -591,7 +620,7 @@ export default function NewMealPlanPage() {
       return
     }
     
-    const selectedCustomer = customers.find(c => c.id === formData.customerId)
+    const selectedCustomer = customers.find(c => c.id == formData.customerId)
     const mealsPerDay = parseInt(formData.mealsPerDay)
     const newMeals: typeof formData.meals = []
     weekDates.forEach(date => {
@@ -791,8 +820,8 @@ export default function NewMealPlanPage() {
     }
   }
 
-  const selectedCustomer = customers.find(c => c.id === formData.customerId)
-  const selectedPlan = plans.find(p => p.id === formData.planId)
+  const selectedCustomer = customers.find(c => c.id == formData.customerId)
+  const selectedPlan = plans.find(p => p.id == formData.planId)
   
   // Calculate active meals (excluding skipped)
   const activeMealsCount = formData.meals.filter(meal => {
@@ -813,8 +842,9 @@ export default function NewMealPlanPage() {
   const totalMeals = formData.days && formData.mealsPerDay 
     ? parseInt(formData.days) * parseInt(formData.mealsPerDay) 
     : 0
+  // Total Amount: from selected plan (predefined) or calculated (custom). Payment Amount field can override what's sent.
   const totalAmount = planMode === 'predefined' 
-    ? parseFloat(formData.paymentAmount || '0')
+    ? (selectedPlan?.price ?? 0)
     : parseFloat(formData.pricePerMeal || '0') * totalMeals
 
   return (
@@ -1556,15 +1586,27 @@ export default function NewMealPlanPage() {
                                         return null
                                       })()}
                                     </div>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={isDaySkipped}
-                                        onChange={() => toggleSkipDay(date)}
-                                        className="w-4 h-4 text-nutrafi-primary rounded focus:ring-nutrafi-primary"
-                                      />
-                                      <span className="text-xs font-medium text-white">Skip Day</span>
-                                    </label>
+                                    <div className="flex items-center gap-3">
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={isDaySkipped}
+                                          onChange={() => toggleSkipDay(date)}
+                                          className="w-4 h-4 text-nutrafi-primary rounded focus:ring-nutrafi-primary"
+                                        />
+                                        <span className="text-xs font-medium text-white">Skip Day</span>
+                                      </label>
+                                      {(visibleDaysByWeek[week] || []).length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => removeDayFromWeek(week, date)}
+                                          className="text-xs font-medium text-white hover:text-red-200 underline"
+                                          title="Remove this day from the plan"
+                                        >
+                                          Remove day
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                   
                                   {!isDaySkipped && !collapsedDays.has(date) && (
