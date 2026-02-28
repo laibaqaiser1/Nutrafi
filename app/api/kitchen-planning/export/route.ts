@@ -71,6 +71,62 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Exclude inactive dishes (no dish assigned)
+    items = items.filter(item => {
+      const hasDish = item.dishId != null || (item.dishName && item.dishName.trim() !== '' && item.dishName !== 'Not Assigned')
+      return hasDish
+    })
+
+    // Sort by time slot (then by customer name for stable order)
+    items.sort((a, b) => {
+      const t = (a.timeSlot || '').localeCompare(b.timeSlot || '')
+      if (t !== 0) return t
+      return (a.mealPlan.customer.fullName || '').localeCompare(b.mealPlan.customer.fullName || '')
+    })
+
+    // Group by date + customer: one row per customer per date, dishes comma-separated, delivery time = first meal only
+    type AggregatedRow = {
+      date: Date
+      timeSlot: string
+      deliveryTime: string
+      customerName: string
+      customer: { fullName: string; phone: string | null; address: string | null; deliveryArea: string | null }
+      dishNames: string
+      items: typeof items
+      isPaused: boolean
+    }
+    const byKey = new Map<string, typeof items>()
+    for (const item of items) {
+      const dateStr = new Date(item.date).toISOString().slice(0, 10)
+      const customerId = item.mealPlan.customerId
+      const key = `${dateStr}:${customerId}`
+      if (!byKey.has(key)) byKey.set(key, [])
+      byKey.get(key)!.push(item)
+    }
+    const aggregated: AggregatedRow[] = []
+    byKey.forEach((groupItems) => {
+      const first = groupItems[0]
+      const dateStr = new Date(first.date).toISOString().slice(0, 10)
+      const mealPlanStatus = (first.mealPlan as { status?: string })?.status ?? 'ACTIVE'
+      const isPaused = String(mealPlanStatus).toUpperCase() === 'PAUSED'
+      aggregated.push({
+        date: first.date,
+        timeSlot: first.timeSlot || '',
+        deliveryTime: first.deliveryTime || '',
+        customerName: first.mealPlan.customer.fullName,
+        customer: first.mealPlan.customer,
+        dishNames: groupItems.map(i => i.dishName || i.dish?.name || 'Not Assigned').join(', '),
+        items: groupItems,
+        isPaused,
+      })
+    })
+    // Sort aggregated rows by time slot (then customer name)
+    aggregated.sort((a, b) => {
+      const t = a.timeSlot.localeCompare(b.timeSlot)
+      if (t !== 0) return t
+      return a.customerName.localeCompare(b.customerName)
+    })
+
     // Parse custom note for instructions
     const parseInstructions = (customNote: string | null): string => {
       if (!customNote) return ''
@@ -79,6 +135,31 @@ export async function GET(request: NextRequest) {
         return parsed.instructions || ''
       } catch (e) {
         return customNote // Return as-is if not JSON
+      }
+    }
+
+    // Dish names in one cell, each on its own line (so cell doesn't overflow column)
+    const dishNamesForCell = (commaSeparated: string): string =>
+      commaSeparated.split(',').map(s => s.trim()).filter(Boolean).join('\n')
+
+    // Light red fill for paused (customer not available) rows; keep cell borders visible
+    const LIGHT_RED = 'FFFFCCCB' // argb style for ExcelJS
+    const BORDER_GRAY = 'FFD3D3D3' // light gray border so cells stay distinct
+    const applyPausedRowStyle = (row: ExcelJS.Row, lastCol: number) => {
+      const thinBorder = { style: 'thin' as const, color: { argb: BORDER_GRAY } }
+      for (let c = 1; c <= lastCol; c++) {
+        const cell = row.getCell(c)
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: LIGHT_RED },
+        }
+        cell.border = {
+          top: thinBorder,
+          left: thinBorder,
+          bottom: thinBorder,
+          right: thinBorder,
+        }
       }
     }
 
@@ -102,16 +183,21 @@ export async function GET(request: NextRequest) {
             worksheet.spliceRows(3, worksheet.rowCount - 2)
           }
           
-          // Fill in data
-          items.forEach((item, index) => {
+          // Fill in data (one row per customer). Last column (7) = Dish Name; append "customer not available" there when paused (no extra column).
+          const riderLastCol = 7
+          aggregated.forEach((rowData, index) => {
             const row = worksheet.getRow(startRow + index)
-            row.getCell(1).value = new Date(item.date).toLocaleDateString() // Date
-            row.getCell(2).value = item.deliveryTime || '' // Delivery Time
-            row.getCell(3).value = item.mealPlan.customer.fullName // Customer Name
-            row.getCell(4).value = item.mealPlan.customer.phone || '' // Contact Number
-            row.getCell(5).value = item.mealPlan.customer.address || '' // Delivery Address
-            row.getCell(6).value = item.mealPlan.customer.deliveryArea || '' // Delivery Area
-            row.getCell(7).value = item.dishName || item.dish?.name || 'Not Assigned' // Dish Name
+            row.getCell(1).value = new Date(rowData.date).toLocaleDateString() // Date
+            row.getCell(2).value = rowData.deliveryTime // Delivery Time (first meal only)
+            row.getCell(3).value = rowData.customerName // Customer Name
+            row.getCell(4).value = rowData.customer.phone || '' // Contact Number
+            row.getCell(5).value = rowData.customer.address || '' // Delivery Address
+            row.getCell(6).value = rowData.customer.deliveryArea || '' // Delivery Area
+            const dishCell = row.getCell(7)
+            const dishText = dishNamesForCell(rowData.dishNames)
+            dishCell.value = rowData.isPaused ? dishText + '\n(customer not available)' : dishText
+            dishCell.alignment = { wrapText: true, vertical: 'top' }
+            if (rowData.isPaused) applyPausedRowStyle(row, riderLastCol)
             row.commit()
           })
         }
@@ -119,20 +205,23 @@ export async function GET(request: NextRequest) {
         // Fallback: create new sheet if template doesn't exist
         const worksheet = workbook.addWorksheet('Rider')
         worksheet.getCell('A1').value = 'Nutrafi Kitchen Abu Dhabi'
-        worksheet.getRow(2).values = ['Date', 'Delivery Time', 'Customer Name', 'Contact Number', 'Delivery Address', 'Delivery Area', 'Dish Name', '']
+        worksheet.getRow(2).values = ['Date', 'Delivery Time', 'Customer Name', 'Contact Number', 'Delivery Address', 'Delivery Area', 'Dish Name']
         
-        items.forEach((item, index) => {
+        const riderLastCol = 7
+        aggregated.forEach((rowData, index) => {
           const row = worksheet.getRow(3 + index)
-          row.values = [
-            new Date(item.date).toLocaleDateString(),
-            item.deliveryTime || '',
-            item.mealPlan.customer.fullName,
-            item.mealPlan.customer.phone || '',
-            item.mealPlan.customer.address || '',
-            item.mealPlan.customer.deliveryArea || '',
-            item.dishName || item.dish?.name || 'Not Assigned',
-            ''
-          ]
+          row.getCell(1).value = new Date(rowData.date).toLocaleDateString()
+          row.getCell(2).value = rowData.deliveryTime
+          row.getCell(3).value = rowData.customerName
+          row.getCell(4).value = rowData.customer.phone || ''
+          row.getCell(5).value = rowData.customer.address || ''
+          row.getCell(6).value = rowData.customer.deliveryArea || ''
+          const dishCell = row.getCell(7)
+          const dishText = dishNamesForCell(rowData.dishNames)
+          dishCell.value = rowData.isPaused ? dishText + '\n(customer not available)' : dishText
+          dishCell.alignment = { wrapText: true, vertical: 'top' }
+          if (rowData.isPaused) applyPausedRowStyle(row, riderLastCol)
+          row.commit()
         })
       }
     } else if (sheet === 'chef') {
@@ -152,59 +241,68 @@ export async function GET(request: NextRequest) {
             worksheet.spliceRows(3, worksheet.rowCount - 2)
           }
           
-          // Fill in data - columns start from column 1 (A) to match headers
-          // Headers: A=empty, B=Date, C=Time Slot, D=Delivery Time, E=Customer Name, F=Dish Name, G=Instructions, H=Ingredients, I=Allergens, J=Calories, K=Protein, L=Carbs, M=Fats
-          items.forEach((item, index) => {
-            const instructions = parseInstructions(item.customNote)
+          // Fill in data - one row per customer. A=Date, B=Delivery Time, C=Customer Name, D=Dish Name, E=Instructions, F=Ingredients, G=Allergens, H=Calories, I=Protein, J=Carbs, K=Fats, L=customer not available (when paused).
+          const chefLastCol = 12
+          aggregated.forEach((rowData, index) => {
+            const groupItems = rowData.items
+            const instructions = groupItems.map(i => parseInstructions(i.customNote)).filter(Boolean).join('; ')
+            const ingredients = groupItems.map(i => i.ingredients || i.dish?.ingredients || '').filter(Boolean).join('; ')
+            const allergens = groupItems.map(i => i.allergens || i.dish?.allergens || '').filter(Boolean).join('; ')
+            const calories = groupItems.reduce((s, i) => s + (Number(i.calories) || Number(i.dish?.calories) || 0), 0)
+            const protein = groupItems.reduce((s, i) => s + (Number(i.protein) || Number(i.dish?.protein) || 0), 0)
+            const carbs = groupItems.reduce((s, i) => s + (Number(i.carbs) || Number(i.dish?.carbs) || 0), 0)
+            const fats = groupItems.reduce((s, i) => s + (Number(i.fats) || Number(i.dish?.fats) || 0), 0)
             const row = worksheet.getRow(startRow + index)
-            // Column 1 (A) is empty, data starts at column 2 (B) - but ExcelJS might be 0-indexed, so we use 1-based
-            // Actually, let's match exactly: if headers are at B, C, D... then data should be at B, C, D...
-            // But user says data is one cell right, so maybe headers are actually at A, B, C... and we should start at A
-            // Let me check: template shows first empty item, then Date at position 2
-            // So headers are: [empty, Date, Time Slot, ...] which is columns A, B, C...
-            // But ExcelJS getCell(1) = column A, getCell(2) = column B
-            // So if Date header is at column B (index 2), data should be at column B (index 2) ✓
-            // But user says it's one cell right, so maybe the template actually has Date at column A?
-            // Let me try starting at column 1 (A) instead
-            row.getCell(1).value = new Date(item.date).toLocaleDateString() // Date
-            row.getCell(2).value = item.timeSlot // Time Slot
-            row.getCell(3).value = item.deliveryTime || '' // Delivery Time
-            row.getCell(4).value = item.mealPlan.customer.fullName // Customer Name
-            row.getCell(5).value = item.dishName || item.dish?.name || 'Not Assigned' // Dish Name
-            row.getCell(6).value = instructions // Instructions
-            row.getCell(7).value = item.ingredients || item.dish?.ingredients || '' // Ingredients
-            row.getCell(8).value = item.allergens || item.dish?.allergens || '' // Allergens
-            row.getCell(9).value = item.calories || item.dish?.calories || 0 // Calories (kcal)
-            row.getCell(10).value = item.protein || item.dish?.protein || 0 // Protein (g)
-            row.getCell(11).value = item.carbs || item.dish?.carbs || 0 // Carbs (g)
-            row.getCell(12).value = item.fats || item.dish?.fats || 0 // Fats (g)
+            row.getCell(1).value = new Date(rowData.date).toLocaleDateString()   // A = Date
+            row.getCell(2).value = rowData.deliveryTime                          // B = Delivery Time
+            row.getCell(3).value = rowData.customerName                           // C = Customer Name
+            const chefDishCell = row.getCell(4)
+            chefDishCell.value = dishNamesForCell(rowData.dishNames)
+            chefDishCell.alignment = { wrapText: true, vertical: 'top' }         // D = Dish Name
+            row.getCell(5).value = instructions                                   // E = Instructions
+            row.getCell(6).value = ingredients                                    // F = Ingredients
+            row.getCell(7).value = allergens                                      // G = Allergens
+            row.getCell(8).value = calories                                       // H = Calories
+            row.getCell(9).value = protein                                         // I = Protein
+            row.getCell(10).value = carbs                                         // J = Carbs
+            row.getCell(11).value = fats                                          // K = Fats
+            row.getCell(12).value = rowData.isPaused ? 'customer not available' : ''  // L = customer not available
+            if (rowData.isPaused) applyPausedRowStyle(row, chefLastCol)
             row.commit()
           })
         }
       } else {
-        // Fallback: create new sheet if template doesn't exist
+        // Fallback: create new sheet if template doesn't exist (no Time Slot column)
         const worksheet = workbook.addWorksheet('Chef')
-        worksheet.getRow(1).values = ['Date', 'Time Slot', 'Delivery Time', 'Customer Name', 'Dish Name', 'Category', 'Ingredients', 'Allergens', 'Calories (kcal)', 'Protein (g)', 'Carbs (g)', 'Fats (g)', 'Instructions', 'Status']
+        worksheet.getRow(1).values = ['Date', 'Delivery Time', 'Customer Name', 'Dish Name', 'Ingredients', 'Allergens', 'Calories (kcal)', 'Protein (g)', 'Carbs (g)', 'Fats (g)', 'Instructions', 'Note']
         
-        items.forEach((item, index) => {
-          const instructions = parseInstructions(item.customNote)
+        const chefLastCol = 12
+        aggregated.forEach((rowData, index) => {
+          const groupItems = rowData.items
+          const instructions = groupItems.map(i => parseInstructions(i.customNote)).filter(Boolean).join('; ')
+          const ingredients = groupItems.map(i => i.ingredients || i.dish?.ingredients || '').filter(Boolean).join('; ')
+          const allergens = groupItems.map(i => i.allergens || i.dish?.allergens || '').filter(Boolean).join('; ')
+          const calories = groupItems.reduce((s, i) => s + (Number(i.calories) || Number(i.dish?.calories) || 0), 0)
+          const protein = groupItems.reduce((s, i) => s + (Number(i.protein) || Number(i.dish?.protein) || 0), 0)
+          const carbs = groupItems.reduce((s, i) => s + (Number(i.carbs) || Number(i.dish?.carbs) || 0), 0)
+          const fats = groupItems.reduce((s, i) => s + (Number(i.fats) || Number(i.dish?.fats) || 0), 0)
           const row = worksheet.getRow(2 + index)
-          row.values = [
-            new Date(item.date).toLocaleDateString(),
-            item.timeSlot,
-            item.deliveryTime || '',
-            item.mealPlan.customer.fullName,
-            item.dishName || item.dish?.name || 'Not Assigned',
-            item.dishCategory || item.dish?.category || '',
-            item.ingredients || item.dish?.ingredients || '',
-            item.allergens || item.dish?.allergens || '',
-            item.calories || item.dish?.calories || 0,
-            item.protein || item.dish?.protein || 0,
-            item.carbs || item.dish?.carbs || 0,
-            item.fats || item.dish?.fats || 0,
-            instructions,
-            item.isDelivered ? 'Delivered' : item.isSkipped ? 'Skipped' : 'Active',
-          ]
+          const dishCell = row.getCell(4)
+          dishCell.value = dishNamesForCell(rowData.dishNames)
+          dishCell.alignment = { wrapText: true, vertical: 'top' }
+          row.getCell(1).value = new Date(rowData.date).toLocaleDateString()
+          row.getCell(2).value = rowData.deliveryTime
+          row.getCell(3).value = rowData.customerName
+          row.getCell(5).value = ingredients
+          row.getCell(6).value = allergens
+          row.getCell(7).value = calories
+          row.getCell(8).value = protein
+          row.getCell(9).value = carbs
+          row.getCell(10).value = fats
+          row.getCell(11).value = instructions
+          row.getCell(12).value = rowData.isPaused ? 'customer not available' : ''  // L = customer not available
+          if (rowData.isPaused) applyPausedRowStyle(row, chefLastCol)
+          row.commit()
         })
       }
     }

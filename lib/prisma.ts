@@ -32,7 +32,8 @@ export async function withRetry<T>(
         error?.message?.includes('Closed') ||
         error?.message?.includes('connection') ||
         error?.code === 'P1001' ||
-        error?.code === 'P1008'
+        error?.code === 'P1008' ||
+        error?.code === 'P2024'
       ) {
         if (i < maxRetries - 1) {
           // Wait before retrying

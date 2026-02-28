@@ -36,11 +36,9 @@ export async function GET(request: NextRequest) {
 
     const where: any = {}
     if (customerId) where.customerId = customerId
-    // Default to showing only ACTIVE meal plans if no status filter is provided
-    if (status) {
+    // Only filter by status when a specific status is requested; otherwise show all
+    if (status && ['ACTIVE', 'PAUSED', 'CANCELLED'].includes(status)) {
       where.status = status
-    } else {
-      where.status = 'ACTIVE' // Only show active meal plans by default
     }
 
     // Get total count

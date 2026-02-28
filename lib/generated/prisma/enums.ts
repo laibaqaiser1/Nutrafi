@@ -42,6 +42,7 @@ export type PlanType = (typeof PlanType)[keyof typeof PlanType]
 
 export const CustomerStatus = {
   ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
   PAUSED: 'PAUSED',
   CANCELLED: 'CANCELLED'
 } as const

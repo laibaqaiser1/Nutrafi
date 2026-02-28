@@ -67,7 +67,7 @@ export async function POST(
       dishData = {
         dishName: data.dishName,
         dishDescription: data.dishDescription,
-        dishCategory: data.dishCategory || 'CUSTOM',
+        dishCategory: data.dishCategory || 'LUNCH_DINNER',
         ingredients: data.ingredients,
         allergens: data.allergens,
         calories: data.calories || 0,
@@ -78,14 +78,12 @@ export async function POST(
       }
     }
 
-    // Find existing meal plan item
-    const existingItem = await prisma.mealPlanItem.findUnique({
+    // Find existing meal plan item (no compound unique; use findFirst)
+    const existingItem = await prisma.mealPlanItem.findFirst({
       where: {
-        mealPlanId_date_timeSlot: {
-          mealPlanId: id,
-          date: data.date,
-          timeSlot: data.timeSlot,
-        },
+        mealPlanId: id,
+        date: data.date,
+        timeSlot: data.timeSlot,
       },
     })
 

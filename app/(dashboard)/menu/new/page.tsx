@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 export default function NewDishPage() {
   const router = useRouter()
+  const toast = useNotification()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -42,11 +44,11 @@ export default function NewDishPage() {
         router.push('/menu')
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error creating dish:', error)
-      alert('Failed to create dish')
+      toast.error('Failed to create dish')
     } finally {
       setLoading(false)
     }
@@ -54,7 +56,7 @@ export default function NewDishPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New Dish</h1>
+      <h1 className="text-lg font-bold text-gray-900 mb-3">Add New Dish</h1>
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>

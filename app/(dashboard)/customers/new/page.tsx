@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 export default function NewCustomerPage() {
   const router = useRouter()
+  const toast = useNotification()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     fullName: '',
@@ -38,11 +40,11 @@ export default function NewCustomerPage() {
         }
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error creating customer:', error)
-      alert('Failed to create customer')
+      toast.error('Failed to create customer')
     } finally {
       setLoading(false)
     }
@@ -50,65 +52,65 @@ export default function NewCustomerPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New Customer</h1>
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <h1 className="text-lg font-bold text-gray-900 mb-3">Add New Customer</h1>
+      <form onSubmit={handleSubmit} className="bg-white shadow rounded p-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Full Name *</label>
             <input
               type="text"
               required
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Phone *</label>
             <input
               type="tel"
               required
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Area *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Delivery Area *</label>
             <input
               type="text"
               required
               value={formData.deliveryArea}
               onChange={(e) => setFormData({ ...formData, deliveryArea: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Address *</label>
             <textarea
               required
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
               rows={2}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Status *</label>
             <select
               required
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
             >
               <option value="ACTIVE">Active</option>
               <option value="PAUSED">Paused</option>
@@ -116,27 +118,27 @@ export default function NewCustomerPage() {
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              rows={3}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+              rows={2}
             />
           </div>
         </div>
-        <div className="mt-6 flex gap-4">
+        <div className="mt-3 flex gap-2">
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50"
+            className="px-3 py-1.5 text-sm bg-nutrafi-primary text-white rounded hover:bg-nutrafi-dark disabled:opacity-50"
           >
             {loading ? 'Creating...' : 'Create Customer'}
           </button>
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+            className="px-3 py-1.5 text-sm bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
           >
             Cancel
           </button>

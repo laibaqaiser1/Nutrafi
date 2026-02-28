@@ -43,30 +43,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <aside className={`bg-white shadow-lg border-r border-[#e8ede0] transition-all duration-300 flex-shrink-0 ${
-        sidebarOpen ? 'w-64' : 'w-20'
+        sidebarOpen ? 'w-52 lg:w-64' : 'w-14 lg:w-20'
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-4 border-b border-[#e8ede0] flex-shrink-0">
-            <Link href="/dashboard" className="flex items-center space-x-3">
+          <div className="flex items-center justify-between p-2 lg:p-4 border-b border-[#e8ede0] flex-shrink-0">
+            <Link href="/dashboard" className="flex items-center space-x-2 lg:space-x-3">
               <Image
                 src="/nutrafi_logo.png"
                 alt="Nutrafi Kitchen"
-                width={40}
-                height={40}
-                className="h-10 w-auto"
+                width={32}
+                height={32}
+                className="h-8 w-auto lg:h-10 lg:w-10"
               />
               {sidebarOpen && (
-                <h1 className="text-xl font-bold text-nutrafi-primary">Nutrafi Kitchen</h1>
+                <h1 className="text-base lg:text-xl font-bold text-nutrafi-primary">Nutrafi Kitchen</h1>
               )}
             </Link>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+              className="p-0.5 lg:p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900 rounded-md"
               aria-label="Toggle sidebar"
             >
               <svg
-                className="h-6 w-6"
+                className="h-5 w-5 lg:h-6 lg:w-6"
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -84,10 +84,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 py-4 overflow-hidden">
-            <div className="px-2 space-y-1">
+          <nav className="flex-1 py-2 lg:py-4 overflow-hidden">
+            <div className="px-1 lg:px-2 space-y-0.5 lg:space-y-1">
               {filteredNavigation.length === 0 ? (
-                <div className="px-4 py-2 text-xs text-gray-500">
+                <div className="px-2 lg:px-4 py-1 lg:py-2 text-xs text-gray-500">
                   No modules available for your role
                 </div>
               ) : (
@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                      className={`flex items-center px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm font-medium rounded lg:rounded-lg transition-colors ${
                         isActive
                           ? 'bg-[#f0f4e8] text-nutrafi-dark font-semibold border-l-4 border-nutrafi-primary'
                           : 'text-gray-700 hover:bg-[#f0f4e8] hover:text-nutrafi-primary'
@@ -112,10 +112,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
 
           {/* User Info & Sign Out */}
-          <div className="border-t border-[#e8ede0] p-4 flex-shrink-0">
-            <div className="mb-3">
+          <div className="border-t border-[#e8ede0] p-2 lg:p-4 flex-shrink-0">
+            <div className="mb-2 lg:mb-3">
               {sidebarOpen && (
-                <div className="text-xs text-gray-500 mb-1">
+                <div className="text-xs text-gray-500 mb-0.5 lg:mb-1">
                   <div className="font-medium text-gray-700">{session?.user?.name}</div>
                   <div className="text-gray-500">{session?.user?.role}</div>
                 </div>
@@ -123,10 +123,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="w-full rounded-md bg-nutrafi-primary px-3 py-2 text-sm font-semibold text-white hover:bg-nutrafi-dark transition-colors flex items-center justify-center space-x-2"
+              className="w-full rounded lg:rounded-md bg-nutrafi-primary px-2 lg:px-3 py-1.5 lg:py-2 text-xs lg:text-sm font-semibold text-white hover:bg-nutrafi-dark transition-colors flex items-center justify-center space-x-1 lg:space-x-2"
             >
               <svg
-                className="h-4 w-4"
+                className="h-3.5 w-3.5 lg:h-4 lg:w-4"
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -145,9 +145,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Bar (optional, can be removed if not needed) */}
-        <header className="bg-white shadow-sm border-b border-[#e8ede0] h-16 flex items-center justify-end px-6 flex-shrink-0">
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-700 hidden md:block">
+        <header className="bg-white shadow-sm border-b border-[#e8ede0] h-10 lg:h-16 flex items-center justify-end px-3 lg:px-6 flex-shrink-0">
+          <div className="flex items-center space-x-2 lg:space-x-4">
+            <span className="text-xs lg:text-sm text-gray-700 hidden md:block">
               {session?.user?.name} ({session?.user?.role})
             </span>
           </div>
@@ -155,7 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl px-2 py-3 sm:px-3 lg:px-8 lg:py-6">
             {children}
           </div>
         </main>

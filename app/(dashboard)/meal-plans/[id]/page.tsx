@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format, addDays, eachDayOfInterval } from 'date-fns'
 import { formatCategory } from '@/lib/utils'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface MealPlan {
   id: string
@@ -83,6 +84,7 @@ interface Dish {
 export default function MealPlanViewPage() {
   const router = useRouter()
   const params = useParams()
+  const toast = useNotification()
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedItem, setSelectedItem] = useState<MealPlan['mealPlanItems'][0] | null>(null)
@@ -110,6 +112,7 @@ export default function MealPlanViewPage() {
     customNote: '',
   })
   const [savingDish, setSavingDish] = useState(false)
+  const [skippingMeal, setSkippingMeal] = useState(false)
   const [dishDropdownOpen, setDishDropdownOpen] = useState(false)
   const [dishSearchQuery, setDishSearchQuery] = useState('')
   const [showDishDetails, setShowDishDetails] = useState(false)
@@ -118,6 +121,7 @@ export default function MealPlanViewPage() {
   const [weekMenuOpen, setWeekMenuOpen] = useState<number | null>(null)
   const [addingDay, setAddingDay] = useState(false)
   const [duplicatingWeek, setDuplicatingWeek] = useState(false)
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -142,13 +146,22 @@ export default function MealPlanViewPage() {
     }
   }, [dishDropdownOpen])
 
+  // Close dish dropdown when user scrolls (avoids dropdown staying in wrong place)
+  useEffect(() => {
+    if (!dishDropdownOpen) return
+    const handleScroll = () => setDishDropdownOpen(false)
+    window.addEventListener('scroll', handleScroll, true)
+    return () => window.removeEventListener('scroll', handleScroll, true)
+  }, [dishDropdownOpen])
+
   // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement
-      if (!target.closest('.day-menu-container') && !target.closest('.week-menu-container')) {
+      if (!target.closest('.day-menu-container') && !target.closest('.week-menu-container') && !target.closest('.actions-menu-container')) {
         setDayMenuOpen(null)
         setWeekMenuOpen(null)
+        setActionsMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -222,12 +235,12 @@ export default function MealPlanViewPage() {
           setVisibleDaysByWeek({})
         }
       } else {
-        alert('Failed to fetch meal plan')
+        toast.error('Failed to fetch meal plan')
         router.push('/meal-plans')
       }
     } catch (error) {
       console.error('Error fetching meal plan:', error)
-      alert('Failed to fetch meal plan')
+      toast.error('Failed to fetch meal plan')
     } finally {
       setLoading(false)
     }
@@ -265,20 +278,74 @@ export default function MealPlanViewPage() {
           })
         }
       } else {
-        alert('Failed to update delivery status')
+        toast.error('Failed to update delivery status')
       }
     } catch (error) {
       console.error('Error updating delivery status:', error)
-      alert('Failed to update delivery status')
+      toast.error('Failed to update delivery status')
     }
   }
 
+  const handleSkipMeal = async (itemId: string, isSkipped: boolean) => {
+    if (!mealPlan) return
+    setSkippingMeal(true)
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isSkipped }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setMealPlan({
+          ...mealPlan,
+          mealPlanItems: mealPlan.mealPlanItems.map(item =>
+            item.id === itemId ? { ...item, isSkipped: data.isSkipped ?? isSkipped } : item
+          ),
+        })
+        if (selectedItem && selectedItem.id === itemId) {
+          setSelectedItem({ ...selectedItem, isSkipped: data.isSkipped ?? isSkipped })
+        }
+      } else {
+        toast.error('Failed to update skip status')
+      }
+    } catch (error) {
+      console.error('Error updating skip status:', error)
+      toast.error('Failed to update skip status')
+    } finally {
+      setSkippingMeal(false)
+    }
+  }
+
+  const handleDeleteMeal = async (itemId: string) => {
+    if (!mealPlan || !confirm('Remove this meal from the plan? This cannot be undone.')) return
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${itemId}`, { method: 'DELETE' })
+      if (response.ok) {
+        setMealPlan({
+          ...mealPlan,
+          mealPlanItems: mealPlan.mealPlanItems.filter(item => item.id !== itemId),
+        })
+        if (selectedItem?.id === itemId) {
+          setShowModal(false)
+          setSelectedItem(null)
+        }
+      } else {
+        const err = await response.json()
+        toast.error(err?.error || 'Failed to delete meal')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to delete meal')
+    }
+  }
 
   const handleItemClick = (item: MealPlan['mealPlanItems'][0]) => {
     setSelectedItem(item)
     setShowModal(true)
     setEditingDish(false)
     setDishDropdownOpen(false)
+    setActionsMenuOpen(false)
     setDishSearchQuery('')
     setShowDishDetails(false) // Hide details by default
     // Initialize dish form data from item
@@ -387,16 +454,17 @@ export default function MealPlanViewPage() {
 
   const handleSaveDish = async () => {
     if (!mealPlan || !selectedItem) return
-    
-    // Validate required fields
-    if (!dishFormData.dishName) {
-      alert('Please enter a dish name')
+
+    // When creating a new item (no id), dish name is required. When updating existing item (e.g. timeSlot only), dish name is optional.
+    const isUpdatingExisting = !!selectedItem.id
+    if (!isUpdatingExisting && !dishFormData.dishName) {
+      toast.warning('Please enter a dish name')
       return
     }
-    
+
     setSavingDish(true)
     try {
-      const customNoteObj: any = {}
+      const customNoteObj: Record<string, string> = {}
       if (dishFormData.deliveryType) customNoteObj.deliveryType = dishFormData.deliveryType
       if (dishFormData.location) customNoteObj.location = dishFormData.location
       if (dishFormData.customNote) customNoteObj.note = dishFormData.customNote
@@ -404,47 +472,65 @@ export default function MealPlanViewPage() {
       // Convert deliveryTime to timeSlot format (HH:MM)
       let timeSlot = selectedItem.timeSlot
       if (dishFormData.deliveryTime) {
-        // deliveryTime is in HH:MM format, use it as timeSlot
-        timeSlot = dishFormData.deliveryTime.substring(0, 5) // Get HH:MM part
+        timeSlot = dishFormData.deliveryTime.substring(0, 5)
       }
 
-      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: selectedItem.date,
-          timeSlot: timeSlot,
-          dishId: dishFormData.dishId || undefined,
-          dishName: dishFormData.dishName,
-          dishDescription: dishFormData.dishDescription || undefined,
-          dishCategory: dishFormData.dishCategory,
-          ingredients: dishFormData.ingredients || undefined,
-          allergens: dishFormData.allergens || undefined,
-          calories: dishFormData.calories ? parseInt(dishFormData.calories) : undefined,
-          protein: dishFormData.protein ? parseFloat(dishFormData.protein) : undefined,
-          carbs: dishFormData.carbs ? parseFloat(dishFormData.carbs) : undefined,
-          fats: dishFormData.fats ? parseFloat(dishFormData.fats) : undefined,
-          price: dishFormData.price ? parseFloat(dishFormData.price) : undefined,
-          deliveryTime: dishFormData.deliveryTime || undefined,
-          deliveryType: dishFormData.deliveryType,
-          location: dishFormData.location || undefined,
-          isSkipped: false, // Un-skip the meal when adding dish
-          customNote: Object.keys(customNoteObj).length > 0 ? JSON.stringify(customNoteObj) : undefined,
-        }),
-      })
+      const payload = {
+        date: selectedItem.date,
+        timeSlot,
+        dishId: dishFormData.dishId || undefined,
+        dishName: dishFormData.dishName || undefined,
+        dishDescription: dishFormData.dishDescription || undefined,
+        dishCategory: dishFormData.dishCategory,
+        ingredients: dishFormData.ingredients || undefined,
+        allergens: dishFormData.allergens || undefined,
+        calories: dishFormData.calories ? parseInt(dishFormData.calories) : undefined,
+        protein: dishFormData.protein ? parseFloat(dishFormData.protein) : undefined,
+        carbs: dishFormData.carbs ? parseFloat(dishFormData.carbs) : undefined,
+        fats: dishFormData.fats ? parseFloat(dishFormData.fats) : undefined,
+        price: dishFormData.price ? parseFloat(dishFormData.price) : undefined,
+        deliveryTime: dishFormData.deliveryTime || undefined,
+        deliveryType: dishFormData.deliveryType,
+        location: dishFormData.location || undefined,
+        isSkipped: false,
+        customNote: Object.keys(customNoteObj).length > 0 ? JSON.stringify(customNoteObj) : undefined,
+      }
 
-      if (response.ok) {
-        await fetchMealPlan(mealPlan.id)
-        setEditingDish(false)
-        setShowModal(false)
-        alert('Dish added successfully!')
+      if (isUpdatingExisting) {
+        // Update existing item by id so changing timeSlot doesn't create a duplicate row
+        const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${selectedItem.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (response.ok) {
+          await fetchMealPlan(mealPlan.id)
+          setEditingDish(false)
+          setShowModal(false)
+          toast.success('Meal updated successfully!')
+        } else {
+          const error = await response.json()
+          toast.error('Failed to update meal: ' + (error.error || 'Unknown error'))
+        }
       } else {
-        const error = await response.json()
-        alert('Failed to add dish: ' + (error.error || 'Unknown error'))
+        const response = await fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (response.ok) {
+          await fetchMealPlan(mealPlan.id)
+          setEditingDish(false)
+          setShowModal(false)
+          toast.success('Dish added successfully!')
+        } else {
+          const error = await response.json()
+          toast.error('Failed to add dish: ' + (error.error || 'Unknown error'))
+        }
       }
     } catch (error) {
       console.error('Error saving dish:', error)
-      alert('Failed to save dish')
+      toast.error('Failed to save dish')
     } finally {
       setSavingDish(false)
     }
@@ -466,7 +552,7 @@ export default function MealPlanViewPage() {
       const maxDays = mealPlan.days || 22
       
       if (totalDays >= maxDays) {
-        alert(`Cannot add another week. The meal plan is limited to ${maxDays} days.`)
+        toast.warning(`Cannot add another week. The meal plan is limited to ${maxDays} days.`)
         setAddingWeek(false)
         return
       }
@@ -479,7 +565,7 @@ export default function MealPlanViewPage() {
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
       if (currentMealsCount + mealsPerDay > totalMealsAllowed) {
-        alert(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+        toast.warning(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
         setAddingWeek(false)
         return
       }
@@ -540,10 +626,10 @@ export default function MealPlanViewPage() {
       // Refresh meal plan to get new items
       await fetchMealPlan(mealPlan.id)
       
-      alert(`Week ${nextWeek} started! Add more days using the "Add Day" button.`)
+      toast.success(`Week ${nextWeek} started! Add more days using the "Add Day" button.`)
     } catch (error) {
       console.error('Error adding week:', error)
-      alert('Failed to add week')
+      toast.error('Failed to add week')
     } finally {
       setAddingWeek(false)
     }
@@ -566,7 +652,7 @@ export default function MealPlanViewPage() {
       const remainingDays = maxDays - totalDays
       
       if (remainingDays <= 0) {
-        alert(`Cannot add another day. The meal plan is limited to ${maxDays} days.`)
+        toast.warning(`Cannot add another day. The meal plan is limited to ${maxDays} days.`)
         setAddingDay(false)
         return
       }
@@ -581,7 +667,7 @@ export default function MealPlanViewPage() {
       
       // Check if we've reached 7 days in this week
       if (daysInWeek >= 7) {
-        alert('A week can only have 7 days.')
+        toast.warning('A week can only have 7 days.')
         setAddingDay(false)
         return
       }
@@ -605,9 +691,9 @@ export default function MealPlanViewPage() {
       // We can add a day if we have remaining days and haven't reached the week limit
       if (daysCanAddToWeek <= 0) {
         if (remainingDays <= 0) {
-          alert(`Cannot add more days. The meal plan is limited to ${maxDays} days.`)
+          toast.warning(`Cannot add more days. The meal plan is limited to ${maxDays} days.`)
         } else {
-          alert(`Cannot add more days to this week. A week can only have 7 days.`)
+          toast.warning(`Cannot add more days to this week. A week can only have 7 days.`)
         }
         setAddingDay(false)
         return
@@ -619,7 +705,7 @@ export default function MealPlanViewPage() {
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
       if (currentMealsCount + mealsPerDay > totalMealsAllowed) {
-        alert(`Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+        toast.warning(`Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
         setAddingDay(false)
         return
       }
@@ -672,7 +758,7 @@ export default function MealPlanViewPage() {
       await fetchMealPlan(mealPlan.id)
     } catch (error) {
       console.error('Error adding day:', error)
-      alert('Failed to add day')
+      toast.error('Failed to add day')
     } finally {
       setAddingDay(false)
     }
@@ -690,7 +776,7 @@ export default function MealPlanViewPage() {
       
       // Check if we've reached the meals per day limit
       if (existingMeals.length >= mealPlan.mealsPerDay) {
-        alert(`This day already has ${mealPlan.mealsPerDay} meals.`)
+        toast.warning(`This day already has ${mealPlan.mealsPerDay} meals.`)
         return
       }
       
@@ -699,7 +785,7 @@ export default function MealPlanViewPage() {
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
       if (currentMealsCount + 1 > totalMealsAllowed) {
-        alert(`Cannot add another meal. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+        toast.warning(`Cannot add another meal. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
         return
       }
       
@@ -737,11 +823,11 @@ export default function MealPlanViewPage() {
         await fetchMealPlan(mealPlan.id)
         setDayMenuOpen(null)
       } else {
-        alert('Failed to add meal')
+        toast.error('Failed to add meal')
       }
     } catch (error) {
       console.error('Error adding meal:', error)
-      alert('Failed to add meal')
+      toast.error('Failed to add meal')
     }
   }
 
@@ -756,7 +842,7 @@ export default function MealPlanViewPage() {
       
       // Check if adding this week would exceed plan days
       if (nextWeek > maxWeek) {
-        alert('Cannot duplicate week. Maximum weeks for this plan reached.')
+        toast.warning('Cannot duplicate week. Maximum weeks for this plan reached.')
         setDuplicatingWeek(false)
         return
       }
@@ -768,7 +854,7 @@ export default function MealPlanViewPage() {
       })
       
       if (sourceItems.length === 0) {
-        alert('No meals found in the source week to duplicate.')
+        toast.warning('No meals found in the source week to duplicate.')
         setDuplicatingWeek(false)
         return
       }
@@ -778,7 +864,7 @@ export default function MealPlanViewPage() {
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
       if (currentMealsCount + sourceItems.length > totalMealsAllowed) {
-        alert(`Cannot duplicate week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+        toast.warning(`Cannot duplicate week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
         setDuplicatingWeek(false)
         return
       }
@@ -856,10 +942,10 @@ export default function MealPlanViewPage() {
       await fetchMealPlan(mealPlan.id)
       
       setWeekMenuOpen(null)
-      alert(`Week ${nextWeek} duplicated successfully!`)
+      toast.success(`Week ${nextWeek} duplicated successfully!`)
     } catch (error) {
       console.error('Error duplicating week:', error)
-      alert('Failed to duplicate week')
+      toast.error('Failed to duplicate week')
     } finally {
       setDuplicatingWeek(false)
     }
@@ -930,18 +1016,18 @@ export default function MealPlanViewPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Meal Plan Details</h1>
-        <div className="flex gap-4">
+      <div className="flex justify-between items-center mb-3 lg:mb-6">
+        <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Meal Plan Details</h1>
+        <div className="flex gap-2 lg:p-4">
           <Link
             href={`/meal-plans/${mealPlan.id}/edit`}
-            className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
+            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
           >
             Edit
           </Link>
           <button
             onClick={() => router.back()}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
           >
             Back
           </button>
@@ -949,68 +1035,68 @@ export default function MealPlanViewPage() {
       </div>
 
       {/* Customer Info */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-white shadow rounded-lg p-3 lg:p-5 mb-3 lg:mb-6">
+        <h2 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Customer Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:p-4">
           <div>
-            <label className="text-sm font-medium text-gray-500">Name</label>
+            <label className="text-xs font-medium text-gray-500">Name</label>
             <p className="text-sm text-gray-900">{mealPlan.customer.fullName}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Phone</label>
+            <label className="text-xs font-medium text-gray-500">Phone</label>
             <p className="text-sm text-gray-900">{mealPlan.customer.phone}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Email</label>
+            <label className="text-xs font-medium text-gray-500">Email</label>
             <p className="text-sm text-gray-900">{mealPlan.customer.email || '-'}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Delivery Area</label>
+            <label className="text-xs font-medium text-gray-500">Delivery Area</label>
             <p className="text-sm text-gray-900">{mealPlan.customer.deliveryArea}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Address</label>
+            <label className="text-xs font-medium text-gray-500">Address</label>
             <p className="text-sm text-gray-900">{mealPlan.customer.address || '-'}</p>
           </div>
         </div>
       </div>
 
       {/* Meal Plan Info */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Meal Plan Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-white shadow rounded-lg p-3 lg:p-5 mb-3 lg:mb-6">
+        <h2 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Meal Plan Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:p-4">
           <div>
-            <label className="text-sm font-medium text-gray-500">Plan Type</label>
+            <label className="text-xs font-medium text-gray-500">Plan Type</label>
             <p className="text-sm text-gray-900">{mealPlan.planType}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Days</label>
+            <label className="text-xs font-medium text-gray-500">Days</label>
             <p className="text-sm text-gray-900">{mealPlan.days || '-'}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Start Date</label>
+            <label className="text-xs font-medium text-gray-500">Start Date</label>
             <p className="text-sm text-gray-900">{mealPlan.startDate ? format(new Date(mealPlan.startDate), 'MMM dd, yyyy') : '-'}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">End Date</label>
+            <label className="text-xs font-medium text-gray-500">End Date</label>
             <p className="text-sm text-gray-900">{mealPlan.endDate ? format(new Date(mealPlan.endDate), 'MMM dd, yyyy') : '-'}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Meals Per Day</label>
+            <label className="text-xs font-medium text-gray-500">Meals Per Day</label>
             <p className="text-sm text-gray-900">{mealPlan.mealsPerDay}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Total Meals</label>
+            <label className="text-xs font-medium text-gray-500">Total Meals</label>
             <p className="text-sm text-gray-900 font-semibold">{mealPlan.totalMeals !== null ? mealPlan.totalMeals : (mealPlan.days && mealPlan.mealsPerDay ? mealPlan.days * mealPlan.mealsPerDay : '-')}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Remaining Meals</label>
+            <label className="text-xs font-medium text-gray-500">Remaining Meals</label>
             <p className={`text-sm font-semibold ${mealPlan.remainingMeals !== null && mealPlan.remainingMeals < 10 ? 'text-orange-600' : 'text-nutrafi-primary'}`}>
               {mealPlan.remainingMeals !== null ? mealPlan.remainingMeals : '-'}
             </p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Status</label>
+            <label className="text-xs font-medium text-gray-500">Status</label>
             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
               mealPlan.status === 'ACTIVE' ? 'bg-[#f0f4e8] text-nutrafi-dark' :
               mealPlan.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
@@ -1021,13 +1107,13 @@ export default function MealPlanViewPage() {
           </div>
           {mealPlan.plan && (
             <div>
-              <label className="text-sm font-medium text-gray-500">Predefined Plan</label>
+              <label className="text-xs font-medium text-gray-500">Predefined Plan</label>
               <p className="text-sm text-gray-900">{mealPlan.plan.name} - {mealPlan.plan.price} AED</p>
             </div>
           )}
           {mealPlan.notes && (
             <div className="md:col-span-3">
-              <label className="text-sm font-medium text-gray-500">Notes</label>
+              <label className="text-xs font-medium text-gray-500">Notes</label>
               <p className="text-sm text-gray-900">{mealPlan.notes}</p>
             </div>
           )}
@@ -1036,31 +1122,31 @@ export default function MealPlanViewPage() {
 
       {/* Pricing Information */}
       {(mealPlan.baseAmount !== null || mealPlan.totalAmount !== null) && (
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Pricing Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white shadow rounded-lg p-3 lg:p-5 mb-3 lg:mb-6">
+          <h2 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Pricing Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 lg:p-4">
             {mealPlan.baseAmount !== null && (
               <div>
-                <label className="text-sm font-medium text-gray-500">Base Amount</label>
-                <p className="text-lg font-semibold text-gray-900">{mealPlan.baseAmount.toFixed(2)} AED</p>
+                <label className="text-xs font-medium text-gray-500">Base Amount</label>
+                <p className="text-base lg:text-lg font-semibold text-gray-900">{mealPlan.baseAmount.toFixed(2)} AED</p>
               </div>
             )}
             {mealPlan.vatAmount !== null && (
               <div>
-                <label className="text-sm font-medium text-gray-500">VAT (5%)</label>
-                <p className="text-lg font-semibold text-gray-900">{mealPlan.vatAmount.toFixed(2)} AED</p>
+                <label className="text-xs font-medium text-gray-500">VAT (5%)</label>
+                <p className="text-base lg:text-lg font-semibold text-gray-900">{mealPlan.vatAmount.toFixed(2)} AED</p>
               </div>
             )}
             {mealPlan.totalAmount !== null && (
               <div>
-                <label className="text-sm font-medium text-gray-500">Total Amount</label>
-                <p className="text-lg font-semibold text-nutrafi-primary">{mealPlan.totalAmount.toFixed(2)} AED</p>
+                <label className="text-xs font-medium text-gray-500">Total Amount</label>
+                <p className="text-base lg:text-lg font-semibold text-nutrafi-primary">{mealPlan.totalAmount.toFixed(2)} AED</p>
               </div>
             )}
             {mealPlan.averageMealRate !== null && (
               <div>
-                <label className="text-sm font-medium text-gray-500">Average Meal Rate</label>
-                <p className="text-lg font-semibold text-gray-900">{mealPlan.averageMealRate.toFixed(2)} AED</p>
+                <label className="text-xs font-medium text-gray-500">Average Meal Rate</label>
+                <p className="text-base lg:text-lg font-semibold text-gray-900">{mealPlan.averageMealRate.toFixed(2)} AED</p>
               </div>
             )}
           </div>
@@ -1068,33 +1154,33 @@ export default function MealPlanViewPage() {
       )}
 
       {/* Payment History */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment History</h2>
+      <div className="bg-white shadow rounded-lg p-3 lg:p-5 mb-3 lg:mb-6">
+        <h2 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Payment History</h2>
         {mealPlan.payments && mealPlan.payments.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                  <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                  <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {mealPlan.payments.map((payment) => (
                   <tr key={payment.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-sm text-gray-900">
                       {format(new Date(payment.paymentDate), 'MMM dd, yyyy')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                    <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       {payment.amount.toFixed(2)} AED
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-sm text-gray-500">
                       {payment.paymentMethod || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         payment.status === 'COMPLETED' ? 'bg-[#f0f4e8] text-nutrafi-dark' :
                         payment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
@@ -1103,7 +1189,7 @@ export default function MealPlanViewPage() {
                         {payment.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-2 py-2 lg:px-6 lg:py-4 text-sm text-gray-500">
                       {payment.notes || '-'}
                     </td>
                   </tr>
@@ -1112,8 +1198,8 @@ export default function MealPlanViewPage() {
             </table>
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Total Paid:</span>
-                <span className="text-lg font-semibold text-nutrafi-primary">
+                <span className="text-xs font-medium text-gray-700">Total Paid:</span>
+                <span className="text-base lg:text-lg font-semibold text-nutrafi-primary">
                   {mealPlan.payments
                     .filter(p => p.status === 'COMPLETED')
                     .reduce((sum, p) => sum + p.amount, 0)
@@ -1122,8 +1208,8 @@ export default function MealPlanViewPage() {
               </div>
               {mealPlan.totalAmount !== null && (
                 <div className="flex justify-between items-center mt-2">
-                  <span className="text-sm font-medium text-gray-700">Remaining Balance:</span>
-                  <span className={`text-lg font-semibold ${
+                  <span className="text-xs font-medium text-gray-700">Remaining Balance:</span>
+                  <span className={`text-base lg:text-lg font-semibold ${
                     (mealPlan.totalAmount - mealPlan.payments.filter(p => p.status === 'COMPLETED').reduce((sum, p) => sum + p.amount, 0)) > 0
                       ? 'text-orange-600'
                       : 'text-nutrafi-primary'
@@ -1140,9 +1226,9 @@ export default function MealPlanViewPage() {
       </div>
 
       {/* Meal Plan Items */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white shadow rounded-lg p-3 lg:p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Meal Schedule</h2>
+          <h2 className="text-base lg:text-lg font-semibold text-gray-900">Meal Schedule</h2>
           {(() => {
             if (!mealPlan) return null
             const currentMealsCount = mealPlan.mealPlanItems.length
@@ -1165,7 +1251,7 @@ export default function MealPlanViewPage() {
               <button
                 onClick={addAnotherWeek}
                 disabled={addingWeek}
-                className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 disabled:opacity-50"
+                className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 lg:p-4 disabled:opacity-50"
               >
                 {addingWeek ? 'Adding...' : (
                   <>
@@ -1203,45 +1289,48 @@ export default function MealPlanViewPage() {
               <div key={week} className="border border-gray-200 rounded-lg overflow-hidden">
                 {/* Week Header */}
                 <div 
-                  className="px-6 py-3 border-b border-gray-200 hover:bg-opacity-20 transition-colors"
-                  style={{ backgroundColor: '#728d53' }}
+                  className="px-2 py-1.5 lg:px-4 lg:py-2 border-b border-nutrafi-primary/30 bg-nutrafi-primary hover:opacity-95 transition-opacity"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1" onClick={toggleWeek}>
+                    <div className="flex items-center gap-2 lg:gap-3 flex-1" onClick={toggleWeek}>
                       <svg 
-                        className={`w-5 h-5 text-white transition-transform cursor-pointer ${isExpanded ? 'transform rotate-90' : ''}`}
+                        className={`w-4 h-4 text-white transition-transform cursor-pointer ${isExpanded ? 'transform rotate-90' : ''}`}
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
-                      <h3 className="text-md font-semibold text-white cursor-pointer">Week {week}</h3>
+                      <h3 className="text-sm font-semibold text-white cursor-pointer">Week {week}</h3>
                     </div>
-                    <div className="text-sm text-white font-semibold">
+                    <div className="text-xs text-white font-semibold">
                       <span className="font-bold">{weekTotal.calories} kcal</span>
                       {' '}• P: {weekTotal.protein.toFixed(1)}g | C: {weekTotal.carbs.toFixed(1)}g | F: {weekTotal.fats.toFixed(1)}g
                     </div>
-                    {/* Week Dots Menu */}
-                    <div className="relative week-menu-container ml-4">
+                    {/* Week duplicate / actions */}
+                    <div className="relative week-menu-container ml-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           setWeekMenuOpen(weekMenuOpen === week ? null : week)
                         }}
-                        className="text-white hover:text-gray-200 text-xl font-bold px-2"
+                        className="p-1.5 rounded text-white hover:bg-white/20 transition-colors"
+                        title="Duplicate week"
+                        aria-label="Week actions"
                       >
-                        :
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
                       </button>
                       {weekMenuOpen === week && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border-2 border-gray-300">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               duplicateWeek(week)
                             }}
                             disabled={duplicatingWeek}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                            className="w-full text-left px-3 py-1.5 lg:px-4 lg:py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                           >
                             {duplicatingWeek ? 'Duplicating...' : 'Duplicate Week'}
                           </button>
@@ -1257,12 +1346,12 @@ export default function MealPlanViewPage() {
                     <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day / Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Slot</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dish</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calories</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                        <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day / Date</th>
+                        <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Slot</th>
+                        <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dish</th>
+                        <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calories</th>
+                        <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1289,9 +1378,9 @@ export default function MealPlanViewPage() {
                                     <>
                                       <td 
                                         rowSpan={items.length + 1}
-                                        className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top border-r border-gray-200"
+                                        className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-xs font-medium text-gray-900 align-top border-r border-gray-200"
                                       >
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 lg:p-4">
                                           <div>
                                             <div>{getDayName(item.date)}</div>
                                             <div className="text-xs text-gray-500 mt-1">{format(new Date(item.date), 'MMM dd, yyyy')}</div>
@@ -1312,16 +1401,16 @@ export default function MealPlanViewPage() {
                                       </td>
                                     </>
                                   )}
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-sm text-gray-500">
                                     {formatTime12Hour(item.timeSlot)}
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-sm text-gray-500">
                                     {item.dishName || '-'}
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-sm text-gray-500">
                                     {item.calories !== null ? `${item.calories} kcal` : '-'}
                                   </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-sm text-gray-500">
                                     {item.isSkipped ? (
                                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                         Skipped
@@ -1345,15 +1434,15 @@ export default function MealPlanViewPage() {
                               )) : (
                                 // Empty day row
                                 <tr>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top border-r border-gray-200">
-                                    <div className="flex items-center gap-2">
+                                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-xs font-medium text-gray-900 align-top border-r border-gray-200">
+                                    <div className="flex items-center gap-2 lg:p-4">
                                       <div>
                                         <div>{getDayName(date)}</div>
                                         <div className="text-xs text-gray-500 mt-1">{format(new Date(date), 'MMM dd, yyyy')}</div>
                                       </div>
                                     </div>
                                   </td>
-                                  <td colSpan={5} className="px-6 py-4 text-sm text-gray-500">
+                                  <td colSpan={5} className="px-2 py-2 lg:px-6 lg:py-4 text-sm text-gray-500">
                                     No meals for this day
                                   </td>
                                 </tr>
@@ -1362,15 +1451,15 @@ export default function MealPlanViewPage() {
                               {items.length > 0 && (
                                 <tr className="bg-gray-50 font-semibold border-t-2 border-gray-300">
                                   <td></td>
-                                  <td colSpan={2} className="px-6 py-3 text-sm text-gray-700 text-left">
+                                  <td colSpan={2} className="px-2 py-2 lg:px-6 lg:py-4 text-sm text-gray-700 text-left">
                                     Daily Total:
                                   </td>
-                                  <td className="px-6 py-3 text-left">
-                                    <span className="px-3 py-1.5 text-white font-bold rounded-md text-sm" style={{ backgroundColor: '#728d53' }}>
+                                  <td className="px-2 py-2 lg:px-6 lg:py-4 text-left">
+                                    <span className="px-3 py-1.5 lg:px-4 lg:py-2 text-white font-bold rounded-md text-sm" style={{ backgroundColor: '#728d53' }}>
                                       {dayTotal.calories} kcal
                                     </span>
                                   </td>
-                                  <td className="px-6 py-3 text-sm text-gray-600 text-left">
+                                  <td className="px-2 py-2 lg:px-6 lg:py-4 text-sm text-gray-600 text-left">
                                     P: {dayTotal.protein.toFixed(1)}g | C: {dayTotal.carbs.toFixed(1)}g | F: {dayTotal.fats.toFixed(1)}g
                                   </td>
                                   <td></td>
@@ -1416,11 +1505,11 @@ export default function MealPlanViewPage() {
                                 
                                 return canAddDay && canAddMoreMeals ? (
                                   <tr>
-                                    <td colSpan={6} className="px-6 py-4 text-center">
+                                    <td colSpan={6} className="px-2 py-2 lg:px-6 lg:py-4 text-center">
                                       <button
                                         onClick={() => addDayToWeek(week)}
                                         disabled={addingDay}
-                                        className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 disabled:opacity-50 text-sm mx-auto"
+                                        className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 lg:p-4 disabled:opacity-50 text-sm mx-auto"
                                       >
                                         {addingDay ? 'Adding...' : (
                                           <>
@@ -1438,7 +1527,7 @@ export default function MealPlanViewPage() {
                         }) : (
                           <tr>
                             <td colSpan={6} className="px-6 py-8 text-center">
-                              <div className="flex flex-col items-center gap-3">
+                              <div className="flex flex-col items-center gap-3 lg:p-5">
                                 <p className="text-sm text-gray-500 mb-2">
                                   No days added to this week yet.
                                 </p>
@@ -1462,7 +1551,7 @@ export default function MealPlanViewPage() {
                                     <button
                                       onClick={() => addDayToWeek(week)}
                                       disabled={addingDay}
-                                      className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 disabled:opacity-50 text-sm"
+                                      className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2 lg:p-4 disabled:opacity-50 text-sm"
                                     >
                                       {addingDay ? 'Adding...' : (
                                         <>
@@ -1479,14 +1568,14 @@ export default function MealPlanViewPage() {
                         )
                       })()}
                       {/* Week Total Row */}
-                      <tr className="bg-nutrafi-primary bg-opacity-20 font-bold border-t-2 border-nutrafi-primary">
-                        <td colSpan={6} className="px-6 py-4 text-left">
-                          <div className="flex items-center gap-4">
-                            <span className="text-sm text-gray-900">Week {week} Total:</span>
-                            <span className="text-sm text-nutrafi-primary font-bold">
+                      <tr className="bg-nutrafi-primary font-semibold border-t-2 border-nutrafi-primary/50">
+                        <td colSpan={6} className="px-2 py-2 lg:px-4 lg:py-3 text-left">
+                          <div className="flex items-center gap-2 text-white">
+                            <span className="text-sm">Week {week} Total:</span>
+                            <span className="text-sm font-bold">
                               {weekTotal.calories} kcal
                             </span>
-                            <span className="text-sm text-gray-700">
+                            <span className="text-sm text-white/90">
                               P: {weekTotal.protein.toFixed(1)}g | C: {weekTotal.carbs.toFixed(1)}g | F: {weekTotal.fats.toFixed(1)}g
                             </span>
                           </div>
@@ -1507,13 +1596,13 @@ export default function MealPlanViewPage() {
           
           {/* Grand Total Row */}
           {visibleWeeks.length > 0 && (
-            <div className="bg-nutrafi-primary bg-opacity-10 rounded-lg p-4 border-2 border-nutrafi-primary">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-semibold text-gray-900">Grand Total:</span>
-                <span className="text-sm text-nutrafi-primary font-bold">
+            <div className="bg-nutrafi-primary rounded-lg px-2 py-2 lg:px-4 lg:py-3 border border-nutrafi-primary/50">
+              <div className="flex items-center gap-2 text-white">
+                <span className="text-sm font-semibold">Grand Total:</span>
+                <span className="text-sm font-bold">
                   {grandTotals.calories} kcal
                 </span>
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-white/90">
                   P: {grandTotals.protein.toFixed(1)}g | C: {grandTotals.carbs.toFixed(1)}g | F: {grandTotals.fats.toFixed(1)}g
                 </span>
               </div>
@@ -1525,7 +1614,7 @@ export default function MealPlanViewPage() {
       {/* Meal Item Detail Modal */}
       {showModal && selectedItem && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 lg:p-4"
           onClick={() => setShowModal(false)}
         >
           {/* Blurred Background */}
@@ -1536,75 +1625,85 @@ export default function MealPlanViewPage() {
             className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-2 py-2 lg:px-6 lg:py-4 flex justify-between items-center">
+              <h3 className="text-base lg:text-lg font-semibold text-gray-900">
                 Meal Details - {selectedItem.dishName || 'No Dish Assigned'}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                className="text-gray-400 hover:text-gray-600 text-lg lg:text-2xl font-bold"
               >
                 ×
               </button>
             </div>
             
-            <div className="p-6 space-y-6">
+            <div className="p-3 lg:p-5 space-y-6">
               {/* Basic Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 lg:p-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Day</label>
+                  <label className="text-xs font-medium text-gray-500">Day</label>
                   <p className="text-sm text-gray-900 font-semibold">{getDayName(selectedItem.date)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Date</label>
+                  <label className="text-xs font-medium text-gray-500">Date</label>
                   <p className="text-sm text-gray-900">{format(new Date(selectedItem.date), 'MMM dd, yyyy')}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Time Slot</label>
+                  <label className="text-xs font-medium text-gray-500">Time Slot</label>
                   <p className="text-sm text-gray-900 font-semibold">{formatTime12Hour(selectedItem.timeSlot)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <p className="text-sm">
-                    {selectedItem.isSkipped ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        Skipped
-                      </span>
-                    ) : selectedItem.isDelivered ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        Delivered
-                      </span>
-                    ) : (!selectedItem.dishId && !selectedItem.dishName) ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">
-                        Inactive
-                      </span>
-                    ) : (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
-                        Active
-                      </span>
-                    )}
-                  </p>
+                  <label className="text-xs font-medium text-gray-500">Status</label>
+                  <select
+                    value={
+                      selectedItem.isSkipped
+                        ? 'SKIPPED'
+                        : selectedItem.isDelivered
+                          ? 'DELIVERED'
+                          : (!selectedItem.dishId && !selectedItem.dishName)
+                            ? 'INACTIVE'
+                            : 'ACTIVE'
+                    }
+                    onChange={(e) => {
+                      const v = e.target.value as 'ACTIVE' | 'INACTIVE' | 'SKIPPED' | 'DELIVERED'
+                      if (v === 'SKIPPED') {
+                        handleSkipMeal(selectedItem.id, true)
+                      } else if (v === 'DELIVERED') {
+                        handleMarkAsDelivered(selectedItem.id, true)
+                      } else {
+                        if (selectedItem.isSkipped) handleSkipMeal(selectedItem.id, false)
+                        if (selectedItem.isDelivered) handleMarkAsDelivered(selectedItem.id, false)
+                      }
+                    }}
+                    disabled={skippingMeal}
+                    className="mt-0.5 block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm font-medium text-gray-900 focus:border-nutrafi-primary focus:ring-nutrafi-primary disabled:opacity-50"
+                  >
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="SKIPPED">Skipped</option>
+                    <option value="DELIVERED">Delivered</option>
+                  </select>
                 </div>
               </div>
 
               {/* Dish Information */}
               {selectedItem.dishName && (
                 <div className="border-t border-gray-200 pt-4">
-                  <h4 className="text-md font-semibold text-gray-900 mb-3">Dish Information</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <h4 className="text-md font-semibold text-gray-900 mb-3 lg:mb-6">Dish Information</h4>
+                  <div className="grid grid-cols-2 gap-2 lg:p-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Dish Name</label>
+                      <label className="text-xs font-medium text-gray-500">Dish Name</label>
                       <p className="text-sm text-gray-900">{selectedItem.dishName}</p>
                     </div>
                     {selectedItem.dishCategory && (
                       <div>
-                        <label className="text-sm font-medium text-gray-500">Category</label>
+                        <label className="text-xs font-medium text-gray-500">Category</label>
                         <p className="text-sm text-gray-900">{formatCategory(selectedItem.dishCategory)}</p>
                       </div>
                     )}
                     {selectedItem.dishDescription && (
                       <div className="col-span-2">
-                        <label className="text-sm font-medium text-gray-500">Description</label>
+                        <label className="text-xs font-medium text-gray-500">Description</label>
                         <p className="text-sm text-gray-900">{selectedItem.dishDescription}</p>
                       </div>
                     )}
@@ -1615,7 +1714,7 @@ export default function MealPlanViewPage() {
               {/* Ingredients */}
               {selectedItem.ingredients && (
                 <div className="border-t border-gray-200 pt-4">
-                  <label className="text-sm font-medium text-gray-500">Ingredients</label>
+                  <label className="text-xs font-medium text-gray-500">Ingredients</label>
                   <p className="text-sm text-gray-900 mt-1">{selectedItem.ingredients}</p>
                 </div>
               )}
@@ -1623,7 +1722,7 @@ export default function MealPlanViewPage() {
               {/* Allergens */}
               {selectedItem.allergens && (
                 <div className="border-t border-gray-200 pt-4">
-                  <label className="text-sm font-medium text-gray-500">Allergens</label>
+                  <label className="text-xs font-medium text-gray-500">Allergens</label>
                   <p className="text-sm text-gray-900 mt-1">{selectedItem.allergens || 'None'}</p>
                 </div>
               )}
@@ -1637,7 +1736,7 @@ export default function MealPlanViewPage() {
                 if (instructions) {
                   return (
                     <div className="border-t border-gray-200 pt-4">
-                      <label className="text-sm font-medium text-gray-500">Instructions</label>
+                      <label className="text-xs font-medium text-gray-500">Instructions</label>
                       <p className="text-sm text-gray-900 mt-1">{instructions}</p>
                     </div>
                   )
@@ -1654,17 +1753,17 @@ export default function MealPlanViewPage() {
                 if (deliveryLocation || deliveryType) {
                   return (
                     <div className="border-t border-gray-200 pt-4">
-                      <h4 className="text-md font-semibold text-gray-900 mb-3">Delivery Information</h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <h4 className="text-md font-semibold text-gray-900 mb-3 lg:mb-6">Delivery Information</h4>
+                      <div className="grid grid-cols-2 gap-2 lg:p-4">
                         {deliveryType && (
                           <div>
-                            <label className="text-sm font-medium text-gray-500">Delivery Type</label>
+                            <label className="text-xs font-medium text-gray-500">Delivery Type</label>
                             <p className="text-sm text-gray-900 capitalize">{deliveryType}</p>
                           </div>
                         )}
                         {deliveryLocation && (
                           <div>
-                            <label className="text-sm font-medium text-gray-500">Location</label>
+                            <label className="text-xs font-medium text-gray-500">Location</label>
                             <p className="text-sm text-gray-900">{deliveryLocation}</p>
                           </div>
                         )}
@@ -1679,12 +1778,12 @@ export default function MealPlanViewPage() {
             {/* Add/Edit Dish Form */}
             {editingDish && (
               <div className="border-t border-gray-200 pt-4 px-6 pb-4 space-y-4 bg-gray-50">
-                <h4 className="text-md font-semibold text-gray-900 mb-3">Add Dish to This Meal</h4>
+                <h4 className="text-md font-semibold text-gray-900 mb-3 lg:mb-6">Add Dish to This Meal</h4>
                 
                 <div className="space-y-4">
                   {/* Searchable Dish Dropdown */}
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Dish</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Select Dish</label>
                     <div className="relative dish-dropdown-container">
                       <button
                         type="button"
@@ -1700,8 +1799,8 @@ export default function MealPlanViewPage() {
                       </button>
                       
                       {dishDropdownOpen && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                          <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-[320px] overflow-auto">
+                          <div className="p-2 lg:p-4 border-b border-gray-200 sticky top-0 bg-white">
                             <input
                               type="text"
                               placeholder="Search dishes..."
@@ -1712,14 +1811,14 @@ export default function MealPlanViewPage() {
                               autoFocus
                             />
                           </div>
-                          <div className="max-h-48 overflow-auto">
+                          <div className="max-h-[280px] overflow-auto">
                             {(() => {
                               const filteredDishes = Array.isArray(dishes) ? dishes.filter(dish => 
                                 dish.name.toLowerCase().includes(dishSearchQuery.toLowerCase()) ||
                                 dish.category.toLowerCase().includes(dishSearchQuery.toLowerCase())
                               ) : []
                               return filteredDishes.length > 0 ? (
-                                filteredDishes.map((dish) => (
+                                filteredDishes.slice(0, 6).map((dish) => (
                                   <button
                                     key={dish.id}
                                     type="button"
@@ -1737,34 +1836,17 @@ export default function MealPlanViewPage() {
                                 <div className="px-3 py-2 text-sm text-gray-500">No dishes found</div>
                               )
                             })()}
-                            <div className="border-t border-gray-200">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDishFormData({
-                                    ...dishFormData,
-                                    dishId: '',
-                                    dishName: '',
-                                    dishDescription: '',
-                                    dishCategory: 'BREAKFAST',
-                                    ingredients: '',
-                                    allergens: '',
-                                    calories: '',
-                                    protein: '',
-                                    carbs: '',
-                                    fats: '',
-                                    price: '',
-                                  })
-                                  setShowDishDetails(true)
-                                  setDishDropdownOpen(false)
-                                  setDishSearchQuery('')
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm text-nutrafi-primary hover:bg-nutrafi-primary/10 font-medium flex items-center gap-2"
-                              >
-                                <span>+</span>
-                                <span>Add Custom Dish</span>
-                              </button>
-                            </div>
+                            {(() => {
+                              const filteredDishes = Array.isArray(dishes) ? dishes.filter(dish => 
+                                dish.name.toLowerCase().includes(dishSearchQuery.toLowerCase()) ||
+                                dish.category.toLowerCase().includes(dishSearchQuery.toLowerCase())
+                              ) : []
+                              return filteredDishes.length > 6 ? (
+                                <div className="px-3 py-1.5 text-xs text-gray-400 border-t border-gray-100">
+                                  Showing 6 of {filteredDishes.length} — type to search
+                                </div>
+                              ) : null
+                            })()}
                           </div>
                         </div>
                       )}
@@ -1772,9 +1854,9 @@ export default function MealPlanViewPage() {
                   </div>
 
                   {/* Delivery Type, Time, Location */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:p-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Type</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Delivery Type</label>
                       <select
                         value={dishFormData.deliveryType}
                         onChange={(e) => setDishFormData({ ...dishFormData, deliveryType: e.target.value as 'delivery' | 'pickup' })}
@@ -1786,7 +1868,7 @@ export default function MealPlanViewPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Time</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Delivery Time</label>
                       <input
                         type="time"
                         value={dishFormData.deliveryTime}
@@ -1797,7 +1879,7 @@ export default function MealPlanViewPage() {
                     
                     {dishFormData.deliveryType === 'delivery' && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Delivery Address</label>
                         <input
                           type="text"
                           value={dishFormData.location}
@@ -1811,7 +1893,7 @@ export default function MealPlanViewPage() {
 
                   {/* Notes Field - Always Visible */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
                     <textarea
                       value={dishFormData.customNote}
                       onChange={(e) => setDishFormData({ ...dishFormData, customNote: e.target.value })}
@@ -1822,11 +1904,11 @@ export default function MealPlanViewPage() {
                   </div>
 
                   {/* Show/Hide Details Button */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 lg:p-4">
                     <button
                       type="button"
                       onClick={() => setShowDishDetails(!showDishDetails)}
-                      className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                      className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
                       title={showDishDetails ? "Hide Dish Details" : "Show Dish Details"}
                     >
                       {showDishDetails ? 'Hide Details' : 'Show Details'}
@@ -1836,9 +1918,9 @@ export default function MealPlanViewPage() {
                   {/* Dish Details Fields - Collapsible */}
                   {showDishDetails && (
                     <div className="border-t border-gray-200 pt-4 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:p-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Dish Name *</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Dish Name *</label>
                           <input
                             type="text"
                             value={dishFormData.dishName}
@@ -1849,7 +1931,7 @@ export default function MealPlanViewPage() {
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
                           <select
                             value={dishFormData.dishCategory}
                             onChange={(e) => setDishFormData({ ...dishFormData, dishCategory: e.target.value })}
@@ -1866,7 +1948,7 @@ export default function MealPlanViewPage() {
                         </div>
                         
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                           <textarea
                             value={dishFormData.dishDescription}
                             onChange={(e) => setDishFormData({ ...dishFormData, dishDescription: e.target.value })}
@@ -1876,7 +1958,7 @@ export default function MealPlanViewPage() {
                         </div>
                         
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Ingredients</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Ingredients</label>
                           <textarea
                             value={dishFormData.ingredients}
                             onChange={(e) => setDishFormData({ ...dishFormData, ingredients: e.target.value })}
@@ -1886,7 +1968,7 @@ export default function MealPlanViewPage() {
                         </div>
                         
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Allergens</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Allergens</label>
                           <input
                             type="text"
                             value={dishFormData.allergens}
@@ -1897,7 +1979,7 @@ export default function MealPlanViewPage() {
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Calories (kcal) *</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Calories (kcal) *</label>
                           <input
                             type="number"
                             value={dishFormData.calories}
@@ -1908,7 +1990,7 @@ export default function MealPlanViewPage() {
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Protein (g) *</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Protein (g) *</label>
                           <input
                             type="number"
                             step="0.1"
@@ -1920,7 +2002,7 @@ export default function MealPlanViewPage() {
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Carbs (g) *</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Carbs (g) *</label>
                           <input
                             type="number"
                             step="0.1"
@@ -1932,7 +2014,7 @@ export default function MealPlanViewPage() {
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Fats (g) *</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Fats (g) *</label>
                           <input
                             type="number"
                             step="0.1"
@@ -1949,12 +2031,12 @@ export default function MealPlanViewPage() {
               </div>
             )}
 
-            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between items-center">
-              <div className="flex gap-2">
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-2 py-2 lg:px-6 lg:py-4 flex justify-between items-center">
+              <div className="flex gap-2 lg:p-4">
                 {((!selectedItem.dishName || selectedItem.dishName?.trim() === '') && (!selectedItem.dishId || selectedItem.dishId === '')) && !editingDish && (
                   <button
                     onClick={() => setEditingDish(true)}
-                    className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium"
+                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium"
                   >
                     Add Dish
                   </button>
@@ -1964,7 +2046,7 @@ export default function MealPlanViewPage() {
                     <button
                       onClick={handleSaveDish}
                       disabled={savingDish}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50"
+                      className="px-3 py-1.5 lg:px-4 lg:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50"
                     >
                       {savingDish ? 'Saving...' : 'Save Dish'}
                     </button>
@@ -1974,7 +2056,7 @@ export default function MealPlanViewPage() {
                         handleItemClick(selectedItem) // Reset form data
                       }}
                       disabled={savingDish}
-                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 font-medium disabled:opacity-50"
+                      className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 font-medium disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -1984,7 +2066,7 @@ export default function MealPlanViewPage() {
                 {((selectedItem.dishName && selectedItem.dishName.trim() !== '') || (selectedItem.dishId && selectedItem.dishId !== '')) && !editingDish && (
                   <button
                     onClick={() => setEditingDish(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
                   >
                     Edit Dish
                   </button>
@@ -1995,7 +2077,7 @@ export default function MealPlanViewPage() {
                     <button
                       onClick={handleSaveDish}
                       disabled={savingDish}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50"
+                      className="px-3 py-1.5 lg:px-4 lg:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50"
                     >
                       {savingDish ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -2005,28 +2087,54 @@ export default function MealPlanViewPage() {
                         handleItemClick(selectedItem) // Reset form data
                       }}
                       disabled={savingDish}
-                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 font-medium disabled:opacity-50"
+                      className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 font-medium disabled:opacity-50"
                     >
                       Cancel
                     </button>
                   </>
                 )}
-                {!selectedItem.isSkipped && (
+                <div className="relative actions-menu-container">
                   <button
-                    onClick={() => handleMarkAsDelivered(selectedItem.id, !selectedItem.isDelivered)}
-                    className={`px-4 py-2 rounded-md font-medium ${
-                      selectedItem.isDelivered
-                        ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        : 'bg-nutrafi-primary text-white hover:bg-nutrafi-dark'
-                    }`}
+                    type="button"
+                    onClick={() => setActionsMenuOpen(!actionsMenuOpen)}
+                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium flex items-center gap-1"
                   >
-                    {selectedItem.isDelivered ? 'Mark as Not Delivered' : 'Mark as Delivered'}
+                    Actions
+                    <svg className={`w-4 h-4 transition-transform ${actionsMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
-                )}
+                  {actionsMenuOpen && (
+                    <div className="absolute left-0 top-full mt-1 z-50 min-w-[180px] rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false)
+                          handleMarkAsDelivered(selectedItem.id, !selectedItem.isDelivered)
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm ${
+                          selectedItem.isDelivered ? 'text-gray-600 hover:bg-gray-100' : 'text-nutrafi-dark hover:bg-nutrafi-primary/10'
+                        }`}
+                      >
+                        {selectedItem.isDelivered ? 'Mark as Not Delivered' : 'Mark as Delivered'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false)
+                          handleDeleteMeal(selectedItem.id)
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        Delete meal
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
+                className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
               >
                 Close
               </button>

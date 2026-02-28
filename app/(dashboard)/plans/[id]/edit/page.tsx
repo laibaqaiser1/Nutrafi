@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 export default function EditPlanPage() {
   const router = useRouter()
   const params = useParams()
+  const toast = useNotification()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
@@ -64,11 +66,11 @@ export default function EditPlanPage() {
         router.push('/plans')
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error updating plan:', error)
-      alert('Failed to update plan')
+      toast.error('Failed to update plan')
     } finally {
       setSaving(false)
     }
@@ -183,6 +185,7 @@ export default function EditPlanPage() {
     </div>
   )
 }
+
 
 
 

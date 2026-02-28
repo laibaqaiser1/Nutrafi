@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { format, addDays, eachDayOfInterval } from 'date-fns'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface Customer {
   id: string
@@ -37,8 +39,21 @@ interface Dish {
 
 type PlanMode = 'predefined' | 'custom'
 
+// Day colors: different colour per day – pink, blue, green, red, teal, orange, violet (solid header + gradient day background)
+const getDayOfWeekIndex = (date: string) => new Date(date).getDay()
+const DAY_COLORS = [
+  { border: '#be185d', top: '#be185d', bg: '#ffffff', header: '#be185d', dayGradient: 'linear-gradient(180deg, #fce7f3 0%, #ffffff 100%)' },   // Sunday - pink
+  { border: '#1d4ed8', top: '#1d4ed8', bg: '#ffffff', header: '#1d4ed8', dayGradient: 'linear-gradient(180deg, #dbeafe 0%, #ffffff 100%)' },   // Monday - blue
+  { border: '#15803d', top: '#15803d', bg: '#ffffff', header: '#15803d', dayGradient: 'linear-gradient(180deg, #dcfce7 0%, #ffffff 100%)' },   // Tuesday - green
+  { border: '#b91c1c', top: '#b91c1c', bg: '#ffffff', header: '#b91c1c', dayGradient: 'linear-gradient(180deg, #fee2e2 0%, #ffffff 100%)' },   // Wednesday - red
+  { border: '#0d9488', top: '#0d9488', bg: '#ffffff', header: '#0d9488', dayGradient: 'linear-gradient(180deg, #ccfbf1 0%, #ffffff 100%)' },   // Thursday - teal
+  { border: '#c2410c', top: '#c2410c', bg: '#ffffff', header: '#c2410c', dayGradient: 'linear-gradient(180deg, #ffedd5 0%, #ffffff 100%)' },   // Friday - orange
+  { border: '#6d28d9', top: '#6d28d9', bg: '#ffffff', header: '#6d28d9', dayGradient: 'linear-gradient(180deg, #ede9fe 0%, #ffffff 100%)' },   // Saturday - violet
+]
+
 export default function NewMealPlanPage() {
   const router = useRouter()
+  const toast = useNotification()
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -46,26 +61,12 @@ export default function NewMealPlanPage() {
   const [dishes, setDishes] = useState<Dish[]>([])
   const [planMode, setPlanMode] = useState<PlanMode>('predefined')
   const [selectedWeek, setSelectedWeek] = useState(1)
-  const [showAddDishModal, setShowAddDishModal] = useState(false)
-  const [newDishForm, setNewDishForm] = useState({
-    name: '',
-    description: '',
-    category: 'BREAKFAST',
-    ingredients: '',
-    allergens: '',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fats: '',
-    price: '',
-    status: 'ACTIVE',
-  })
-  const [creatingDish, setCreatingDish] = useState(false)
-  const [selectedMealForDish, setSelectedMealForDish] = useState<{ date: string; timeSlot: string } | null>(null)
   const [expandedMealFields, setExpandedMealFields] = useState<Set<string>>(new Set())
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set())
   const [dishSearchQueries, setDishSearchQueries] = useState<Record<string, string>>({})
   const [openDishDropdowns, setOpenDishDropdowns] = useState<Set<string>>(new Set())
+  const [dropdownAnchor, setDropdownAnchor] = useState<{ mealKey: string; top: number; left: number; width: number } | null>(null)
+  const [hoveredDishIdInDropdown, setHoveredDishIdInDropdown] = useState<string | null>(null)
   const [visibleWeeks, setVisibleWeeks] = useState<number[]>([1]) // Start with only week 1 visible
   const [totalMealsAllowed, setTotalMealsAllowed] = useState<number>(0) // Total meals allowed by plan
   const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set()) // Track collapsed weeks
@@ -78,7 +79,7 @@ export default function NewMealPlanPage() {
     planType: 'WEEKLY',
     days: '',
     mealsPerDay: '2',
-    timeSlots: ['08:00', '13:00'] as string[], // Array of time slots instead of JSON string
+    timeSlots: ['08:00'] as string[], // One default time slot; user can add more for special cases
     startDate: '',
     endDate: '',
     status: 'ACTIVE',
@@ -138,6 +139,7 @@ export default function NewMealPlanPage() {
       const target = event.target as HTMLElement
       if (!target.closest('.dish-dropdown-container')) {
         setOpenDishDropdowns(new Set())
+        setDropdownAnchor(null)
       }
     }
     
@@ -146,7 +148,22 @@ export default function NewMealPlanPage() {
       return () => {
         document.removeEventListener('mousedown', handleClickOutside)
       }
+    } else {
+      setDropdownAnchor(null)
+      setHoveredDishIdInDropdown(null)
     }
+  }, [openDishDropdowns])
+
+  // Close dropdown when user scrolls (dropdown is fixed so it would stay in wrong place)
+  useEffect(() => {
+    const handleScroll = () => {
+      if (openDishDropdowns.size > 0) {
+        setOpenDishDropdowns(new Set())
+        setDropdownAnchor(null)
+      }
+    }
+    window.addEventListener('scroll', handleScroll, true) // capture phase to catch scroll inside scrollable divs
+    return () => window.removeEventListener('scroll', handleScroll, true)
   }, [openDishDropdowns])
 
   // Generate time options for dropdowns (every 30 minutes from 00:00 to 23:30)
@@ -170,49 +187,25 @@ export default function NewMealPlanPage() {
         const totalMeals = selectedPlan.days * selectedPlan.mealsPerDay
         setTotalMealsAllowed(totalMeals)
         setVisibleWeeks([1]) // Reset to show only week 1
-        
-        // Initialize time slots array based on mealsPerDay
-        const mealsPerDay = selectedPlan.mealsPerDay
-        const defaultTimes = ['08:00', '13:00', '18:00']
-        const currentTimeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
-        const newTimeSlots = Array.from({ length: mealsPerDay }, (_, i) => 
-          currentTimeSlots[i] || defaultTimes[i] || '08:00'
-        )
-        
+        // Keep existing time slots (one default or user-added); do not resize by mealsPerDay
         setFormData(prev => ({
           ...prev,
           planType: selectedPlan.planType,
           mealsPerDay: selectedPlan.mealsPerDay.toString(),
           paymentAmount: selectedPlan.price.toString(),
-          days: selectedPlan.days.toString(), // Set days from plan
-          timeSlots: newTimeSlots,
+          days: selectedPlan.days.toString(),
+          timeSlots: Array.isArray(prev.timeSlots) && prev.timeSlots.length > 0 ? prev.timeSlots : ['08:00'],
         }))
       }
     }
   }, [formData.planId, plans])
   
-  // Also handle custom plans - adjust time slots when mealsPerDay changes
+  // Also handle custom plans - total meals only; time slots stay as one (or user-added)
   useEffect(() => {
     if (planMode === 'custom' && formData.days && formData.mealsPerDay) {
       const totalMeals = parseInt(formData.days) * parseInt(formData.mealsPerDay)
       setTotalMealsAllowed(totalMeals)
       setVisibleWeeks([1]) // Reset to show only week 1
-      
-      // Adjust time slots array when mealsPerDay changes
-      const mealsPerDay = parseInt(formData.mealsPerDay)
-      const defaultTimes = ['08:00', '13:00', '18:00']
-      const currentTimeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
-      const newTimeSlots = Array.from({ length: mealsPerDay }, (_, i) => 
-        currentTimeSlots[i] || defaultTimes[i] || '08:00'
-      )
-      
-      if (newTimeSlots.length !== currentTimeSlots.length || 
-          newTimeSlots.some((time, i) => time !== currentTimeSlots[i])) {
-        setFormData(prev => ({
-          ...prev,
-          timeSlots: newTimeSlots,
-        }))
-      }
     }
   }, [planMode, formData.days, formData.mealsPerDay])
 
@@ -306,11 +299,14 @@ export default function NewMealPlanPage() {
     }
   }
 
-  const updateMeal = (date: string, timeSlot: string, field: string, value: any) => {
-    const mealKey = `${date}-${timeSlot}`
+  const updateMeal = (date: string, timeSlot: string, field: string, value: any, mealIndex?: number) => {
     const selectedCustomer = customers.find(c => c.id === formData.customerId)
+    let occurrenceIndex = 0
     const newMeals = formData.meals.map(meal => {
       if (meal.date === date && meal.timeSlot === timeSlot) {
+        const isTargetMeal = mealIndex === undefined || occurrenceIndex === mealIndex
+        occurrenceIndex++
+        if (!isTargetMeal) return meal
         const updated = { ...meal, [field]: value }
         
         // If dishId is being set, auto-populate dish fields
@@ -357,65 +353,6 @@ export default function NewMealPlanPage() {
     setFormData({ ...formData, meals: newMeals })
   }
 
-  const handleCreateDish = async () => {
-    if (!newDishForm.name || !newDishForm.calories || !newDishForm.protein || !newDishForm.carbs || !newDishForm.fats) {
-      alert('Please fill in all required fields (Name, Calories, Protein, Carbs, Fats)')
-      return
-    }
-
-    setCreatingDish(true)
-    try {
-      const response = await fetch('/api/menu', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newDishForm,
-          calories: parseInt(newDishForm.calories),
-          protein: parseFloat(newDishForm.protein),
-          carbs: parseFloat(newDishForm.carbs),
-          fats: parseFloat(newDishForm.fats),
-          price: newDishForm.price ? parseFloat(newDishForm.price) : undefined,
-        }),
-      })
-
-      if (response.ok) {
-        const newDish = await response.json()
-        // Add new dish to the dishes list
-        setDishes([...dishes, newDish])
-        
-        // If a meal was selected, assign the new dish to it
-        if (selectedMealForDish) {
-          updateMeal(selectedMealForDish.date, selectedMealForDish.timeSlot, 'dishId', newDish.id)
-        }
-        
-        // Reset form and close modal
-        setNewDishForm({
-          name: '',
-          description: '',
-          category: 'BREAKFAST',
-          ingredients: '',
-          allergens: '',
-          calories: '',
-          protein: '',
-          carbs: '',
-          fats: '',
-          price: '',
-          status: 'ACTIVE',
-        })
-        setSelectedMealForDish(null)
-        setShowAddDishModal(false)
-      } else {
-        const error = await response.json()
-        alert('Error creating dish: ' + (error.error || 'Unknown error'))
-      }
-    } catch (error) {
-      console.error('Error creating dish:', error)
-      alert('Failed to create dish')
-    } finally {
-      setCreatingDish(false)
-    }
-  }
-
   const formatTime12Hour = (timeSlot: string): string => {
     try {
       const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
@@ -458,23 +395,15 @@ export default function NewMealPlanPage() {
       const selectedCustomer = customers.find(c => c.id === formData.customerId)
       const mealsPerDay = parseInt(formData.mealsPerDay)
 
-      // Use a Set to track unique meal keys (date + timeSlot) to prevent duplicates
+      // Meal keys: date + meal index (multiple meals per day can share same time slot)
       const mealKeys = new Set<string>()
-      // Keep existing meals that are not in visible weeks OR that already have dishes assigned
       const existingMeals = formData.meals.filter(meal => {
         const mealDate = new Date(meal.date)
         const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
         const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
-        // Keep meals from non-visible weeks OR meals that already have dishes assigned
         if (!visibleWeeks.includes(week)) return true
-        // Keep meals that have dishes assigned (don't regenerate them)
         if (meal.dishId || meal.dishName) return true
         return false
-      })
-      
-      // Track existing meal keys to avoid duplicates
-      existingMeals.forEach(meal => {
-        mealKeys.add(`${meal.date}-${meal.timeSlot}`)
       })
       
       const newMeals: typeof formData.meals = []
@@ -485,45 +414,26 @@ export default function NewMealPlanPage() {
         const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
         const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
         
-        // Only generate meals for visible weeks
-        if (!visibleWeeks.includes(week)) {
-          return
-        }
+        if (!visibleWeeks.includes(week)) return
+        if (!Array.isArray(timeSlots) || timeSlots.length === 0) return
         
-        // Only take the first N time slots based on mealsPerDay
-        if (!Array.isArray(timeSlots) || timeSlots.length === 0) {
-          return
-        }
-        const dayTimeSlots = timeSlots.slice(0, mealsPerDay)
-        
-        if (!Array.isArray(dayTimeSlots) || dayTimeSlots.length === 0) {
-          return
-        }
-        
-        dayTimeSlots.forEach((timeSlot: string) => {
-          const mealKey = `${dateStr}-${timeSlot}`
-          
-          // Skip if this meal already exists
-          if (mealKeys.has(mealKey)) {
-            return
-          }
+        // All meals use first time slot by default; optional extra slots assign in order (meal 0 -> slot 0, meal 1 -> slot 1, etc.)
+        for (let mealIndex = 0; mealIndex < mealsPerDay; mealIndex++) {
+          const mealKey = `${dateStr}-${mealIndex}`
+          if (mealKeys.has(mealKey)) continue
           mealKeys.add(mealKey)
           
-          // Convert timeSlot to 24-hour format for deliveryTime
+          const timeSlot = timeSlots[mealIndex % timeSlots.length]
           const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
           let deliveryTime = ''
           if (timeMatch) {
             let hours = parseInt(timeMatch[1])
             const minutes = timeMatch[2]
-            // If timeSlot already has AM/PM, parse it
-            if (timeSlot.toUpperCase().includes('PM') && hours !== 12) {
-              hours += 12
-            } else if (timeSlot.toUpperCase().includes('AM') && hours === 12) {
-              hours = 0
-            }
+            if (timeSlot.toUpperCase().includes('PM') && hours !== 12) hours += 12
+            else if (timeSlot.toUpperCase().includes('AM') && hours === 12) hours = 0
             deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
           } else {
-            deliveryTime = timeSlot // Use as-is if format is unexpected
+            deliveryTime = timeSlot
           }
           
           newMeals.push({
@@ -537,7 +447,7 @@ export default function NewMealPlanPage() {
             showDishFields: false,
             customNote: '',
           })
-        })
+        }
       })
 
       // Combine existing meals (from non-visible weeks) with new meals (from visible weeks)
@@ -582,7 +492,7 @@ export default function NewMealPlanPage() {
     const nextDay = allWeekDateStrs.find(dateStr => !currentVisibleDays.includes(dateStr))
     
     if (!nextDay) {
-      alert('All days for this week are already visible.')
+      toast.info('All days for this week are already visible.')
       return
     }
     
@@ -592,46 +502,28 @@ export default function NewMealPlanPage() {
       [week]: [...currentVisibleDays, nextDay].sort()
     }))
     
-    // Generate meals for this day if they don't exist
     const timeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
     if (timeSlots.length === 0) return
     
     const selectedCustomer = customers.find(c => c.id === formData.customerId)
     const mealsPerDay = parseInt(formData.mealsPerDay)
-    const dayTimeSlots = timeSlots.slice(0, mealsPerDay)
+    const existingForDay = formData.meals.filter(m => m.date === nextDay).length
+    if (existingForDay > 0) return // Day already has meals
     
-    // Check if meals already exist for this day
-    const existingMealKeys = new Set<string>()
-    formData.meals.forEach(meal => {
-      existingMealKeys.add(`${meal.date}-${meal.timeSlot}`)
-    })
-    
-    // Generate meals for the new day
     const newMeals: typeof formData.meals = []
-    dayTimeSlots.forEach((timeSlot: string) => {
-      const mealKey = `${nextDay}-${timeSlot}`
-      
-      if (existingMealKeys.has(mealKey)) {
-        return
-      }
-      existingMealKeys.add(mealKey)
-      
-      // Convert timeSlot to 24-hour format for deliveryTime
+    for (let mealIndex = 0; mealIndex < mealsPerDay; mealIndex++) {
+      const timeSlot = timeSlots[mealIndex % timeSlots.length]
       const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
       let deliveryTime = ''
       if (timeMatch) {
         let hours = parseInt(timeMatch[1])
         const minutes = timeMatch[2]
-        if (timeSlot.toUpperCase().includes('PM') && hours !== 12) {
-          hours += 12
-        } else if (timeSlot.toUpperCase().includes('AM') && hours === 12) {
-          hours = 0
-        }
+        if (timeSlot.toUpperCase().includes('PM') && hours !== 12) hours += 12
+        else if (timeSlot.toUpperCase().includes('AM') && hours === 12) hours = 0
         deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
       } else {
         deliveryTime = timeSlot
       }
-      
       newMeals.push({
         date: nextDay,
         timeSlot,
@@ -643,11 +535,9 @@ export default function NewMealPlanPage() {
         showDishFields: false,
         customNote: '',
       })
-    })
-    
-    if (newMeals.length > 0) {
-      setFormData(prev => ({ ...prev, meals: [...prev.meals, ...newMeals] }))
     }
+    
+    setFormData(prev => ({ ...prev, meals: [...prev.meals, ...newMeals] }))
   }
   
   // Function to add another week
@@ -667,12 +557,12 @@ export default function NewMealPlanPage() {
     const mealsInNewWeek = Math.min(mealsPerWeek, totalMealsAllowed - currentMealsCount)
     
     if (nextWeek > maxWeek) {
-      alert('Cannot add more weeks. Maximum weeks for this plan reached.')
+      toast.warning('Cannot add more weeks. Maximum weeks for this plan reached.')
       return
     }
     
     if (currentMealsCount + mealsInNewWeek > totalMealsAllowed) {
-      alert(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+      toast.warning(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
       return
     }
     
@@ -703,45 +593,23 @@ export default function NewMealPlanPage() {
     
     const selectedCustomer = customers.find(c => c.id === formData.customerId)
     const mealsPerDay = parseInt(formData.mealsPerDay)
-    const dayTimeSlots = timeSlots.slice(0, mealsPerDay)
-    
-    // Track existing meal keys to avoid duplicates
-    const mealKeys = new Set<string>()
-    formData.meals.forEach(meal => {
-      mealKeys.add(`${meal.date}-${meal.timeSlot}`)
-    })
-    
-    // Generate meals for the new week
     const newMeals: typeof formData.meals = []
     weekDates.forEach(date => {
       const dateStr = format(date, 'yyyy-MM-dd')
-      
-      dayTimeSlots.forEach((timeSlot: string) => {
-        const mealKey = `${dateStr}-${timeSlot}`
-        
-        // Skip if this meal already exists
-        if (mealKeys.has(mealKey)) {
-          return
-        }
-        mealKeys.add(mealKey)
-        
-        // Convert timeSlot to 24-hour format for deliveryTime
+      if (formData.meals.filter(m => m.date === dateStr).length > 0) return
+      for (let mealIndex = 0; mealIndex < mealsPerDay; mealIndex++) {
+        const timeSlot = timeSlots[mealIndex % timeSlots.length]
         const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
         let deliveryTime = ''
         if (timeMatch) {
           let hours = parseInt(timeMatch[1])
           const minutes = timeMatch[2]
-          // If timeSlot already has AM/PM, parse it
-          if (timeSlot.toUpperCase().includes('PM') && hours !== 12) {
-            hours += 12
-          } else if (timeSlot.toUpperCase().includes('AM') && hours === 12) {
-            hours = 0
-          }
-          deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}`
+          if (timeSlot.toUpperCase().includes('PM') && hours !== 12) hours += 12
+          else if (timeSlot.toUpperCase().includes('AM') && hours === 12) hours = 0
+          deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
         } else {
-          deliveryTime = timeSlot // Use as-is if format is unexpected
+          deliveryTime = timeSlot
         }
-        
         newMeals.push({
           date: dateStr,
           timeSlot,
@@ -753,7 +621,7 @@ export default function NewMealPlanPage() {
           showDishFields: false,
           customNote: '',
         })
-      })
+      }
     })
     
     // Add new meals to existing meals
@@ -917,7 +785,7 @@ export default function NewMealPlanPage() {
       router.push('/meal-plans')
     } catch (error) {
       console.error('Error creating meal plan:', error)
-      alert('Failed to create meal plan: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      toast.error('Failed to create meal plan: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -950,11 +818,11 @@ export default function NewMealPlanPage() {
     : parseFloat(formData.pricePerMeal || '0') * totalMeals
 
   return (
-    <div className="max-w-[95%] mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Create New Meal Plan</h1>
+    <div className="max-w-[95%] mx-auto min-h-screen">
+      <h1 className="text-lg font-bold text-gray-900 mb-3">Create New Meal Plan</h1>
 
       {/* Progress Steps */}
-      <div className="mb-6">
+      <div className="mb-3">
         <div className="flex items-center justify-between">
           {[1, 2, 3, 4].map((s) => (
             <div key={s} className="flex items-center flex-1">
@@ -1011,7 +879,7 @@ export default function NewMealPlanPage() {
                 type="button"
                 onClick={() => setStep(2)}
                 disabled={!formData.customerId}
-                className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next: Select Plan
               </button>
@@ -1078,20 +946,19 @@ export default function NewMealPlanPage() {
                 )}
                 {selectedPlan && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Time Slots *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Delivery time (all meals) *</label>
                     <div className="space-y-2">
-                      {Array.from({ length: selectedPlan.mealsPerDay }).map((_, index) => (
-                        <div key={index}>
-                          <label className="block text-xs text-gray-600 mb-1">Meal {index + 1} Time Slot</label>
+                      {(formData.timeSlots || ['08:00']).map((slot, index) => (
+                        <div key={index} className="flex gap-2 items-center">
                           <select
-                            required
-                            value={formData.timeSlots[index] || ''}
+                            required={index === 0}
+                            value={slot}
                             onChange={(e) => {
-                              const newTimeSlots = [...formData.timeSlots]
+                              const newTimeSlots = [...(formData.timeSlots || ['08:00'])]
                               newTimeSlots[index] = e.target.value
                               setFormData({ ...formData, timeSlots: newTimeSlots })
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                           >
                             <option value="">Select time</option>
                             {timeOptions.map((time) => (
@@ -1100,10 +967,29 @@ export default function NewMealPlanPage() {
                               </option>
                             ))}
                           </select>
+                          {index > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newTimeSlots = formData.timeSlots.filter((_, i) => i !== index)
+                                setFormData({ ...formData, timeSlots: newTimeSlots })
+                              }}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              Remove
+                            </button>
+                          )}
                         </div>
                       ))}
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, timeSlots: [...(formData.timeSlots || ['08:00']), '08:00'] })}
+                        className="text-sm text-nutrafi-dark hover:underline"
+                      >
+                        + Add time slot (for special cases)
+                      </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Select delivery time for each meal slot.</p>
+                    <p className="text-xs text-gray-500 mt-1">All meals use the first time slot. Add more only if some meals have a different delivery time.</p>
                   </div>
                 )}
                 <div>
@@ -1113,6 +999,8 @@ export default function NewMealPlanPage() {
                     required
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    onClick={(e) => e.currentTarget.showPicker?.()}
+                    onFocus={(e) => e.currentTarget.showPicker?.()}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   />
                   <p className="text-xs text-gray-500 mt-1">Select the start date for this meal plan</p>
@@ -1159,20 +1047,19 @@ export default function NewMealPlanPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Time Slots *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Delivery time (all meals) *</label>
                   <div className="space-y-2">
-                    {Array.from({ length: parseInt(formData.mealsPerDay) || 2 }).map((_, index) => (
-                      <div key={index}>
-                        <label className="block text-xs text-gray-600 mb-1">Meal {index + 1} Time Slot</label>
+                    {(formData.timeSlots || ['08:00']).map((slot, index) => (
+                      <div key={index} className="flex gap-2 items-center">
                         <select
-                          required
-                          value={formData.timeSlots[index] || ''}
+                          required={index === 0}
+                          value={slot}
                           onChange={(e) => {
-                            const newTimeSlots = [...formData.timeSlots]
+                            const newTimeSlots = [...(formData.timeSlots || ['08:00'])]
                             newTimeSlots[index] = e.target.value
                             setFormData({ ...formData, timeSlots: newTimeSlots })
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                         >
                           <option value="">Select time</option>
                           {timeOptions.map((time) => (
@@ -1181,10 +1068,29 @@ export default function NewMealPlanPage() {
                             </option>
                           ))}
                         </select>
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newTimeSlots = formData.timeSlots.filter((_, i) => i !== index)
+                              setFormData({ ...formData, timeSlots: newTimeSlots })
+                            }}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Remove
+                          </button>
+                        )}
                       </div>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, timeSlots: [...(formData.timeSlots || ['08:00']), '08:00'] })}
+                      className="text-sm text-nutrafi-dark hover:underline"
+                    >
+                      + Add time slot (for special cases)
+                    </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Select delivery time for each meal slot.</p>
+                  <p className="text-xs text-gray-500 mt-1">All meals use the first time slot. Add more only if some meals have a different delivery time.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Price Per Meal (AED) *</label>
@@ -1205,6 +1111,8 @@ export default function NewMealPlanPage() {
                       type="date"
                       value={formData.startDate}
                       onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      onClick={(e) => e.currentTarget.showPicker?.()}
+                      onFocus={(e) => e.currentTarget.showPicker?.()}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                     <p className="text-xs text-gray-500 mt-1">Optional - leave empty if not set</p>
@@ -1234,7 +1142,7 @@ export default function NewMealPlanPage() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                className="px-3 py-1.5 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
               >
                 Back
               </button>
@@ -1248,10 +1156,10 @@ export default function NewMealPlanPage() {
                   }
                 }}
                 disabled={
-                  (planMode === 'predefined' && (!formData.planId || !formData.startDate || !formData.timeSlots || formData.timeSlots.length === 0 || formData.timeSlots.some(t => !t))) ||
-                  (planMode === 'custom' && (!formData.days || !formData.startDate || !formData.pricePerMeal || !formData.timeSlots || formData.timeSlots.length === 0 || formData.timeSlots.some(t => !t)))
+                  (planMode === 'predefined' && (!formData.planId || !formData.startDate || !formData.timeSlots || formData.timeSlots.length === 0 || !formData.timeSlots[0])) ||
+                  (planMode === 'custom' && (!formData.days || !formData.startDate || !formData.pricePerMeal || !formData.timeSlots || formData.timeSlots.length === 0 || !formData.timeSlots[0]))
                 }
-                className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next: Payment
               </button>
@@ -1344,7 +1252,7 @@ export default function NewMealPlanPage() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                className="px-3 py-1.5 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
               >
                 Back
               </button>
@@ -1352,7 +1260,7 @@ export default function NewMealPlanPage() {
                 type="button"
                 onClick={() => setStep(4)}
                 disabled={!formData.paymentAmount || parseFloat(formData.paymentAmount) <= 0}
-                className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next: Configure Meals
               </button>
@@ -1367,30 +1275,36 @@ export default function NewMealPlanPage() {
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
             return dayNames[new Date(date).getDay()]
           }
+          const getDayOfWeekIndex = (date: string) => new Date(date).getDay() // 0 = Sunday, 6 = Saturday
           
-          const toggleDishFields = (date: string, timeSlot: string, isNewDish: boolean = false) => {
-            const mealKey = `${date}-${timeSlot}`
+          const toggleDishFields = (date: string, timeSlot: string, isNewDish: boolean = false, mealIndex: number = 0) => {
+            const mealKey = `${date}-${timeSlot}-${mealIndex}`
             const newExpanded = new Set(expandedMealFields)
             
-            // If opening fields for a new dish, clear existing dish data
+            // If opening fields for a new dish, clear existing dish data for this specific meal only
             if (isNewDish) {
+              let occurrenceIndex = 0
               const newMeals = formData.meals.map(meal => {
                 if (meal.date === date && meal.timeSlot === timeSlot) {
-                  return {
-                    ...meal,
-                    dishId: '',
-                    dishName: '',
-                    dishCategory: 'BREAKFAST',
-                    dishDescription: '',
-                    ingredients: '',
-                    allergens: '',
-                    calories: undefined,
-                    protein: undefined,
-                    carbs: undefined,
-                    fats: undefined,
-                    price: undefined,
-                    showDishFields: false, // Details hidden by default
+                  if (occurrenceIndex === mealIndex) {
+                    occurrenceIndex++
+                    return {
+                      ...meal,
+                      dishId: '',
+                      dishName: '',
+                      dishCategory: 'BREAKFAST',
+                      dishDescription: '',
+                      ingredients: '',
+                      allergens: '',
+                      calories: undefined,
+                      protein: undefined,
+                      carbs: undefined,
+                      fats: undefined,
+                      price: undefined,
+                      showDishFields: false,
+                    }
                   }
+                  occurrenceIndex++
                 }
                 return meal
               })
@@ -1404,10 +1318,15 @@ export default function NewMealPlanPage() {
             }
             setExpandedMealFields(newExpanded)
             
-            // Update meal to show/hide fields
+            // Update only the meal at this (date, timeSlot, mealIndex)
+            let occurrenceIndex = 0
             const newMeals = formData.meals.map(meal => {
               if (meal.date === date && meal.timeSlot === timeSlot) {
-                return { ...meal, showDishFields: newExpanded.has(mealKey) }
+                if (occurrenceIndex === mealIndex) {
+                  occurrenceIndex++
+                  return { ...meal, showDishFields: newExpanded.has(mealKey) }
+                }
+                occurrenceIndex++
               }
               return meal
             })
@@ -1516,7 +1435,7 @@ export default function NewMealPlanPage() {
 
               {/* Show weeks (for both MONTHLY and other plan types) */}
               {(formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') ? (
-                <div className="max-h-[600px] overflow-y-auto space-y-6 pr-2">
+                <div className="space-y-6 pr-2">
                   {visibleWeeks
                     .filter(week => week > 0) // Filter out Week 0
                     .sort((a, b) => a - b)
@@ -1526,9 +1445,9 @@ export default function NewMealPlanPage() {
                     const weekDates = Object.keys(weekMeals).sort()
                     
                     return (
-                      <div key={week} className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+                      <div key={week} className="border-2 border-gray-500 rounded-lg bg-white flex flex-col max-h-[75vh] overflow-hidden">
                         {/* Week Header */}
-                        <div className={`px-4 py-3 flex items-center justify-between border-b border-gray-300 ${isWeekSkipped ? 'opacity-60' : ''}`} style={{ backgroundColor: '#728d53' }}>
+                        <div className={`px-4 py-3 flex items-center justify-between border-b-2 border-gray-500 flex-shrink-0 ${isWeekSkipped ? 'opacity-60' : ''}`} style={{ backgroundColor: '#000000' }}>
                           <div className="flex items-center gap-3">
                             <button
                               type="button"
@@ -1568,9 +1487,9 @@ export default function NewMealPlanPage() {
                           </label>
                         </div>
                         
-                        {/* Week Content */}
+                        {/* Week Content - scroll inside week */}
                         {!isWeekSkipped && !collapsedWeeks.has(week) && (
-                          <div className="p-4 space-y-4">
+                          <div className="p-4 space-y-4 overflow-y-auto min-h-0 flex-1">
                             {(() => {
                               // Filter to only show visible days for this week
                               const visibleDays = visibleDaysByWeek[week] || []
@@ -1579,10 +1498,22 @@ export default function NewMealPlanPage() {
                                 const meals = weekMeals[date] || []
                                 const isDaySkipped = formData.skippedDays.includes(date)
                               
-                              return (
-                                <div key={date} className={`border-2 border-gray-700 rounded-md p-4 ${isDaySkipped ? 'opacity-50 bg-gray-50' : 'bg-white'}`}>
-                                  <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-3">
+                    return (
+                      <div
+                        key={date}
+                        className={`rounded-md overflow-hidden ${isDaySkipped ? 'opacity-60' : ''}`}
+                        style={{
+                          borderLeft: `4px solid ${DAY_COLORS[getDayOfWeekIndex(date)].border}`,
+                          borderTop: `3px solid ${DAY_COLORS[getDayOfWeekIndex(date)].top}`,
+                          background: isDaySkipped ? '#f9fafb' : DAY_COLORS[getDayOfWeekIndex(date)].dayGradient,
+                          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.06)',
+                        }}
+                      >
+                        <div
+                          className="flex items-center justify-between px-4 py-3"
+                          style={{ backgroundColor: DAY_COLORS[getDayOfWeekIndex(date)].header }}
+                        >
+                            <div className="flex items-center gap-3">
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1594,7 +1525,7 @@ export default function NewMealPlanPage() {
                                           }
                                           setCollapsedDays(newCollapsed)
                                         }}
-                                        className="text-gray-600 hover:text-gray-800 focus:outline-none"
+                                        className="text-white hover:text-gray-200 focus:outline-none"
                                       >
                                         <svg
                                           className={`w-4 h-4 transition-transform ${collapsedDays.has(date) ? '' : 'rotate-90'}`}
@@ -1605,7 +1536,7 @@ export default function NewMealPlanPage() {
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                       </button>
-                                      <h4 className="font-medium text-gray-900">
+                                      <h4 className="font-semibold text-white">
                                         <span className="font-bold">{getDayName(date)}</span> - {format(new Date(date), 'MMM dd, yyyy')}
                                       </h4>
                                       {(() => {
@@ -1613,10 +1544,10 @@ export default function NewMealPlanPage() {
                                         if (macros.calories > 0) {
                                           return (
                                             <div className="flex items-center gap-3 text-sm">
-                                              <span className="font-bold text-base text-white px-3 py-1.5 rounded" style={{ backgroundColor: '#728d53' }}>
+                                              <span className="font-bold text-base text-gray-900 px-3 py-1.5 rounded bg-white">
                                                 {macros.calories} kcal
                                               </span>
-                                              <span className="font-bold text-gray-700">
+                                              <span className="font-bold text-white">
                                                 P: {macros.protein.toFixed(1)}g | C: {macros.carbs.toFixed(1)}g | F: {macros.fats.toFixed(1)}g
                                               </span>
                                             </div>
@@ -1632,39 +1563,38 @@ export default function NewMealPlanPage() {
                                         onChange={() => toggleSkipDay(date)}
                                         className="w-4 h-4 text-nutrafi-primary rounded focus:ring-nutrafi-primary"
                                       />
-                                      <span className="text-xs text-gray-600">Skip Day</span>
+                                      <span className="text-xs font-medium text-white">Skip Day</span>
                                     </label>
                                   </div>
                                   
                                   {!isDaySkipped && !collapsedDays.has(date) && (
-                                    <div className="space-y-3">
+                                    <div className="space-y-3 p-4 pt-2">
                                       {meals.map((meal, idx) => {
-                                        const mealKey = `${meal.date}-${meal.timeSlot}`
+                                        const mealKey = `${meal.date}-${meal.timeSlot}-${idx}`
                                         const isExpanded = expandedMealFields.has(mealKey) || meal.showDishFields
-                                        // Second meal (idx === 1) gets custom green background
-                                        const isSecondMeal = idx === 1
+                                        const dayColors = DAY_COLORS[getDayOfWeekIndex(date)]
                                         const mealLabels = ['First Meal', 'Second Meal', 'Third Meal', 'Fourth Meal', 'Fifth Meal']
                                         const mealLabel = mealLabels[idx] || `Meal ${idx + 1}`
                                         
                                         return (
                                           <div 
                                             key={idx} 
-                                            className="border border-gray-200 rounded-md overflow-hidden"
-                                            style={isSecondMeal ? { backgroundColor: '#D9F2D0' } : { backgroundColor: '#f9fafb' }}
+                                            className="border border-gray-300 rounded-md overflow-visible"
+                                            style={{ backgroundColor: dayColors.bg }}
                                           >
-                                            {/* Meal Label Header */}
-                                            <div className={`px-3 py-2 border-b border-gray-200 ${isSecondMeal ? 'bg-[#D9F2D0]' : 'bg-gray-100'}`}>
-                                              <span className={`text-xs font-bold uppercase tracking-wide ${isSecondMeal ? 'text-gray-800' : 'text-gray-700'}`}>
+                                            {/* Meal Label Header - grey */}
+                                            <div className="px-3 py-2 border-b border-gray-300 bg-gray-300">
+                                              <span className="text-xs font-bold uppercase tracking-wide text-gray-900">
                                                 {mealLabel}
                                               </span>
                                             </div>
-                                            <div className="p-3 space-y-3">
+                                            <div className="p-3 space-y-3 [&_input]:bg-white [&_select]:bg-white [&_textarea]:bg-white">
                                               {/* First Row: Select Dish, Delivery Type, Delivery Time, Location */}
                                               <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
                                                 <div className="md:col-span-4 relative">
                                                   <label className="block text-xs text-gray-600 mb-1">Select Dish</label>
                                                   {(() => {
-                                                    const mealKey = `${meal.date}-${meal.timeSlot}`
+                                                    const mealKey = `${meal.date}-${meal.timeSlot}-${idx}`
                                                     const isOpen = openDishDropdowns.has(mealKey)
                                                     const searchQuery = dishSearchQueries[mealKey] || ''
                                                     const filteredDishes = Array.isArray(dishes) ? dishes.filter(dish => 
@@ -1677,12 +1607,15 @@ export default function NewMealPlanPage() {
                                                       <div className="relative dish-dropdown-container">
                                                         <button
                                                           type="button"
-                                                          onClick={() => {
+                                                          onClick={(e) => {
                                                             const newOpen = new Set(openDishDropdowns)
                                                             if (isOpen) {
                                                               newOpen.delete(mealKey)
+                                                              setDropdownAnchor(null)
                                                             } else {
                                                               newOpen.add(mealKey)
+                                                              const rect = e.currentTarget.getBoundingClientRect()
+                                                              setDropdownAnchor({ mealKey, top: rect.bottom + 4, left: rect.left, width: rect.width })
                                                             }
                                                             setOpenDishDropdowns(newOpen)
                                                           }}
@@ -1696,9 +1629,9 @@ export default function NewMealPlanPage() {
                                                           </svg>
                                                         </button>
                                                         
-                                                        {isOpen && (
-                                                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                                                            <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+                                                        {isOpen && dropdownAnchor?.mealKey !== mealKey && (
+                                                          <div className="absolute z-[200] w-full mt-1 top-full left-0 bg-white border border-gray-300 rounded-md shadow-lg max-h-[320px] overflow-auto">
+                                                            <div className="p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
                                                               <input
                                                                 type="text"
                                                                 placeholder="Search dishes..."
@@ -1707,53 +1640,48 @@ export default function NewMealPlanPage() {
                                                                   setDishSearchQueries({ ...dishSearchQueries, [mealKey]: e.target.value })
                                                                 }}
                                                                 onClick={(e) => e.stopPropagation()}
-                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary bg-white"
                                                                 autoFocus
                                                               />
                                                             </div>
-                                                            <div className="max-h-48 overflow-auto">
+                                                            <div className="max-h-[280px] overflow-auto">
                                                               {filteredDishes.length > 0 ? (
-                                                                filteredDishes.map((dish) => (
+                                                                filteredDishes.slice(0, 6).map((dish) => {
+                                                                  const isSelected = meal.dishId === dish.id
+                                                                  const isHovered = hoveredDishIdInDropdown === dish.id
+                                                                  const isHighlighted = isSelected || isHovered
+                                                                  return (
                                                                   <button
                                                                     key={dish.id}
                                                                     type="button"
+                                                                    onMouseEnter={() => setHoveredDishIdInDropdown(dish.id)}
+                                                                    onMouseLeave={() => setHoveredDishIdInDropdown(null)}
                                                                     onClick={() => {
-                                                                      updateMeal(meal.date, meal.timeSlot, 'dishId', dish.id)
+                                                                      updateMeal(meal.date, meal.timeSlot, 'dishId', dish.id, idx)
                                                                       setOpenDishDropdowns(prev => {
                                                                         const newSet = new Set(prev)
                                                                         newSet.delete(mealKey)
                                                                         return newSet
                                                                       })
+                                                                      setDropdownAnchor(null)
                                                                       setDishSearchQueries({ ...dishSearchQueries, [mealKey]: '' })
                                                                     }}
                                                                     className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                                                                      meal.dishId === dish.id ? 'bg-nutrafi-primary/10 text-nutrafi-primary font-medium' : 'text-gray-900'
+                                                                      isHighlighted ? 'bg-gray-100 font-bold text-gray-900' : 'text-gray-900'
                                                                     }`}
                                                                   >
                                                                     {dish.name}
                                                                   </button>
-                                                                ))
+                                                                  )
+                                                                })
                                                               ) : (
                                                                 <div className="px-3 py-2 text-sm text-gray-500">No dishes found</div>
                                                               )}
-                                                              <div className="border-t border-gray-200">
-                                                                <button
-                                                                  type="button"
-                                                                  onClick={() => {
-                                                                    toggleDishFields(meal.date, meal.timeSlot, true)
-                                                                    setOpenDishDropdowns(prev => {
-                                                                      const newSet = new Set(prev)
-                                                                      newSet.delete(mealKey)
-                                                                      return newSet
-                                                                    })
-                                                                    setDishSearchQueries({ ...dishSearchQueries, [mealKey]: '' })
-                                                                  }}
-                                                                  className="w-full text-left px-3 py-2 text-sm text-nutrafi-primary hover:bg-nutrafi-primary/10 font-medium flex items-center gap-2"
-                                                                >
-                                                                  <span>+</span>
-                                                                  <span>Add Custom Dish</span>
-                                                                </button>
-                                                              </div>
+                                                              {filteredDishes.length > 6 && (
+                                                                <div className="px-3 py-1.5 text-xs text-gray-400 border-t border-gray-100">
+                                                                  Showing 6 of {filteredDishes.length} — type to search
+                                                                </div>
+                                                              )}
                                                             </div>
                                                           </div>
                                                         )}
@@ -1765,7 +1693,7 @@ export default function NewMealPlanPage() {
                                                   <label className="block text-xs text-gray-600 mb-1">Delivery Type</label>
                                                   <select
                                                     value={meal.deliveryType}
-                                                    onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'deliveryType', e.target.value)}
+                                                    onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'deliveryType', e.target.value, idx)}
                                                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                   >
                                                     <option value="delivery">Delivery</option>
@@ -1777,7 +1705,7 @@ export default function NewMealPlanPage() {
                                                   <input
                                                     type="time"
                                                     value={meal.deliveryTime || ''}
-                                                    onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'deliveryTime', e.target.value)}
+                                                    onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'deliveryTime', e.target.value, idx)}
                                                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                   />
                                                 </div>
@@ -1787,7 +1715,7 @@ export default function NewMealPlanPage() {
                                                     <input
                                                       type="text"
                                                       value={meal.location || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'location', e.target.value)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'location', e.target.value, idx)}
                                                       placeholder={selectedCustomer?.deliveryArea || 'Delivery Address'}
                                                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                     />
@@ -1797,7 +1725,7 @@ export default function NewMealPlanPage() {
                                               
                                               {/* Notes and Show Details Buttons */}
                                               {(() => {
-                                                const mealKey = `${meal.date}-${meal.timeSlot}`
+                                                const mealKey = `${meal.date}-${meal.timeSlot}-${idx}`
                                                 const hasNote = meal.customNote && meal.customNote.trim() !== ''
                                                 const isNotesExpanded = expandedNotes.has(mealKey) || hasNote
                                                 const hasDish = meal.dishId || meal.dishName
@@ -1825,7 +1753,7 @@ export default function NewMealPlanPage() {
                                                         </div>
                                                         <textarea
                                                           value={meal.customNote || ''}
-                                                          onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value)}
+                                                          onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value, idx)}
                                                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                           rows={2}
                                                           placeholder="Add any notes for this meal..."
@@ -1836,8 +1764,8 @@ export default function NewMealPlanPage() {
                                                         <div className="flex items-center gap-2">
                                                           <button
                                                             type="button"
-                                                            onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
-                                                            className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                                                            onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded, idx)}
+                                                            className="px-3 py-1.5 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
                                                             title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
                                                           >
                                                             {isExpanded ? 'Hide Details' : 'Show Details'}
@@ -1858,15 +1786,15 @@ export default function NewMealPlanPage() {
                                                         newExpanded.add(mealKey)
                                                         setExpandedNotes(newExpanded)
                                                       }}
-                                                      className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 whitespace-nowrap"
+                                                      className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 whitespace-nowrap"
                                                     >
                                                       + Add Notes
                                                     </button>
                                                     {hasDish && (
                                                       <button
                                                         type="button"
-                                                        onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
-                                                        className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                                                        onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded, idx)}
+                                                        className="px-3 py-1.5 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
                                                         title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
                                                       >
                                                         {isExpanded ? 'Hide Details' : 'Show Details'}
@@ -1879,17 +1807,14 @@ export default function NewMealPlanPage() {
                                             
                                             {/* Inline Dish Fields */}
                                             {isExpanded && (
-                                              <div 
-                                                className="border-t border-gray-200 p-4 space-y-3"
-                                                style={isSecondMeal ? { backgroundColor: '#D9F2D0' } : { backgroundColor: '#ffffff' }}
-                                              >
+                                              <div className="border-t border-gray-200 p-4 space-y-3 [&_input]:bg-white [&_input]:text-gray-900 [&_select]:bg-white [&_select]:text-gray-900 [&_textarea]:bg-white [&_textarea]:text-gray-900" style={{ backgroundColor: dayColors.bg }}>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                   <div>
                                                     <label className="block text-xs font-medium text-gray-700 mb-1">Dish Name *</label>
                                                     <input
                                                       type="text"
                                                       value={meal.dishName || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishName', e.target.value)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishName', e.target.value, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                       required
                                                     />
@@ -1898,7 +1823,7 @@ export default function NewMealPlanPage() {
                                                     <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
                                                     <select
                                                       value={meal.dishCategory || 'BREAKFAST'}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishCategory', e.target.value)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishCategory', e.target.value, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                     >
                                                       <option value="BREAKFAST">Breakfast</option>
@@ -1914,7 +1839,7 @@ export default function NewMealPlanPage() {
                                                     <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                                                     <textarea
                                                       value={meal.dishDescription || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishDescription', e.target.value)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishDescription', e.target.value, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                       rows={2}
                                                     />
@@ -1923,7 +1848,7 @@ export default function NewMealPlanPage() {
                                                     <label className="block text-xs font-medium text-gray-700 mb-1">Ingredients</label>
                                                     <textarea
                                                       value={meal.ingredients || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'ingredients', e.target.value)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'ingredients', e.target.value, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                       rows={2}
                                                     />
@@ -1933,7 +1858,7 @@ export default function NewMealPlanPage() {
                                                     <input
                                                       type="text"
                                                       value={meal.allergens || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'allergens', e.target.value)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'allergens', e.target.value, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                       placeholder="e.g., Dairy, Eggs, Gluten"
                                                     />
@@ -1943,7 +1868,7 @@ export default function NewMealPlanPage() {
                                                     <input
                                                       type="number"
                                                       value={meal.calories || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'calories', parseInt(e.target.value) || 0)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'calories', parseInt(e.target.value) || 0, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                       required
                                                     />
@@ -1954,7 +1879,7 @@ export default function NewMealPlanPage() {
                                                       type="number"
                                                       step="0.1"
                                                       value={meal.protein || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'protein', parseFloat(e.target.value) || 0)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'protein', parseFloat(e.target.value) || 0, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                       required
                                                     />
@@ -1965,7 +1890,7 @@ export default function NewMealPlanPage() {
                                                       type="number"
                                                       step="0.1"
                                                       value={meal.carbs || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'carbs', parseFloat(e.target.value) || 0)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'carbs', parseFloat(e.target.value) || 0, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                       required
                                                     />
@@ -1976,7 +1901,7 @@ export default function NewMealPlanPage() {
                                                       type="number"
                                                       step="0.1"
                                                       value={meal.fats || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'fats', parseFloat(e.target.value) || 0)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'fats', parseFloat(e.target.value) || 0, idx)}
                                                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                       required
                                                     />
@@ -2017,7 +1942,8 @@ export default function NewMealPlanPage() {
                                     <button
                                       type="button"
                                       onClick={() => addDayToWeek(week)}
-                                      className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2"
+                                      className="px-3 py-1.5 text-white rounded-md hover:opacity-90 font-medium flex items-center gap-2"
+                                    style={{ backgroundColor: '#000000' }}
                                     >
                                       <span>+</span>
                                       <span>Add Day</span>
@@ -2039,7 +1965,8 @@ export default function NewMealPlanPage() {
                       <button
                         type="button"
                         onClick={addAnotherWeek}
-                        className="px-6 py-3 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium flex items-center gap-2"
+                        className="px-6 py-3 text-white rounded-md hover:opacity-90 font-medium flex items-center gap-2"
+                        style={{ backgroundColor: '#000000' }}
                       >
                         <span>+</span>
                         <span>Add Another Week</span>
@@ -2055,13 +1982,25 @@ export default function NewMealPlanPage() {
                 </div>
               ) : (
                 // Weekly or Custom: Show days (fallback for non-weekly/monthly plans)
-                <div className="max-h-[600px] overflow-y-auto space-y-4 pr-2">
+                <div className="space-y-4 pr-2">
                   {Object.entries(mealsByDay).sort().map(([date, meals]) => {
                     const isDaySkipped = formData.skippedDays.includes(date)
                     
                     return (
-                      <div key={date} className={`border-2 border-gray-700 rounded-md p-4 ${isDaySkipped ? 'opacity-50 bg-gray-50' : 'bg-white'}`}>
-                        <div className="flex items-center justify-between mb-3">
+                      <div
+                        key={date}
+                        className={`rounded-md overflow-hidden ${isDaySkipped ? 'opacity-60' : ''}`}
+                        style={{
+                          borderLeft: `4px solid ${DAY_COLORS[getDayOfWeekIndex(date)].border}`,
+                          borderTop: `3px solid ${DAY_COLORS[getDayOfWeekIndex(date)].top}`,
+                          background: isDaySkipped ? '#f9fafb' : DAY_COLORS[getDayOfWeekIndex(date)].dayGradient,
+                          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.06)',
+                        }}
+                      >
+                        <div
+                          className="flex items-center justify-between px-4 py-3"
+                          style={{ backgroundColor: DAY_COLORS[getDayOfWeekIndex(date)].header }}
+                        >
                           <div className="flex items-center gap-3">
                             <button
                               type="button"
@@ -2074,7 +2013,7 @@ export default function NewMealPlanPage() {
                                 }
                                 setCollapsedDays(newCollapsed)
                               }}
-                              className="text-gray-600 hover:text-gray-800 focus:outline-none"
+                              className="text-white hover:text-gray-200 focus:outline-none"
                             >
                               <svg
                                 className={`w-4 h-4 transition-transform ${collapsedDays.has(date) ? '' : 'rotate-90'}`}
@@ -2085,7 +2024,7 @@ export default function NewMealPlanPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
                             </button>
-                            <h4 className="font-medium text-gray-900">
+                            <h4 className="font-semibold text-white">
                               <span className="font-bold">{getDayName(date)}</span> - {format(new Date(date), 'MMM dd, yyyy')}
                             </h4>
                             {(() => {
@@ -2093,10 +2032,10 @@ export default function NewMealPlanPage() {
                               if (macros.calories > 0) {
                                 return (
                                   <div className="flex items-center gap-2 text-xs">
-                                    <span className="font-semibold text-white px-2 py-1 rounded" style={{ backgroundColor: '#728d53' }}>
+                                    <span className="font-semibold text-gray-900 px-2 py-1 rounded bg-white">
                                       {macros.calories} kcal
                                     </span>
-                                    <span className="text-gray-600">
+                                    <span className="font-semibold text-white">
                                       P: {macros.protein.toFixed(1)}g | C: {macros.carbs.toFixed(1)}g | F: {macros.fats.toFixed(1)}g
                                     </span>
                                   </div>
@@ -2112,39 +2051,38 @@ export default function NewMealPlanPage() {
                               onChange={() => toggleSkipDay(date)}
                               className="w-4 h-4 text-nutrafi-primary rounded focus:ring-nutrafi-primary"
                             />
-                            <span className="text-xs text-gray-600">Skip Day</span>
+                            <span className="text-xs font-medium text-white">Skip Day</span>
                           </label>
                         </div>
                         
                         {!isDaySkipped && !collapsedDays.has(date) && (
-                          <div className="space-y-3">
+                          <div className="space-y-3 p-4 pt-2">
                             {meals.map((meal, idx) => {
-                              const mealKey = `${meal.date}-${meal.timeSlot}`
+                              const mealKey = `${meal.date}-${meal.timeSlot}-${idx}`
                               const isExpanded = expandedMealFields.has(mealKey) || meal.showDishFields
-                              // Second meal (idx === 1) gets custom green background
-                              const isSecondMeal = idx === 1
+                              const dayColors = DAY_COLORS[getDayOfWeekIndex(date)]
                               const mealLabels = ['First Meal', 'Second Meal', 'Third Meal', 'Fourth Meal', 'Fifth Meal']
                               const mealLabel = mealLabels[idx] || `Meal ${idx + 1}`
                               
                                         return (
                                           <div 
                                             key={idx} 
-                                            className="border border-gray-200 rounded-md overflow-hidden"
-                                            style={isSecondMeal ? { backgroundColor: '#D9F2D0' } : { backgroundColor: '#f9fafb' }}
+                                            className="border border-gray-300 rounded-md overflow-visible"
+                                            style={{ backgroundColor: dayColors.bg }}
                                           >
-                                            {/* Meal Label Header */}
-                                            <div className={`px-3 py-2 border-b border-gray-200 ${isSecondMeal ? 'bg-[#D9F2D0]' : 'bg-gray-100'}`}>
-                                              <span className={`text-xs font-bold uppercase tracking-wide ${isSecondMeal ? 'text-gray-800' : 'text-gray-700'}`}>
+                                            {/* Meal Label Header - grey */}
+                                            <div className="px-3 py-2 border-b border-gray-300 bg-gray-300">
+                                              <span className="text-xs font-bold uppercase tracking-wide text-gray-900">
                                                 {mealLabel}
                                               </span>
                                             </div>
-                                            <div className="p-3 space-y-3">
+                                            <div className="p-3 space-y-3 [&_input]:bg-white [&_select]:bg-white [&_textarea]:bg-white">
                                               {/* First Row: Select Dish, Delivery Type, Delivery Time, Location */}
                                               <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
                                                 <div className="md:col-span-4 relative">
                                                   <label className="block text-xs text-gray-600 mb-1">Select Dish</label>
                                                   {(() => {
-                                                    const mealKey = `${meal.date}-${meal.timeSlot}`
+                                                    const mealKey = `${meal.date}-${meal.timeSlot}-${idx}`
                                                     const isOpen = openDishDropdowns.has(mealKey)
                                                     const searchQuery = dishSearchQueries[mealKey] || ''
                                                     const filteredDishes = Array.isArray(dishes) ? dishes.filter(dish => 
@@ -2157,12 +2095,15 @@ export default function NewMealPlanPage() {
                                                       <div className="relative dish-dropdown-container">
                                                         <button
                                                           type="button"
-                                                          onClick={() => {
+                                                          onClick={(e) => {
                                                             const newOpen = new Set(openDishDropdowns)
                                                             if (isOpen) {
                                                               newOpen.delete(mealKey)
+                                                              setDropdownAnchor(null)
                                                             } else {
                                                               newOpen.add(mealKey)
+                                                              const rect = e.currentTarget.getBoundingClientRect()
+                                                              setDropdownAnchor({ mealKey, top: rect.bottom + 4, left: rect.left, width: rect.width })
                                                             }
                                                             setOpenDishDropdowns(newOpen)
                                                           }}
@@ -2176,9 +2117,9 @@ export default function NewMealPlanPage() {
                                                           </svg>
                                                         </button>
                                                         
-                                                        {isOpen && (
-                                                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                                                            <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+                                                        {isOpen && dropdownAnchor?.mealKey !== mealKey && (
+                                                          <div className="absolute z-[200] w-full mt-1 top-full left-0 bg-white border border-gray-300 rounded-md shadow-lg max-h-[320px] overflow-auto">
+                                                            <div className="p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
                                                               <input
                                                                 type="text"
                                                                 placeholder="Search dishes..."
@@ -2187,53 +2128,48 @@ export default function NewMealPlanPage() {
                                                                   setDishSearchQueries({ ...dishSearchQueries, [mealKey]: e.target.value })
                                                                 }}
                                                                 onClick={(e) => e.stopPropagation()}
-                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary bg-white"
                                                                 autoFocus
                                                               />
                                                             </div>
-                                                            <div className="max-h-48 overflow-auto">
+                                                            <div className="max-h-[280px] overflow-auto">
                                                               {filteredDishes.length > 0 ? (
-                                                                filteredDishes.map((dish) => (
+                                                                filteredDishes.slice(0, 6).map((dish) => {
+                                                                  const isSelected = meal.dishId === dish.id
+                                                                  const isHovered = hoveredDishIdInDropdown === dish.id
+                                                                  const isHighlighted = isSelected || isHovered
+                                                                  return (
                                                                   <button
                                                                     key={dish.id}
                                                                     type="button"
+                                                                    onMouseEnter={() => setHoveredDishIdInDropdown(dish.id)}
+                                                                    onMouseLeave={() => setHoveredDishIdInDropdown(null)}
                                                                     onClick={() => {
-                                                                      updateMeal(meal.date, meal.timeSlot, 'dishId', dish.id)
+                                                                      updateMeal(meal.date, meal.timeSlot, 'dishId', dish.id, idx)
                                                                       setOpenDishDropdowns(prev => {
                                                                         const newSet = new Set(prev)
                                                                         newSet.delete(mealKey)
                                                                         return newSet
                                                                       })
+                                                                      setDropdownAnchor(null)
                                                                       setDishSearchQueries({ ...dishSearchQueries, [mealKey]: '' })
                                                                     }}
                                                                     className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                                                                      meal.dishId === dish.id ? 'bg-nutrafi-primary/10 text-nutrafi-primary font-medium' : 'text-gray-900'
+                                                                      isHighlighted ? 'bg-gray-100 font-bold text-gray-900' : 'text-gray-900'
                                                                     }`}
                                                                   >
                                                                     {dish.name}
                                                                   </button>
-                                                                ))
+                                                                  )
+                                                                })
                                                               ) : (
                                                                 <div className="px-3 py-2 text-sm text-gray-500">No dishes found</div>
                                                               )}
-                                                              <div className="border-t border-gray-200">
-                                                                <button
-                                                                  type="button"
-                                                                  onClick={() => {
-                                                                    toggleDishFields(meal.date, meal.timeSlot, true)
-                                                                    setOpenDishDropdowns(prev => {
-                                                                      const newSet = new Set(prev)
-                                                                      newSet.delete(mealKey)
-                                                                      return newSet
-                                                                    })
-                                                                    setDishSearchQueries({ ...dishSearchQueries, [mealKey]: '' })
-                                                                  }}
-                                                                  className="w-full text-left px-3 py-2 text-sm text-nutrafi-primary hover:bg-nutrafi-primary/10 font-medium flex items-center gap-2"
-                                                                >
-                                                                  <span>+</span>
-                                                                  <span>Add Custom Dish</span>
-                                                                </button>
-                                                              </div>
+                                                              {filteredDishes.length > 6 && (
+                                                                <div className="px-3 py-1.5 text-xs text-gray-400 border-t border-gray-100">
+                                                                  Showing 6 of {filteredDishes.length} — type to search
+                                                                </div>
+                                                              )}
                                                             </div>
                                                           </div>
                                                         )}
@@ -2245,7 +2181,7 @@ export default function NewMealPlanPage() {
                                                   <label className="block text-xs text-gray-600 mb-1">Delivery Type</label>
                                                   <select
                                                     value={meal.deliveryType}
-                                                    onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'deliveryType', e.target.value)}
+                                                    onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'deliveryType', e.target.value, idx)}
                                                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                   >
                                                     <option value="delivery">Delivery</option>
@@ -2257,7 +2193,7 @@ export default function NewMealPlanPage() {
                                                   <input
                                                     type="time"
                                                     value={meal.deliveryTime || ''}
-                                                    onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'deliveryTime', e.target.value)}
+                                                    onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'deliveryTime', e.target.value, idx)}
                                                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                   />
                                                 </div>
@@ -2267,7 +2203,7 @@ export default function NewMealPlanPage() {
                                                     <input
                                                       type="text"
                                                       value={meal.location || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'location', e.target.value)}
+                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'location', e.target.value, idx)}
                                                       placeholder={selectedCustomer?.deliveryArea || 'Delivery Address'}
                                                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                     />
@@ -2277,7 +2213,7 @@ export default function NewMealPlanPage() {
                                               
                                               {/* Notes and Show Details Buttons */}
                                               {(() => {
-                                                const mealKey = `${meal.date}-${meal.timeSlot}`
+                                                const mealKey = `${meal.date}-${meal.timeSlot}-${idx}`
                                                 const hasNote = meal.customNote && meal.customNote.trim() !== ''
                                                 const isNotesExpanded = expandedNotes.has(mealKey) || hasNote
                                                 const hasDish = meal.dishId || meal.dishName
@@ -2305,7 +2241,7 @@ export default function NewMealPlanPage() {
                                                         </div>
                                                         <textarea
                                                           value={meal.customNote || ''}
-                                                          onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value)}
+                                                          onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'customNote', e.target.value, idx)}
                                                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                                           rows={2}
                                                           placeholder="Add any notes for this meal..."
@@ -2316,8 +2252,8 @@ export default function NewMealPlanPage() {
                                                         <div className="flex items-center gap-2">
                                                           <button
                                                             type="button"
-                                                            onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
-                                                            className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                                                            onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded, idx)}
+                                                            className="px-3 py-1.5 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
                                                             title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
                                                           >
                                                             {isExpanded ? 'Hide Details' : 'Show Details'}
@@ -2338,15 +2274,15 @@ export default function NewMealPlanPage() {
                                                         newExpanded.add(mealKey)
                                                         setExpandedNotes(newExpanded)
                                                       }}
-                                                      className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 whitespace-nowrap"
+                                                      className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 whitespace-nowrap"
                                                     >
                                                       + Add Notes
                                                     </button>
                                                     {hasDish && (
                                                       <button
                                                         type="button"
-                                                        onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded)}
-                                                        className="px-4 py-2 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
+                                                        onClick={() => toggleDishFields(meal.date, meal.timeSlot, !isExpanded, idx)}
+                                                        className="px-3 py-1.5 text-sm bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 whitespace-nowrap"
                                                         title={isExpanded ? "Hide Dish Details" : "Show Dish Details"}
                                                       >
                                                         {isExpanded ? 'Hide Details' : 'Show Details'}
@@ -2359,17 +2295,14 @@ export default function NewMealPlanPage() {
                                   
                                   {/* Inline Dish Fields */}
                                   {isExpanded && (
-                                    <div 
-                                      className="border-t border-gray-200 p-4 space-y-3"
-                                      style={isSecondMeal ? { backgroundColor: '#D9F2D0' } : { backgroundColor: '#ffffff' }}
-                                    >
+                                    <div className="border-t border-gray-200 p-4 space-y-3 [&_input]:bg-white [&_input]:text-gray-900 [&_select]:bg-white [&_select]:text-gray-900 [&_textarea]:bg-white [&_textarea]:text-gray-900" style={{ backgroundColor: dayColors.bg }}>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div>
                                           <label className="block text-xs font-medium text-gray-700 mb-1">Dish Name *</label>
                                           <input
                                             type="text"
                                             value={meal.dishName || ''}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishName', e.target.value)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishName', e.target.value, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                             required
                                           />
@@ -2378,7 +2311,7 @@ export default function NewMealPlanPage() {
                                           <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
                                           <select
                                             value={meal.dishCategory || 'BREAKFAST'}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishCategory', e.target.value)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishCategory', e.target.value, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                           >
                                             <option value="BREAKFAST">Breakfast</option>
@@ -2394,7 +2327,7 @@ export default function NewMealPlanPage() {
                                           <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                                           <textarea
                                             value={meal.dishDescription || ''}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishDescription', e.target.value)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'dishDescription', e.target.value, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                             rows={2}
                                           />
@@ -2403,7 +2336,7 @@ export default function NewMealPlanPage() {
                                           <label className="block text-xs font-medium text-gray-700 mb-1">Ingredients</label>
                                           <textarea
                                             value={meal.ingredients || ''}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'ingredients', e.target.value)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'ingredients', e.target.value, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                             rows={2}
                                           />
@@ -2413,7 +2346,7 @@ export default function NewMealPlanPage() {
                                           <input
                                             type="text"
                                             value={meal.allergens || ''}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'allergens', e.target.value)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'allergens', e.target.value, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                             placeholder="e.g., Dairy, Eggs, Gluten"
                                           />
@@ -2423,7 +2356,7 @@ export default function NewMealPlanPage() {
                                           <input
                                             type="number"
                                             value={meal.calories || ''}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'calories', parseInt(e.target.value) || 0)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'calories', parseInt(e.target.value) || 0, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                             required
                                           />
@@ -2434,7 +2367,7 @@ export default function NewMealPlanPage() {
                                             type="number"
                                             step="0.1"
                                             value={meal.protein || ''}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'protein', parseFloat(e.target.value) || 0)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'protein', parseFloat(e.target.value) || 0, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                             required
                                           />
@@ -2445,7 +2378,7 @@ export default function NewMealPlanPage() {
                                             type="number"
                                             step="0.1"
                                             value={meal.carbs || ''}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'carbs', parseFloat(e.target.value) || 0)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'carbs', parseFloat(e.target.value) || 0, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                             required
                                           />
@@ -2456,7 +2389,7 @@ export default function NewMealPlanPage() {
                                             type="number"
                                             step="0.1"
                                             value={meal.fats || ''}
-                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'fats', parseFloat(e.target.value) || 0)}
+                                            onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'fats', parseFloat(e.target.value) || 0, idx)}
                                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
                                             required
                                           />
@@ -2487,14 +2420,14 @@ export default function NewMealPlanPage() {
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                  className="px-3 py-1.5 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50"
+                  className="px-3 py-1.5 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50"
                 >
                   {loading ? 'Creating...' : 'Create Meal Plan'}
                 </button>
@@ -2504,171 +2437,85 @@ export default function NewMealPlanPage() {
         })()}
       </form>
 
-      {/* Add New Dish Modal */}
-      {showAddDishModal && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          onClick={() => {
-            setShowAddDishModal(false)
-            setSelectedMealForDish(null)
-          }}
-        >
-          {/* Blurred Background */}
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
-          
-          {/* Modal Box */}
-          <div 
-            className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">Add New Dish</h3>
-              <button
-                onClick={() => {
-                  setShowAddDishModal(false)
-                  setSelectedMealForDish(null)
-                }}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newDishForm.name}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-                  <select
-                    required
-                    value={newDishForm.category}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                  >
-                    <option value="BREAKFAST">Breakfast</option>
-                    <option value="LUNCH">Lunch</option>
-                    <option value="DINNER">Dinner</option>
-                    <option value="LUNCH_DINNER">Lunch/Dinner</option>
-                    <option value="SNACK">Snack</option>
-                    <option value="SMOOTHIE">Smoothie</option>
-                    <option value="JUICE">Juice</option>
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea
-                    value={newDishForm.description}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                    rows={3}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ingredients</label>
-                  <textarea
-                    value={newDishForm.ingredients}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, ingredients: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                    rows={2}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Allergens</label>
-                  <input
-                    type="text"
-                    value={newDishForm.allergens}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, allergens: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                    placeholder="e.g., Dairy, Eggs, Gluten"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Calories (kcal) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={newDishForm.calories}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, calories: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Protein (g) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={newDishForm.protein}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, protein: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Carbs (g) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={newDishForm.carbs}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, carbs: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fats (g) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={newDishForm.fats}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, fats: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Price (AED)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newDishForm.price}
-                    onChange={(e) => setNewDishForm({ ...newDishForm, price: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                  />
-                </div>
+      {dropdownAnchor && typeof document !== 'undefined' && createPortal(
+        (() => {
+          const parts = dropdownAnchor.mealKey.split('-')
+          const idx = parseInt(parts[parts.length - 1], 10)
+          const timeSlot = parts[parts.length - 2]
+          const date = parts.slice(0, parts.length - 2).join('-')
+          const dayColors = DAY_COLORS[getDayOfWeekIndex(date)]
+          const mealsForSlot = formData.meals.filter(m => m.date === date && m.timeSlot === timeSlot)
+          const meal = mealsForSlot[idx]
+          if (!meal) return null
+          const mealKey = dropdownAnchor.mealKey
+          const searchQuery = dishSearchQueries[mealKey] || ''
+          const filteredDishes = Array.isArray(dishes) ? dishes.filter(dish =>
+            dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            dish.category.toLowerCase().includes(searchQuery.toLowerCase())
+          ) : []
+          return (
+            <div
+              className="dish-dropdown-container fixed z-[300] bg-white border border-gray-300 rounded-md shadow-xl min-w-[200px] max-h-[70vh] flex flex-col"
+              style={{
+                top: dropdownAnchor.top,
+                left: dropdownAnchor.left,
+                width: Math.max(dropdownAnchor.width, 200),
+              }}
+            >
+              <div className="p-2 border-b border-gray-200 flex-shrink-0 bg-white">
+                <input
+                  type="text"
+                  placeholder="Search dishes..."
+                  value={searchQuery}
+                  onChange={(e) => setDishSearchQueries({ ...dishSearchQueries, [mealKey]: e.target.value })}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary bg-white"
+                  autoFocus
+                />
+              </div>
+              <div className="overflow-auto flex-1 min-h-0 max-h-[280px]">
+                {filteredDishes.length > 0 ? (
+                  filteredDishes.slice(0, 6).map((dish) => {
+                    const isSelected = meal.dishId === dish.id
+                    const isHovered = hoveredDishIdInDropdown === dish.id
+                    const isHighlighted = isSelected || isHovered
+                    return (
+                    <button
+                      key={dish.id}
+                      type="button"
+                      onMouseEnter={() => setHoveredDishIdInDropdown(dish.id)}
+                      onMouseLeave={() => setHoveredDishIdInDropdown(null)}
+                      onClick={() => {
+                        updateMeal(meal.date, meal.timeSlot, 'dishId', dish.id, idx)
+                        setOpenDishDropdowns(prev => {
+                          const newSet = new Set(prev)
+                          newSet.delete(mealKey)
+                          return newSet
+                        })
+                        setDropdownAnchor(null)
+                        setDishSearchQueries({ ...dishSearchQueries, [mealKey]: '' })
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                        isHighlighted ? 'bg-gray-100 font-bold text-gray-900' : 'text-gray-900'
+                      }`}
+                    >
+                      {dish.name}
+                    </button>
+                    )
+                  })
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-500">No dishes found</div>
+                )}
+                {filteredDishes.length > 6 && (
+                  <div className="px-3 py-1.5 text-xs text-gray-400 border-t border-gray-100">
+                    Showing 6 of {filteredDishes.length} — type to search
+                  </div>
+                )}
               </div>
             </div>
-
-            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddDishModal(false)
-                  setSelectedMealForDish(null)
-                }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateDish}
-                disabled={creatingDish}
-                className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50"
-              >
-                {creatingDish ? 'Creating...' : 'Create Dish'}
-              </button>
-            </div>
-          </div>
-        </div>
+          )
+        })(),
+        document.body
       )}
     </div>
   )

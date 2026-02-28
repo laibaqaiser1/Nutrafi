@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { CustomerStatus } from '@/lib/generated/prisma/enums'
 import { prisma } from '@/lib/prisma'
 
 // POST - Pause customer subscription
@@ -16,7 +17,7 @@ export async function POST(
     const { id } = await params
     const customer = await prisma.customer.update({
       where: { id },
-      data: { status: 'PAUSED' },
+      data: { status: CustomerStatus.PAUSED },
     })
 
     // Also pause active meal plans

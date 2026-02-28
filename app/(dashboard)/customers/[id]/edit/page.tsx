@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface Customer {
   id: string
@@ -17,6 +18,7 @@ interface Customer {
 export default function EditCustomerPage() {
   const router = useRouter()
   const params = useParams()
+  const toast = useNotification()
   const customerId = params.id as string
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
@@ -46,12 +48,12 @@ export default function EditCustomerPage() {
             notes: customer.notes || '',
           })
         } else {
-          alert('Failed to fetch customer')
+          toast.error('Failed to fetch customer')
           router.push('/customers')
         }
       } catch (error) {
         console.error('Error fetching customer:', error)
-        alert('Failed to fetch customer')
+        toast.error('Failed to fetch customer')
         router.push('/customers')
       } finally {
         setFetching(false)
@@ -80,11 +82,11 @@ export default function EditCustomerPage() {
         router.push('/customers')
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error updating customer:', error)
-      alert('Failed to update customer')
+      toast.error('Failed to update customer')
     } finally {
       setLoading(false)
     }
@@ -100,9 +102,9 @@ export default function EditCustomerPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Customer</h1>
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <h1 className="text-lg font-bold text-gray-900 mb-3">Edit Customer</h1>
+      <form onSubmit={handleSubmit} className="bg-white shadow rounded p-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
             <input
@@ -195,6 +197,7 @@ export default function EditCustomerPage() {
     </div>
   )
 }
+
 
 
 

@@ -2,6 +2,7 @@ import { getServerSession } from '@/lib/auth-helpers'
 import { redirect } from 'next/navigation'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { SessionProvider } from '@/components/providers/SessionProvider'
+import { NotificationProvider } from '@/components/notifications/NotificationContext'
 
 export default async function DashboardLayoutWrapper({
   children,
@@ -16,7 +17,9 @@ export default async function DashboardLayoutWrapper({
 
   return (
     <SessionProvider session={session}>
-      <DashboardLayout>{children}</DashboardLayout>
+      <NotificationProvider>
+        <DashboardLayout>{children}</DashboardLayout>
+      </NotificationProvider>
     </SessionProvider>
   )
 }

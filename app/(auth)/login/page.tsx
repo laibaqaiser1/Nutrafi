@@ -38,32 +38,32 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#f0f4e8] to-[#e8ede0] px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#f0f4e8] to-[#e8ede0] px-2 py-6 sm:px-4 lg:px-8 lg:py-12">
+      <div className="w-full max-w-md space-y-4 lg:space-y-8">
         <div className="text-center">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-2 lg:mb-4">
             <Image
               src="/nutrafi_logo.png"
               alt="Nutrafi Kitchen"
-              width={80}
-              height={80}
-              className="h-20 w-auto"
+              width={56}
+              height={56}
+              className="h-14 w-auto lg:h-20 lg:w-20"
             />
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-nutrafi-dark">
+          <h2 className="text-xl lg:text-3xl font-bold tracking-tight text-nutrafi-dark">
             Nutrafi Kitchen
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-1 lg:mt-2 text-xs lg:text-sm text-gray-600">
             Sign in to your account
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-4 lg:mt-8 space-y-3 lg:space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="rounded bg-red-50 p-2 lg:p-4">
+              <p className="text-xs lg:text-sm text-red-800">{error}</p>
             </div>
           )}
-          <div className="-space-y-px rounded-md shadow-sm">
+          <div className="-space-y-px rounded shadow-sm lg:rounded-md">
             <div>
               <label htmlFor="email" className="sr-only">
                 Email address
@@ -74,7 +74,7 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="relative block w-full rounded-t-md border-0 px-3 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-nutrafi-primary sm:text-sm sm:leading-6"
+                className="relative block w-full rounded-t border-0 px-2 py-1.5 lg:px-3 lg:py-2 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-nutrafi-primary"
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="relative block w-full rounded-b-md border-0 px-3 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-nutrafi-primary sm:text-sm sm:leading-6"
+                className="relative block w-full rounded-b border-0 px-2 py-1.5 lg:px-3 lg:py-2 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-nutrafi-primary"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -102,7 +102,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative flex w-full justify-center rounded-md bg-nutrafi-primary px-3 py-2 text-sm font-semibold text-white hover:bg-nutrafi-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nutrafi-primary disabled:opacity-50 transition-colors shadow-md"
+              className="group relative flex w-full justify-center rounded bg-nutrafi-primary px-3 py-1.5 lg:py-2 text-sm font-semibold text-white hover:bg-nutrafi-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nutrafi-primary disabled:opacity-50 transition-colors shadow lg:rounded-md"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>

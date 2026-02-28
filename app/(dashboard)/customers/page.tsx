@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface Customer {
   id: string
@@ -21,6 +22,7 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const toast = useNotification()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
@@ -64,11 +66,11 @@ export default function CustomersPage() {
       } else {
         const error = await response.json()
         console.error('API error:', error)
-        alert(`Failed to fetch customers: ${error.error || 'Unknown error'}`)
+        toast.error(`Failed to fetch customers: ${error.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error fetching customers:', error)
-      alert('Failed to fetch customers. Please check the console for details.')
+      toast.error('Failed to fetch customers. Please check the console for details.')
     } finally {
       setLoading(false)
     }
@@ -103,30 +105,30 @@ export default function CustomersPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Customer Management</h1>
+      <div className="flex justify-between items-center mb-3 lg:mb-6">
+        <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Customer Management</h1>
         <Link
           href="/customers/new"
-          className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
+          className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded hover:bg-nutrafi-dark"
         >
           Add New Customer
         </Link>
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white p-2 lg:p-4 rounded shadow lg:rounded-lg mb-3 lg:mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 lg:gap-4">
           <input
             type="text"
             placeholder="Search by name, phone..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 lg:px-3 lg:py-2 text-sm border border-gray-300 rounded"
           />
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 lg:px-3 lg:py-2 text-sm border border-gray-300 rounded"
           >
             <option value="">All Status</option>
             <option value="ACTIVE">Active</option>
@@ -135,7 +137,7 @@ export default function CustomersPage() {
           <select
             value={filters.planType}
             onChange={(e) => setFilters({ ...filters, planType: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 lg:px-3 lg:py-2 text-sm border border-gray-300 rounded"
           >
             <option value="">All Plan Types</option>
             <option value="WEEKLY">Weekly</option>
@@ -147,28 +149,28 @@ export default function CustomersPage() {
             placeholder="Delivery Area"
             value={filters.deliveryArea}
             onChange={(e) => setFilters({ ...filters, deliveryArea: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 lg:px-3 lg:py-2 text-sm border border-gray-300 rounded"
           />
         </div>
       </div>
 
       {/* Customers Table */}
       {loading ? (
-        <div className="text-center py-8">Loading...</div>
+        <div className="text-center py-4 lg:py-8 text-sm">Loading...</div>
       ) : (
-        <div className="bg-white shadow sm:rounded-md">
+        <div className="bg-white shadow sm:rounded lg:rounded-md">
           {customers.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No customers found</div>
+            <div className="text-center py-4 lg:py-8 text-sm text-gray-500">No customers found</div>
           ) : (
-            <table className="w-full divide-y divide-gray-200 table-fixed">
+            <table className="w-full divide-y divide-gray-200 table-fixed text-sm">
               <thead style={{ backgroundColor: '#D9F2D0' }}>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '20%' }}>Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '15%' }}>Phone</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '25%' }}>Area</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '20%' }}>Active Plan</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '10%' }}>Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '10%' }}>Actions</th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '20%' }}>Name</th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '15%' }}>Phone</th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '25%' }}>Area</th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '20%' }}>Active Plan</th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '10%' }}>Status</th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider" style={{ width: '10%' }}>Actions</th>
                 </tr>
               </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -176,8 +178,8 @@ export default function CustomersPage() {
                     const activeMealPlan = customer.mealPlans?.[0]
                     return (
                   <tr key={customer.id}>
-                    <td className="px-4 py-4 text-sm font-medium text-gray-900">{customer.fullName}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-2 lg:px-4 py-2 lg:py-4 font-medium text-gray-900">{customer.fullName}</td>
+                    <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap text-gray-500">
                       {customer.phone?.startsWith('TEMP-') ? (
                         <span className="text-orange-600 font-medium" title="Temporary phone - needs update">
                           {customer.phone} ⚠️
@@ -186,14 +188,14 @@ export default function CustomersPage() {
                         customer.phone
                       )}
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-500 max-w-xs truncate" title={customer.deliveryArea}>
+                    <td className="px-2 lg:px-4 py-2 lg:py-4 text-gray-500 max-w-xs truncate" title={customer.deliveryArea}>
                       {customer.deliveryArea === 'To be updated' || !customer.deliveryArea ? (
                         <span className="text-orange-600 font-medium">⚠️ Needs update</span>
                       ) : (
                         customer.deliveryArea
                       )}
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
+                    <td className="px-2 lg:px-4 py-2 lg:py-4 text-gray-500">
                       {activeMealPlan ? (
                         <span>
                           {activeMealPlan.planType} - {activeMealPlan.mealsPerDay} meals/day
@@ -202,8 +204,8 @@ export default function CustomersPage() {
                         <span className="text-gray-400">No active plan</span>
                       )}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap">
+                      <span className={`px-1.5 inline-flex text-xs leading-4 font-semibold rounded ${
                         customer.status === 'ACTIVE' ? 'bg-[#f0f4e8] text-nutrafi-dark' :
                         customer.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
@@ -211,7 +213,7 @@ export default function CustomersPage() {
                         {customer.status === 'PAUSED' ? 'DISABLED' : customer.status}
                       </span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap font-medium">
                           <div className="relative">
                             <button
                               onClick={() => setOpenDropdown(openDropdown === customer.id ? null : customer.id)}
@@ -219,7 +221,7 @@ export default function CustomersPage() {
                               aria-label="Actions"
                             >
                               <svg
-                                className="w-5 h-5"
+                                className="w-4 h-4"
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -233,19 +235,19 @@ export default function CustomersPage() {
                                   className="fixed inset-0 z-10"
                                   onClick={() => setOpenDropdown(null)}
                                 ></div>
-                                <div className="absolute right-0 bottom-full mb-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
-                                  <div className="py-1">
+                                <div className="absolute right-0 bottom-full mb-1 w-40 bg-white rounded shadow-lg z-20 border border-gray-200 text-sm">
+                                  <div className="py-0.5">
                                     <Link
                                       href={`/customers/${customer.id}`}
                                       onClick={() => setOpenDropdown(null)}
-                                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                      className="block px-2 py-1.5 text-gray-700 hover:bg-gray-100"
                                     >
                                       View
                                     </Link>
                                     <Link
                                       href={`/customers/${customer.id}/edit`}
                                       onClick={() => setOpenDropdown(null)}
-                                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                      className="block px-2 py-1.5 text-gray-700 hover:bg-gray-100"
                                     >
                                       Edit
                                     </Link>
@@ -255,7 +257,7 @@ export default function CustomersPage() {
                                           setOpenDropdown(null)
                                           handleDisable(customer.id)
                                         }}
-                                        className="block w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50"
+                                        className="block w-full text-left px-2 py-1.5 text-orange-600 hover:bg-orange-50"
                                       >
                                         Disabled
                                       </button>
@@ -265,7 +267,7 @@ export default function CustomersPage() {
                                         setOpenDropdown(null)
                                         handleDelete(customer.id)
                                       }}
-                                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                      className="block w-full text-left px-2 py-1.5 text-red-600 hover:bg-red-50"
                                     >
                                       Delete
                                     </button>
@@ -283,40 +285,40 @@ export default function CustomersPage() {
           )}
           
           {/* Pagination and Total Count */}
-          <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex items-center justify-between">
+          <div className="bg-white px-2 lg:px-4 py-2 lg:py-3 border-t border-gray-200 sm:px-3 lg:px-6 flex items-center justify-between text-sm">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1 || loading}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="relative inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages || loading}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ml-2 relative inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>
             </div>
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-gray-700">
+                <p className="text-xs text-gray-700">
                   Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                   <span className="font-medium">{Math.min(currentPage * itemsPerPage, total)}</span> of{' '}
                   <span className="font-medium">{total}</span> customers
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <nav className="relative z-0 inline-flex rounded shadow-sm -space-x-px" aria-label="Pagination">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1 || loading}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-1.5 py-1.5 rounded-l border border-gray-300 bg-white text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Previous</span>
-                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </button>
@@ -332,7 +334,7 @@ export default function CustomersPage() {
                           key={page}
                           onClick={() => setCurrentPage(page)}
                           disabled={loading}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          className={`relative inline-flex items-center px-2 py-1.5 border text-xs font-medium ${
                             currentPage === page
                               ? 'z-10 bg-nutrafi-primary border-nutrafi-primary text-white'
                               : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
@@ -343,7 +345,7 @@ export default function CustomersPage() {
                       )
                     } else if (page === currentPage - 2 || page === currentPage + 2) {
                       return (
-                        <span key={page} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                        <span key={page} className="relative inline-flex items-center px-2 py-1.5 border border-gray-300 bg-white text-xs font-medium text-gray-700">
                           ...
                         </span>
                       )
@@ -353,10 +355,10 @@ export default function CustomersPage() {
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages || loading}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-1.5 py-1.5 rounded-r border border-gray-300 bg-white text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Next</span>
-                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                     </svg>
                   </button>

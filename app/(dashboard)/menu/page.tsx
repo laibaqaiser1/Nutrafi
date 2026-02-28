@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatCategory } from '@/lib/utils'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface Dish {
   id: string
@@ -21,6 +22,7 @@ interface Dish {
 
 
 export default function MenuPage() {
+  const toast = useNotification()
   const [dishes, setDishes] = useState<Dish[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -153,11 +155,11 @@ export default function MenuPage() {
         handleCloseIngredients()
       } else {
         const error = await response.json()
-        alert(`Failed to update ingredients: ${error.error || 'Unknown error'}`)
+        toast.error(`Failed to update ingredients: ${error.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error updating ingredients:', error)
-      alert('Failed to update ingredients')
+      toast.error('Failed to update ingredients')
     } finally {
       setUpdating(false)
     }
@@ -165,18 +167,18 @@ export default function MenuPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Menu Management</h1>
+      <div className="flex justify-between items-center mb-3 lg:mb-6">
+        <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Menu Management</h1>
         <div className="flex gap-2">
           <button
             onClick={handleExport}
-            className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800"
+            className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-black text-white rounded hover:bg-gray-800"
           >
             Export to Excel
           </button>
           <Link
             href="/menu/new"
-            className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
+            className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded hover:bg-nutrafi-dark"
           >
             Add New Dish
           </Link>
@@ -184,19 +186,19 @@ export default function MenuPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="bg-white p-2 lg:p-4 rounded shadow lg:rounded-lg mb-3 lg:mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-2 lg:gap-4">
           <input
             type="text"
             placeholder="Search by name..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded"
           />
           <select
             value={filters.category}
             onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded"
           >
             <option value="">All Categories</option>
             <option value="BREAKFAST">Breakfast</option>
@@ -210,7 +212,7 @@ export default function MenuPage() {
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded"
           >
             <option value="">All Status</option>
             <option value="ACTIVE">Active</option>
@@ -221,72 +223,72 @@ export default function MenuPage() {
             placeholder="Min Calories"
             value={filters.minCalories}
             onChange={(e) => setFilters({ ...filters, minCalories: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded"
           />
           <input
             type="number"
             placeholder="Max Calories"
             value={filters.maxCalories}
             onChange={(e) => setFilters({ ...filters, maxCalories: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded"
           />
           <input
             type="number"
             placeholder="Min Protein"
             value={filters.minProtein}
             onChange={(e) => setFilters({ ...filters, minProtein: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded"
           />
         </div>
       </div>
 
       {/* Dishes Table */}
       {loading ? (
-        <div className="text-center py-8">Loading...</div>
+        <div className="text-center py-4 text-sm">Loading...</div>
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <div className="bg-white shadow overflow-hidden sm:rounded">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead style={{ backgroundColor: '#D9F2D0' }}>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Calories</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Protein</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Carbs</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Fats</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Price</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Ingredients</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Actions</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Name</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Category</th>
+                <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-bold text-black uppercase tracking-wider">Calories</th>
+                <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-bold text-black uppercase tracking-wider">Protein</th>
+                <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-bold text-black uppercase tracking-wider">Carbs</th>
+                <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-bold text-black uppercase tracking-wider">Fats</th>
+                <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-bold text-black uppercase tracking-wider">Price</th>
+                <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-bold text-black uppercase tracking-wider">Ingredients</th>
+                <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-bold text-black uppercase tracking-wider">Status</th>
+                <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-bold text-black uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {dishes.map((dish) => (
                 <tr key={dish.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dish.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCategory(dish.category)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dish.calories} kcal</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dish.protein}g</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dish.carbs}g</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dish.fats}g</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dish.price ? `AED ${dish.price}` : '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap font-medium text-gray-900">{dish.name}</td>
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-gray-500">{formatCategory(dish.category)}</td>
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-gray-500">{dish.calories} kcal</td>
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-gray-500">{dish.protein}g</td>
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-gray-500">{dish.carbs}g</td>
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-gray-500">{dish.fats}g</td>
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap text-gray-500">{dish.price ? `AED ${dish.price}` : '-'}</td>
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap font-medium">
                     <button
                       onClick={() => handleOpenIngredients(dish)}
-                      className="text-nutrafi-primary hover:text-nutrafi-dark underline"
+                      className="text-nutrafi-primary hover:text-nutrafi-dark underline text-xs"
                     >
                       Ingredients
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap">
+                    <span className={`px-1.5 inline-flex text-xs leading-4 font-semibold rounded ${
                       dish.status === 'ACTIVE' ? 'bg-[#f0f4e8] text-nutrafi-dark' : 'bg-red-100 text-red-800'
                     }`}>
                       {dish.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-2 py-2 lg:px-6 lg:py-4 whitespace-nowrap font-medium">
                     <div className="relative">
                       <button
                         onClick={() => setOpenDropdown(openDropdown === dish.id ? null : dish.id)}
@@ -294,7 +296,7 @@ export default function MenuPage() {
                         aria-label="Actions"
                       >
                         <svg
-                          className="w-5 h-5"
+                          className="w-4 h-4"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                           xmlns="http://www.w3.org/2000/svg"
@@ -308,12 +310,12 @@ export default function MenuPage() {
                             className="fixed inset-0 z-10"
                             onClick={() => setOpenDropdown(null)}
                           ></div>
-                          <div className="absolute right-0 bottom-full mb-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
-                            <div className="py-1">
+                          <div className="absolute right-0 bottom-full mb-1 w-40 bg-white rounded shadow-lg z-20 border border-gray-200 text-sm">
+                            <div className="py-0.5">
                               <Link
                                 href={`/menu/${dish.id}/edit`}
                                 onClick={() => setOpenDropdown(null)}
-                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                className="block px-2 py-1.5 text-gray-700 hover:bg-gray-100"
                               >
                                 Edit
                               </Link>
@@ -322,7 +324,7 @@ export default function MenuPage() {
                                   setOpenDropdown(null)
                                   handleDelete(dish.id)
                                 }}
-                                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                className="block w-full text-left px-2 py-1.5 text-red-600 hover:bg-red-50"
                               >
                                 Delete
                               </button>
@@ -338,45 +340,45 @@ export default function MenuPage() {
           </table>
           </div>
           {dishes.length === 0 && (
-            <div className="text-center py-8 text-gray-500">No dishes found</div>
+            <div className="text-center py-4 text-sm text-gray-500">No dishes found</div>
           )}
           
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="bg-white px-2 py-2 lg:px-6 lg:py-4 flex items-center justify-between border-t border-gray-200 sm:px-3 text-sm">
               <div className="flex-1 flex justify-between sm:hidden">
                 <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="ml-2 relative inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-xs text-gray-700">
                     Showing <span className="font-medium">{(currentPage - 1) * 10 + 1}</span> to{' '}
                     <span className="font-medium">{Math.min(currentPage * 10, total)}</span> of{' '}
                     <span className="font-medium">{total}</span> results
                   </p>
                 </div>
                 <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <nav className="relative z-0 inline-flex rounded shadow-sm -space-x-px" aria-label="Pagination">
                     <button
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-1.5 py-1.5 rounded-l border border-gray-300 bg-white text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span className="sr-only">Previous</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     </button>
@@ -395,7 +397,7 @@ export default function MenuPage() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          className={`relative inline-flex items-center px-2 py-1.5 border text-xs font-medium ${
                             currentPage === pageNum
                               ? 'z-10 bg-nutrafi-primary border-nutrafi-primary text-white'
                               : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
@@ -408,10 +410,10 @@ export default function MenuPage() {
                     <button
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-1.5 py-1.5 rounded-r border border-gray-300 bg-white text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span className="sr-only">Next</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                       </svg>
                     </button>
@@ -425,25 +427,25 @@ export default function MenuPage() {
 
        {/* Ingredients Modal */}
        {ingredientsModal.isOpen && ingredientsModal.dish && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto h-full w-full p-4">
+         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto h-full w-full p-2">
            {/* Blurred Background */}
            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
            
            {/* Modal Box */}
-           <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
-            <div className="flex items-center justify-between p-5 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">
+           <div className="relative bg-white rounded shadow-xl max-w-2xl w-full m-2">
+            <div className="flex items-center justify-between p-2 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">
                 Ingredients - {ingredientsModal.dish.name}
               </h3>
               <button
                 onClick={handleCloseIngredients}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
               >
                 ×
               </button>
             </div>
-            <div className="p-5">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="p-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Ingredients
               </label>
               <textarea
@@ -455,17 +457,17 @@ export default function MenuPage() {
                   })
                 }
                 placeholder="Enter ingredients (comma-separated or one per line)"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                rows={8}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                rows={6}
               />
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-1 text-xs text-gray-500">
                 You can enter ingredients as a comma-separated list or one per line.
               </p>
             </div>
-            <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-200">
+            <div className="flex items-center justify-end gap-2 p-2 border-t border-gray-200">
               <button
                 onClick={handleCloseIngredients}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
                 disabled={updating}
               >
                 Cancel
@@ -473,7 +475,7 @@ export default function MenuPage() {
                <button
                  onClick={handleUpdateIngredients}
                  disabled={updating}
-                 className="px-4 py-2 text-sm font-medium text-white bg-nutrafi-primary rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                 className="px-3 py-1.5 text-xs font-medium text-white bg-nutrafi-primary rounded hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
                >
                  {updating ? 'Updating...' : 'Update Ingredients'}
                </button>

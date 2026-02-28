@@ -401,7 +401,6 @@ export type MealPlanItemOrderByWithRelationInput = {
 
 export type MealPlanItemWhereUniqueInput = Prisma.AtLeast<{
   id?: string
-  mealPlanId_date_timeSlot?: Prisma.MealPlanItemMealPlanIdDateTimeSlotCompoundUniqueInput
   AND?: Prisma.MealPlanItemWhereInput | Prisma.MealPlanItemWhereInput[]
   OR?: Prisma.MealPlanItemWhereInput[]
   NOT?: Prisma.MealPlanItemWhereInput | Prisma.MealPlanItemWhereInput[]
@@ -428,7 +427,7 @@ export type MealPlanItemWhereUniqueInput = Prisma.AtLeast<{
   protein?: Prisma.FloatNullableFilter<"MealPlanItem"> | number | null
   dish?: Prisma.XOR<Prisma.DishNullableScalarRelationFilter, Prisma.DishWhereInput> | null
   mealPlan?: Prisma.XOR<Prisma.MealPlanScalarRelationFilter, Prisma.MealPlanWhereInput>
-}, "id" | "mealPlanId_date_timeSlot">
+}, "id">
 
 export type MealPlanItemOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -669,12 +668,6 @@ export type MealPlanItemListRelationFilter = {
 
 export type MealPlanItemOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
-}
-
-export type MealPlanItemMealPlanIdDateTimeSlotCompoundUniqueInput = {
-  mealPlanId: string
-  date: Date | string
-  timeSlot: string
 }
 
 export type MealPlanItemCountOrderByAggregateInput = {

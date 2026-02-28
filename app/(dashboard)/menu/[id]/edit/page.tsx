@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 export default function EditDishPage() {
   const router = useRouter()
   const params = useParams()
+  const toast = useNotification()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
@@ -74,11 +76,11 @@ export default function EditDishPage() {
         router.push('/menu')
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error updating dish:', error)
-      alert('Failed to update dish')
+      toast.error('Failed to update dish')
     } finally {
       setSaving(false)
     }

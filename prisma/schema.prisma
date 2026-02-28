@@ -6,6 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // For dev, if you see P2024 (connection pool timeout), add ?connection_limit=5 to DATABASE_URL
   url      = env("DATABASE_URL")
 }
 
@@ -137,7 +138,6 @@ model MealPlanItem {
   dish            Dish?         @relation(fields: [dishId], references: [id])
   mealPlan        MealPlan      @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
 
-  @@unique([mealPlanId, date, timeSlot])
   @@index([mealPlanId])
   @@index([date])
   @@index([timeSlot])
@@ -191,6 +191,7 @@ enum PlanType {
 
 enum CustomerStatus {
   ACTIVE
+  INACTIVE
   PAUSED
   CANCELLED
 }

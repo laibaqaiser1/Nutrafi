@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
-import { prisma } from '@/lib/prisma'
+import { prisma, withRetry } from '@/lib/prisma'
 
 // GET - Get kitchen planning data filtered by date and time range
 export async function GET(request: NextRequest) {
@@ -36,22 +36,24 @@ export async function GET(request: NextRequest) {
     }
     // If status is 'all', don't add isDelivered filter
 
-    // Fetch all items for the date first
-    let items = await prisma.mealPlanItem.findMany({
-      where,
-      include: {
-        mealPlan: {
-          include: {
-            customer: true,
+    // Fetch all items for the date first (with retry on connection pool timeout P2024)
+    let items = await withRetry(() =>
+      prisma.mealPlanItem.findMany({
+        where,
+        include: {
+          mealPlan: {
+            include: {
+              customer: true,
+            },
           },
+          dish: true, // Optional reference
         },
-        dish: true, // Optional reference
-      },
-      orderBy: [
-        { timeSlot: 'asc' },
-        { mealPlan: { customer: { fullName: 'asc' } } },
-      ],
-    })
+        orderBy: [
+          { timeSlot: 'asc' },
+          { mealPlan: { customer: { fullName: 'asc' } } },
+        ],
+      })
+    )
 
     // Filter by time range if provided (time comparison for HH:MM format)
     if (startTime || endTime) {
@@ -67,6 +69,12 @@ export async function GET(request: NextRequest) {
         return true
       })
     }
+
+    // Exclude inactive dishes (no dish assigned - no dishId and no real dishName)
+    items = items.filter(item => {
+      const hasDish = item.dishId != null || (item.dishName && item.dishName.trim() !== '' && item.dishName !== 'Not Assigned')
+      return hasDish
+    })
 
     // Aggregate by dish
     const dishAggregation: Record<string, {

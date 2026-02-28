@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 
+// Parse optional from/to (YYYY-MM-DD) into Date range for filtering
+function getDateRange(searchParams: URLSearchParams): { from: Date; to: Date } | null {
+  const fromStr = searchParams.get('from')
+  const toStr = searchParams.get('to')
+  if (!fromStr || !toStr) return null
+  const from = new Date(fromStr)
+  const to = new Date(toStr)
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) return null
+  from.setHours(0, 0, 0, 0)
+  to.setHours(23, 59, 59, 999)
+  return from <= to ? { from, to } : null
+}
+
 // GET - Get reports data
 export async function GET(request: NextRequest) {
   try {
@@ -12,15 +25,20 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const reportType = searchParams.get('type') || 'summary'
+    const dateRange = getDateRange(searchParams)
 
     if (reportType === 'summary') {
+      const paymentWhere = dateRange
+        ? { status: 'COMPLETED' as const, paymentDate: { gte: dateRange.from, lte: dateRange.to } }
+        : { status: 'COMPLETED' as const }
+
       const [activeCustomers, totalDishes, activeMealPlans, totalPayments, revenue] = await Promise.all([
         prisma.customer.count({ where: { status: 'ACTIVE' } }),
         prisma.dish.count({ where: { status: 'ACTIVE' } }),
         prisma.mealPlan.count({ where: { status: 'ACTIVE' } }),
-        prisma.payment.count({ where: { status: 'COMPLETED' } }),
+        prisma.payment.count({ where: paymentWhere }),
         prisma.payment.aggregate({
-          where: { status: 'COMPLETED' },
+          where: paymentWhere,
           _sum: { amount: true },
         }),
       ])
@@ -35,12 +53,17 @@ export async function GET(request: NextRequest) {
     }
 
     if (reportType === 'popular-dishes') {
+      const itemWhere: { dishId: { not: null }; isSkipped: false; date?: { gte: Date; lte: Date } } = {
+        dishId: { not: null },
+        isSkipped: false,
+      }
+      if (dateRange) {
+        itemWhere.date = { gte: dateRange.from, lte: dateRange.to }
+      }
+
       const popularDishes = await prisma.mealPlanItem.groupBy({
         by: ['dishId'],
-        where: {
-          dishId: { not: null },
-          isSkipped: false,
-        },
+        where: itemWhere,
         _count: {
           dishId: true,
         },

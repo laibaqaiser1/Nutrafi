@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface MealPlanItem {
   id: string
@@ -81,12 +82,14 @@ interface Plan {
 export default function EditMealPlanPage() {
   const router = useRouter()
   const params = useParams()
+  const toast = useNotification()
   const [loading, setLoading] = useState(false)
   const [savingPayment, setSavingPayment] = useState(false)
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
   const [plans, setPlans] = useState<Plan[]>([])
   const [dishes, setDishes] = useState<Dish[]>([])
   const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [mealsSectionExpanded, setMealsSectionExpanded] = useState(false) // default collapsed; edit meals from schedule view
   const [editingSkippedMeal, setEditingSkippedMeal] = useState<MealPlanItem | null>(null)
   const [savingMeal, setSavingMeal] = useState(false)
   const [formData, setFormData] = useState({
@@ -106,6 +109,9 @@ export default function EditMealPlanPage() {
     paymentDate: new Date().toISOString().split('T')[0],
     notes: '',
   })
+  type PaymentItem = NonNullable<MealPlan['payments']>[number]
+  const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null)
+  const [savingPaymentEdit, setSavingPaymentEdit] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -132,12 +138,12 @@ export default function EditMealPlanPage() {
           notes: data.notes || '',
         })
       } else {
-        alert('Failed to fetch meal plan')
+        toast.error('Failed to fetch meal plan')
         router.push('/meal-plans')
       }
     } catch (error) {
       console.error('Error fetching meal plan:', error)
-      alert('Failed to fetch meal plan')
+      toast.error('Failed to fetch meal plan')
     }
   }
 
@@ -200,11 +206,11 @@ export default function EditMealPlanPage() {
         router.push(`/meal-plans/${params.id}`)
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error updating meal plan:', error)
-      alert('Failed to update meal plan')
+      toast.error('Failed to update meal plan')
     } finally {
       setLoading(false)
     }
@@ -232,7 +238,7 @@ export default function EditMealPlanPage() {
       })
 
       if (response.ok) {
-        alert('Payment added successfully!')
+        toast.success('Payment added successfully!')
         setShowPaymentForm(false)
         setPaymentData({
           amount: '',
@@ -245,13 +251,55 @@ export default function EditMealPlanPage() {
         await fetchMealPlan(mealPlan.id)
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error adding payment:', error)
-      alert('Failed to add payment')
+      toast.error('Failed to add payment')
     } finally {
       setSavingPayment(false)
+    }
+  }
+
+  const handleUpdatePayment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingPayment || !mealPlan) return
+
+    setSavingPaymentEdit(true)
+    try {
+      const form = e.target as HTMLFormElement
+      const formData = new FormData(form)
+      const amount = formData.get('edit-amount')
+      const paymentDate = formData.get('edit-paymentDate')
+      const paymentMethod = formData.get('edit-paymentMethod')
+      const status = formData.get('edit-status')
+      const notes = formData.get('edit-notes')
+
+      const response = await fetch(`/api/payments/${editingPayment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(String(amount || '0')),
+          paymentDate: paymentDate ? String(paymentDate) : format(new Date(editingPayment.paymentDate), 'yyyy-MM-dd'),
+          paymentMethod: paymentMethod || null,
+          status: (status as 'PENDING' | 'COMPLETED' | 'FAILED') || editingPayment.status,
+          notes: notes !== undefined && notes !== null ? String(notes) : null,
+        }),
+      })
+
+      if (response.ok) {
+        toast.success('Payment updated successfully!')
+        setEditingPayment(null)
+        await fetchMealPlan(mealPlan.id)
+      } else {
+        const err = await response.json()
+        toast.error('Error: ' + (err?.error ? JSON.stringify(err.error) : 'Failed to update payment'))
+      }
+    } catch (error) {
+      console.error('Error updating payment:', error)
+      toast.error('Failed to update payment')
+    } finally {
+      setSavingPaymentEdit(false)
     }
   }
 
@@ -286,19 +334,35 @@ export default function EditMealPlanPage() {
       })
 
       if (response.ok) {
-        alert('Meal added successfully!')
+        toast.success('Meal added successfully!')
         setEditingSkippedMeal(null)
         // Refresh meal plan data
         await fetchMealPlan(mealPlan.id)
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error un-skipping meal:', error)
-      alert('Failed to add meal')
+      toast.error('Failed to add meal')
     } finally {
       setSavingMeal(false)
+    }
+  }
+
+  const handleDeleteMeal = async (itemId: string) => {
+    if (!mealPlan || !confirm('Remove this meal from the plan? This cannot be undone.')) return
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${itemId}`, { method: 'DELETE' })
+      if (response.ok) {
+        await fetchMealPlan(mealPlan.id)
+      } else {
+        const err = await response.json()
+        toast.error(err?.error || 'Failed to delete meal')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to delete meal')
     }
   }
 
@@ -308,8 +372,8 @@ export default function EditMealPlanPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Meal Plan</h1>
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <h1 className="text-lg font-bold text-gray-900 mb-3">Edit Meal Plan</h1>
+      <div className="bg-white shadow rounded p-3 mb-3">
         <p className="text-sm text-gray-600">
           <strong>Customer:</strong> {mealPlan.customer.fullName}
         </p>
@@ -417,9 +481,79 @@ export default function EditMealPlanPage() {
         </div>
       </form>
 
+      {/* All Meals – delete any meal (collapsed by default; edit from meal schedule view) */}
+      {mealPlan.mealPlanItems && mealPlan.mealPlanItems.length > 0 && (
+        <div className="bg-white shadow rounded p-3 mt-3">
+          <button
+            type="button"
+            onClick={() => setMealsSectionExpanded(!mealsSectionExpanded)}
+            className="flex justify-between items-center w-full text-left"
+          >
+            <h2 className="text-lg font-semibold text-gray-900">Meals in this plan</h2>
+            <span className="flex items-center gap-2 text-sm text-gray-500">
+              {mealPlan.mealPlanItems.length} meal(s)
+              <svg
+                className={`w-5 h-5 text-gray-500 transition-transform ${mealsSectionExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </span>
+          </button>
+          {mealsSectionExpanded && (
+          <div className="overflow-x-auto mt-4">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dish</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {mealPlan.mealPlanItems
+                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || (a.timeSlot || '').localeCompare(b.timeSlot || ''))
+                  .map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {format(new Date(item.date), 'MMM dd, yyyy')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.timeSlot}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{item.dishName || (item.isSkipped ? '—' : 'Not set')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {item.isSkipped ? (
+                          <span className="text-amber-600">Skipped</span>
+                        ) : item.isDelivered ? (
+                          <span className="text-green-600">Delivered</span>
+                        ) : (
+                          <span className="text-gray-500">Scheduled</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMeal(item.id)}
+                          className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          )}
+        </div>
+      )}
+
       {/* Skipped Meals Section */}
       {mealPlan.mealPlanItems && mealPlan.mealPlanItems.filter(item => item.isSkipped).length > 0 && (
-        <div className="bg-white shadow rounded-lg p-6 mt-6">
+        <div className="bg-white shadow rounded p-3 mt-3">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Skipped Meals</h2>
             <span className="text-sm text-gray-500">
@@ -447,12 +581,21 @@ export default function EditMealPlanPage() {
                         {item.timeSlot}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => setEditingSkippedMeal(item)}
-                          className="px-3 py-1 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark text-xs"
-                        >
-                          Add Meal
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setEditingSkippedMeal(item)}
+                            className="px-3 py-1 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark text-xs"
+                          >
+                            Add Meal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMeal(item.id)}
+                            className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -463,7 +606,7 @@ export default function EditMealPlanPage() {
       )}
 
       {/* Payment Section */}
-      <div className="bg-white shadow rounded-lg p-6 mt-6">
+      <div className="bg-white shadow rounded p-3 mt-3">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Payment History</h2>
           <button
@@ -476,7 +619,7 @@ export default function EditMealPlanPage() {
 
         {/* Payment Form */}
         {showPaymentForm && (
-          <form onSubmit={handleAddPayment} className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <form onSubmit={handleAddPayment} className="mb-3 p-2 bg-gray-50 rounded border border-gray-200">
             <h3 className="text-md font-semibold text-gray-900 mb-4">Add New Payment</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -577,6 +720,7 @@ export default function EditMealPlanPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -602,6 +746,15 @@ export default function EditMealPlanPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {payment.notes || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        type="button"
+                        onClick={() => setEditingPayment(payment)}
+                        className="px-3 py-1 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark text-xs"
+                      >
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -635,6 +788,90 @@ export default function EditMealPlanPage() {
           <p className="text-sm text-gray-500">No payments recorded for this meal plan.</p>
         )}
       </div>
+
+      {/* Edit Payment Modal */}
+      {editingPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setEditingPayment(null)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Payment</h3>
+            <form key={editingPayment.id} onSubmit={handleUpdatePayment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Amount (AED) *</label>
+                <input
+                  type="number"
+                  name="edit-amount"
+                  required
+                  min="0"
+                  step="0.01"
+                  defaultValue={editingPayment.amount}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date *</label>
+                <input
+                  type="date"
+                  name="edit-paymentDate"
+                  required
+                  defaultValue={format(new Date(editingPayment.paymentDate), 'yyyy-MM-dd')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <select
+                  name="edit-paymentMethod"
+                  defaultValue={editingPayment.paymentMethod || 'CASH'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                >
+                  <option value="CASH">Cash</option>
+                  <option value="CARD">Card</option>
+                  <option value="DIGITAL_WALLET">Digital Wallet</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                <select
+                  name="edit-status"
+                  required
+                  defaultValue={editingPayment.status}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  name="edit-notes"
+                  defaultValue={editingPayment.notes || ''}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
+                  placeholder="Optional notes..."
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={savingPaymentEdit}
+                  className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50"
+                >
+                  {savingPaymentEdit ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingPayment(null)}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Edit Skipped Meal Modal */}
       {editingSkippedMeal && (
@@ -739,7 +976,7 @@ function SkippedMealForm({
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-3 space-y-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Dish (Optional)</label>
             <select

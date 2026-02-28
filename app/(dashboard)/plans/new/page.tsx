@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useNotification } from '@/components/notifications/NotificationContext'
 
 export default function NewPlanPage() {
   const router = useRouter()
+  const toast = useNotification()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -36,11 +38,11 @@ export default function NewPlanPage() {
         router.push('/plans')
       } else {
         const error = await response.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error creating plan:', error)
-      alert('Failed to create plan')
+      toast.error('Failed to create plan')
     } finally {
       setLoading(false)
     }
@@ -48,7 +50,7 @@ export default function NewPlanPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New Plan</h1>
+      <h1 className="text-lg font-bold text-gray-900 mb-3">Add New Plan</h1>
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
