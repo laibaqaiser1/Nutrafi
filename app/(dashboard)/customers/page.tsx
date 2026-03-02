@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useNotification } from '@/components/notifications/NotificationContext'
+import { customerStatusLabel } from '@/lib/utils'
 
 interface Customer {
   id: string
@@ -22,6 +24,7 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const router = useRouter()
   const toast = useNotification()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -137,6 +140,7 @@ export default function CustomersPage() {
           >
             <option value="">All Status</option>
             <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
             <option value="PAUSED">Disabled</option>
           </select>
           <select
@@ -182,7 +186,11 @@ export default function CustomersPage() {
                   {customers.map((customer) => {
                     const activeMealPlan = customer.mealPlans?.[0]
                     return (
-                  <tr key={customer.id}>
+                  <tr
+                    key={customer.id}
+                    onClick={() => router.push(`/customers/${customer.id}`)}
+                    className="cursor-pointer hover:bg-gray-50 transition-colors"
+                  >
                     <td className="px-2 lg:px-4 py-2 lg:py-4 font-medium text-gray-900">{customer.fullName}</td>
                     <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap text-gray-500">
                       {customer.phone?.startsWith('TEMP-') ? (
@@ -212,13 +220,16 @@ export default function CustomersPage() {
                     <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap">
                       <span className={`px-1.5 inline-flex text-xs leading-4 font-semibold rounded ${
                         customer.status === 'ACTIVE' ? 'bg-[#f0f4e8] text-nutrafi-dark' :
-                        customer.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
+                        customer.status === 'PAUSED' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-700'
                       }`}>
-                        {customer.status === 'PAUSED' ? 'DISABLED' : customer.status}
+                        {customerStatusLabel(customer.status)}
                       </span>
                     </td>
-                    <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap font-medium">
+                    <td
+                      className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap font-medium"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                           <div className="relative">
                             <button
                               onClick={() => setOpenDropdown(openDropdown === customer.id ? null : customer.id)}

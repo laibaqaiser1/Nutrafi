@@ -110,8 +110,8 @@ export default function NewCustomerPage() {
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
             >
               <option value="ACTIVE">Active</option>
-              <option value="PAUSED">Paused</option>
-              <option value="CANCELLED">Cancelled</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="PAUSED">Disabled</option>
             </select>
           </div>
           <div className="md:col-span-2">

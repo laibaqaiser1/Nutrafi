@@ -21,6 +21,7 @@ interface MealPlanItem {
   isDelivered: boolean
   mealPlan: {
     id: string
+    status?: string
     customer: {
       id: string
       fullName: string
@@ -53,6 +54,15 @@ interface KitchenPlanningData {
   date: string | null
   startTime: string | null
   endTime: string | null
+  skippedDayRows?: Array<{
+    customerId: string
+    customerName: string
+    phone: string | null
+    deliveryArea: string | null
+    address: string | null
+    timeSlot?: string
+    deliveryTime?: string | null
+  }>
 }
 
 export default function KitchenPlanningPage() {
@@ -67,10 +77,26 @@ export default function KitchenPlanningPage() {
     endTime: '',
     status: 'active' as 'active' | 'delivered' | 'all', // Default to 'active'
   })
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const PAGE_SIZE_OPTIONS = [10, 20, 50]
 
   useEffect(() => {
     fetchKitchenPlanningData()
   }, [filters.date, filters.startTime, filters.endTime, filters.status])
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [filters.date, filters.startTime, filters.endTime, filters.status])
+
+  // Clamp page when data shrinks (e.g. fewer results or larger pageSize)
+  useEffect(() => {
+    if (!data) return
+    const totalRows = data.items.length + (data.skippedDayRows?.length ?? 0)
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
+    setPage((p) => Math.min(p, totalPages))
+  }, [data, pageSize])
 
   const fetchKitchenPlanningData = async () => {
     setLoading(true)
@@ -141,6 +167,21 @@ export default function KitchenPlanningPage() {
     } catch {
       return ''
     }
+  }
+
+  // Format time string (HH:MM or HH:MM:SS) to 12-hour with AM/PM
+  const formatTime12h = (timeStr: string | null): string => {
+    if (!timeStr || typeof timeStr !== 'string') return ''
+    const trimmed = timeStr.trim()
+    if (!trimmed) return ''
+    const parts = trimmed.split(':')
+    const h = parseInt(parts[0], 10)
+    const m = parts[1] ? parseInt(parts[1], 10) : 0
+    if (Number.isNaN(h)) return trimmed
+    const hour12 = h % 12 || 12
+    const ampm = h < 12 ? 'AM' : 'PM'
+    const min = Number.isNaN(m) ? '00' : m.toString().padStart(2, '0')
+    return `${hour12}:${min} ${ampm}`
   }
 
   const handleMarkAsDelivered = async (item: MealPlanItem) => {
@@ -219,7 +260,7 @@ export default function KitchenPlanningPage() {
         <div className="flex gap-2 lg:gap-3">
           <button
             onClick={() => handleExport('chef')}
-            disabled={loading || !data || data.items.length === 0}
+            disabled={loading || !data || (data.items.length === 0 && (!data.skippedDayRows || data.skippedDayRows.length === 0))}
             className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded lg:rounded-lg hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 lg:gap-2"
           >
             <svg
@@ -239,7 +280,7 @@ export default function KitchenPlanningPage() {
           </button>
           <button
             onClick={() => handleExport('rider')}
-            disabled={loading || !data || data.items.length === 0}
+            disabled={loading || !data || (data.items.length === 0 && (!data.skippedDayRows || data.skippedDayRows.length === 0))}
             className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-black text-white rounded lg:rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 lg:gap-2 font-medium"
           >
             <svg
@@ -340,26 +381,61 @@ export default function KitchenPlanningPage() {
           <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-nutrafi-primary"></div>
           <p className="mt-2 text-sm text-gray-600">Loading kitchen planning data...</p>
         </div>
-      ) : data && data.items.length > 0 ? (
+      ) : data && (data.items.length > 0 || (data.skippedDayRows && data.skippedDayRows.length > 0)) ? (
+        (() => {
+          type SkippedDayRowItem = {
+            customerId: string
+            customerName: string
+            phone: string | null
+            deliveryArea: string | null
+            address: string | null
+            timeSlot?: string
+            deliveryTime?: string | null
+          }
+          type RowItem = { type: 'item'; data: MealPlanItem } | { type: 'skipped'; data: SkippedDayRowItem }
+          const allRows: RowItem[] = [
+            ...data.items.map((item): RowItem => ({ type: 'item', data: item })),
+            ...(data.skippedDayRows ?? []).map((row): RowItem => ({ type: 'skipped', data: row })),
+          ]
+          const totalRows = allRows.length
+          const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
+          const currentPage = Math.min(page, totalPages)
+          const start = (currentPage - 1) * pageSize
+          const paginatedRows = allRows.slice(start, start + pageSize)
+
+          return (
         <div className="bg-white rounded shadow lg:rounded-lg overflow-hidden">
-          <div className="px-2 lg:px-6 py-2 lg:py-4 border-b border-gray-200">
-            <div className="flex justify-between items-center">
+            <div className="px-2 lg:px-6 py-2 lg:py-4 border-b border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base lg:text-lg font-semibold text-gray-900">
-                Meal Plans ({data.total} items)
+                Meal Plans ({data.total + (data.skippedDayRows?.length ?? 0)} items)
               </h2>
-              <div className="text-xs lg:text-sm text-gray-600">
-                {format(new Date(filters.date), 'EEEE, MMMM dd, yyyy')}
-                {filters.startTime && filters.endTime && (
-                  <span className="ml-2">
-                    • {filters.startTime} - {filters.endTime}
-                  </span>
-                )}
-                {filters.startTime && !filters.endTime && (
-                  <span className="ml-2">• From {filters.startTime}</span>
-                )}
-                {!filters.startTime && filters.endTime && (
-                  <span className="ml-2">• Until {filters.endTime}</span>
-                )}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="text-xs lg:text-sm text-gray-600">
+                  {format(new Date(filters.date), 'EEEE, MMMM dd, yyyy')}
+                  {filters.startTime && filters.endTime && (
+                    <span className="ml-2">• {filters.startTime} - {filters.endTime}</span>
+                  )}
+                  {filters.startTime && !filters.endTime && (
+                    <span className="ml-2">• From {filters.startTime}</span>
+                  )}
+                  {!filters.startTime && filters.endTime && (
+                    <span className="ml-2">• Until {filters.endTime}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <label htmlFor="kitchen-page-size" className="text-gray-600 whitespace-nowrap">Rows per page</label>
+                  <select
+                    id="kitchen-page-size"
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
+                    className="px-2 py-1 border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-nutrafi-primary focus:border-transparent"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -394,86 +470,132 @@ export default function KitchenPlanningPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {data.items.map((item) => {
-                  const instructions = getInstructions(item.customNote)
-                  const calories = item.calories || item.dish?.calories || 0
-                  const protein = item.protein || item.dish?.protein || 0
-                  const carbs = item.carbs || item.dish?.carbs || 0
-                  const fats = item.fats || item.dish?.fats || 0
-                  const allergens = item.allergens || item.dish?.allergens || 'None'
-                  const dishName = item.dishName || item.dish?.name || 'Not Assigned'
+                {paginatedRows.map((row) => {
+                  if (row.type === 'item') {
+                    const item = row.data
+                    const instructions = getInstructions(item.customNote)
+                    const calories = item.calories || item.dish?.calories || 0
+                    const protein = item.protein || item.dish?.protein || 0
+                    const carbs = item.carbs || item.dish?.carbs || 0
+                    const fats = item.fats || item.dish?.fats || 0
+                    const allergens = item.allergens || item.dish?.allergens || 'None'
+                    const dishName = item.dishName || item.dish?.name || 'Not Assigned'
+                    const isPaused = String(item.mealPlan.status || '').toUpperCase() === 'PAUSED'
 
+                    return (
+                      <tr 
+                        key={item.id} 
+                        className={isPaused ? 'bg-red-100 hover:bg-red-200 cursor-pointer' : 'hover:bg-gray-50 cursor-pointer'}
+                        onClick={() => setSelectedMeal(item)}
+                      >
+                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="font-medium">{formatTime12h(item.timeSlot) || item.timeSlot}</div>
+                          {item.deliveryTime && (
+                            <div className="text-xs text-gray-500">
+                              Delivery: {formatTime12h(item.deliveryTime)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {item.mealPlan.customer.fullName}
+                          </div>
+                          {item.mealPlan.customer.phone && (
+                            <div className="text-xs text-gray-500">
+                              {item.mealPlan.customer.phone}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2 lg:px-6 py-2 lg:py-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {dishName}
+                          </div>
+                          {instructions && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              <span className="font-medium">Note:</span> {instructions}
+                            </div>
+                          )}
+                          {item.ingredients && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {item.ingredients}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.mealPlan.customer.deliveryArea || '-'}
+                        </td>
+                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-900">
+                          {calories} kcal
+                        </td>
+                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="text-xs">
+                            <div>P: {protein.toFixed(1)}g</div>
+                            <div>C: {carbs.toFixed(1)}g</div>
+                            <div>F: {fats.toFixed(1)}g</div>
+                          </div>
+                        </td>
+                        <td className="px-2 lg:px-6 py-2 lg:py-4 text-sm text-gray-500">
+                          <div className="text-xs max-w-xs">
+                            {allergens}
+                          </div>
+                        </td>
+                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
+                          {item.isDelivered ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                              Delivered
+                            </span>
+                          ) : isPaused ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-200 text-red-900">
+                              Customer not available
+                            </span>
+                          ) : item.isSkipped ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                              Skipped
+                            </span>
+                          ) : (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
+                              Active
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  }
+                  const sk = row.data
+                  const skTime = formatTime12h(sk.timeSlot || sk.deliveryTime || '') || '—'
+                  const skDelivery = sk.deliveryTime ? formatTime12h(sk.deliveryTime) : null
                   return (
-                    <tr 
-                      key={item.id} 
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => setSelectedMeal(item)}
+                    <tr
+                      key={`skipped-${sk.customerId}`}
+                      className="bg-yellow-100 hover:bg-yellow-200"
                     >
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="font-medium">{item.timeSlot}</div>
-                        {item.deliveryTime && (
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-700">
+                        <div className="font-medium">{skTime}</div>
+                        {skDelivery && (
                           <div className="text-xs text-gray-500">
-                            Delivery: {item.deliveryTime}
+                            Delivery: {skDelivery}
                           </div>
                         )}
                       </td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {item.mealPlan.customer.fullName}
-                        </div>
-                        {item.mealPlan.customer.phone && (
-                          <div className="text-xs text-gray-500">
-                            {item.mealPlan.customer.phone}
-                          </div>
+                        <div className="text-sm font-medium text-gray-900">{sk.customerName}</div>
+                        {sk.phone && (
+                          <div className="text-xs text-gray-600">{sk.phone}</div>
                         )}
                       </td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {dishName}
-                        </div>
-                        {instructions && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            <span className="font-medium">Note:</span> {instructions}
-                          </div>
-                        )}
-                        {item.ingredients && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {item.ingredients}
-                          </div>
-                        )}
+                        <span className="text-sm font-medium text-yellow-900">No meal for today</span>
                       </td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.mealPlan.customer.deliveryArea || '-'}
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-600">
+                        {sk.deliveryArea || '—'}
                       </td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-900">
-                        {calories} kcal
-                      </td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="text-xs">
-                          <div>P: {protein.toFixed(1)}g</div>
-                          <div>C: {carbs.toFixed(1)}g</div>
-                          <div>F: {fats.toFixed(1)}g</div>
-                        </div>
-                      </td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 text-sm text-gray-500">
-                        <div className="text-xs max-w-xs">
-                          {allergens}
-                        </div>
-                      </td>
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">—</td>
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">—</td>
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 text-sm text-gray-500">—</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
-                        {item.isDelivered ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                            Delivered
-                          </span>
-                        ) : item.isSkipped ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            Skipped
-                          </span>
-                        ) : (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
-                            Active
-                          </span>
-                        )}
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-200 text-yellow-900">
+                          No meal
+                        </span>
                       </td>
                     </tr>
                   )
@@ -481,7 +603,40 @@ export default function KitchenPlanningPage() {
               </tbody>
             </table>
           </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-2 lg:px-6 py-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{start + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(start + pageSize, totalRows)}</span> of{' '}
+                <span className="font-medium">{totalRows}</span> rows
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                  className="px-2 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                >
+                  Previous
+                </button>
+                <span className="px-2 py-1.5 text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="px-2 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+          )
+        })()
       ) : (
         <div className="bg-white rounded shadow p-6 text-center">
           <svg
@@ -551,12 +706,12 @@ export default function KitchenPlanningPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-500 mb-1">Time Slot</h3>
-                    <p className="text-sm text-gray-900">{selectedMeal.timeSlot}</p>
+                    <p className="text-sm text-gray-900">{formatTime12h(selectedMeal.timeSlot) || selectedMeal.timeSlot}</p>
                   </div>
                   {selectedMeal.deliveryTime && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Delivery Time</h3>
-                      <p className="text-sm text-gray-900">{selectedMeal.deliveryTime}</p>
+                      <p className="text-sm text-gray-900">{formatTime12h(selectedMeal.deliveryTime)}</p>
                     </div>
                   )}
                   <div>

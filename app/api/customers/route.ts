@@ -9,7 +9,7 @@ const customerSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   address: z.string().min(1),
   deliveryArea: z.string().min(1),
-  status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).default('ACTIVE'),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'PAUSED', 'CANCELLED']).default('ACTIVE'),
   notes: z.string().optional(),
 })
 
@@ -43,7 +43,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      where.status = status
+      if (status === 'INACTIVE') {
+        where.status = { in: ['INACTIVE', 'CANCELLED'] }
+      } else {
+        where.status = status
+      }
     }
 
     if (deliveryArea) {

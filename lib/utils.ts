@@ -19,6 +19,13 @@ export function formatCategory(category: string): string {
   return categoryMap[category] || category
 }
 
+/** Customer status display labels: Active, Inactive, or Disabled */
+export function customerStatusLabel(status: string): string {
+  if (status === 'ACTIVE') return 'Active'
+  if (status === 'PAUSED') return 'Disabled'
+  return 'Inactive' // INACTIVE, CANCELLED, or any other
+}
+
 export function requireAuth() {
   // This will be used in middleware or route handlers
   return true

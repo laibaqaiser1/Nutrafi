@@ -10,7 +10,7 @@ const customerSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   address: z.string().min(1).optional(),
   deliveryArea: z.string().min(1).optional(),
-  status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'PAUSED', 'CANCELLED']).optional(),
   notes: z.string().optional(),
 })
 

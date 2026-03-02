@@ -3,6 +3,7 @@ import { getServerSession } from '@/lib/auth-helpers'
 import { redirect } from 'next/navigation'
 import { startOfDay, format } from 'date-fns'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
+import { customerStatusLabel } from '@/lib/utils'
 
 async function getDashboardStats() {
   const [activeCustomers, totalDishes, activeMealPlans, todayMeals] = await Promise.all([
@@ -76,10 +77,18 @@ async function getChartData() {
     }
   })
 
-  const customersByStatus = customerCounts.map((c) => ({
-    status: c.status,
-    count: c._count.id,
-  }))
+  const customersByStatus = (() => {
+    const active = customerCounts.find((c) => c.status === 'ACTIVE')?._count.id ?? 0
+    const disabled = customerCounts.find((c) => c.status === 'PAUSED')?._count.id ?? 0
+    const inactive =
+      (customerCounts.find((c) => c.status === 'INACTIVE')?._count.id ?? 0) +
+      (customerCounts.find((c) => c.status === 'CANCELLED')?._count.id ?? 0)
+    const result: { status: string; count: number }[] = []
+    if (active > 0) result.push({ status: customerStatusLabel('ACTIVE'), count: active })
+    if (inactive > 0) result.push({ status: customerStatusLabel('INACTIVE'), count: inactive })
+    if (disabled > 0) result.push({ status: customerStatusLabel('PAUSED'), count: disabled })
+    return result
+  })()
 
   return { mealsPerDay, customersByStatus }
 }

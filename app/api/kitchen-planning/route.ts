@@ -76,6 +76,56 @@ export async function GET(request: NextRequest) {
       return hasDish
     })
 
+    // Find customers who have an active meal plan for this date but ALL meals skipped (no meal for today)
+    const dateStart = new Date(new Date(date).setHours(0, 0, 0, 0))
+    const dateEnd = new Date(new Date(date).setHours(23, 59, 59, 999))
+    const allItemsForDate = await withRetry(() =>
+      prisma.mealPlanItem.findMany({
+        where: {
+          date: { gte: dateStart, lt: dateEnd },
+          mealPlan: { status: 'ACTIVE' },
+        },
+        include: {
+          mealPlan: { include: { customer: true } },
+        },
+      })
+    )
+    let allFiltered = allItemsForDate
+    if (startTime || endTime) {
+      allFiltered = allFiltered.filter(item => {
+        const itemTime = item.timeSlot
+        if (startTime && endTime) return itemTime >= startTime && itemTime <= endTime
+        if (startTime) return itemTime >= startTime
+        if (endTime) return itemTime <= endTime
+        return true
+      })
+    }
+    const customerIdsWithNonSkipped = new Set(items.map(i => String(i.mealPlan.customerId)))
+    const byCustomer = new Map<string, typeof allFiltered>()
+    for (const item of allFiltered) {
+      const cid = String(item.mealPlan.customerId)
+      if (!byCustomer.has(cid)) byCustomer.set(cid, [])
+      byCustomer.get(cid)!.push(item)
+    }
+    const skippedDayRows: Array<{ customerId: string; customerName: string; phone: string | null; deliveryArea: string | null; address: string | null; timeSlot: string; deliveryTime: string | null }> = []
+    byCustomer.forEach((group, customerId) => {
+      if (customerIdsWithNonSkipped.has(customerId)) return
+      const allSkipped = group.every(i => i.isSkipped)
+      if (allSkipped && group.length > 0) {
+        const first = group[0]
+        const c = first.mealPlan.customer
+        skippedDayRows.push({
+          customerId,
+          customerName: c.fullName,
+          phone: c.phone,
+          deliveryArea: c.deliveryArea,
+          address: c.address,
+          timeSlot: first.timeSlot || '',
+          deliveryTime: first.deliveryTime ?? null,
+        })
+      }
+    })
+
     // Aggregate by dish
     const dishAggregation: Record<string, {
       dishName: string
@@ -122,6 +172,7 @@ export async function GET(request: NextRequest) {
       date,
       startTime: startTime || null,
       endTime: endTime || null,
+      skippedDayRows,
     })
   } catch (error) {
     console.error('Error fetching kitchen planning data:', error)

@@ -43,12 +43,11 @@ const MEALS_POINT_COLORS = [
   '#ea580c', // orange
 ]
 
-// Semantic colours for customer status (more prominent and meaningful)
+// Semantic colours for customer status (Active, Inactive, Disabled)
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: '#728d53',   // theme green – primary
-  INACTIVE: '#0d9488', // teal – paused/inactive
-  PAUSED: '#0d9488',   // teal (legacy)
-  CANCELLED: '#64748b', // slate – neutral/off
+  Active: '#728d53',   // theme green
+  Inactive: '#64748b', // slate
+  Disabled: '#dc2626', // red
 }
 const STATUS_COLOR_FALLBACK = '#94a3b8'
 
@@ -153,7 +152,7 @@ export function DashboardCharts({
       {/* Customers by status */}
       <div className="bg-white overflow-hidden shadow-sm rounded-xl border border-gray-100 p-5 lg:p-6 border-l-4 border-l-[#9eb664]">
         <h2 className="text-base font-semibold text-gray-800 mb-1">Customers by status</h2>
-        <p className="text-xs text-gray-500 mb-4">Active, inactive, and cancelled</p>
+        <p className="text-xs text-gray-500 mb-4">Active, Inactive, and Disabled</p>
         <div className="h-64 lg:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>

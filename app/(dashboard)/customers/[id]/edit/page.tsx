@@ -44,7 +44,7 @@ export default function EditCustomerPage() {
             email: customer.email || '',
             address: customer.address,
             deliveryArea: customer.deliveryArea,
-            status: customer.status,
+            status: customer.status === 'CANCELLED' ? 'INACTIVE' : customer.status,
             notes: customer.notes || '',
           })
         } else {
@@ -163,8 +163,8 @@ export default function EditCustomerPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
               <option value="ACTIVE">Active</option>
-              <option value="PAUSED">Paused</option>
-              <option value="CANCELLED">Cancelled</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="PAUSED">Disabled</option>
             </select>
           </div>
           <div className="md:col-span-2">
