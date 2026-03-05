@@ -118,6 +118,8 @@ export default function MealPlanViewPage() {
   const [dishSearchQuery, setDishSearchQuery] = useState('')
   const [showDishDetails, setShowDishDetails] = useState(false)
   const [visibleDaysByWeek, setVisibleDaysByWeek] = useState<Record<number, string[]>>({})
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingWeekPdf, setDownloadingWeekPdf] = useState<number | null>(null)
   const [dayMenuOpen, setDayMenuOpen] = useState<{ week: number; date: string } | null>(null)
   const [weekMenuOpen, setWeekMenuOpen] = useState<number | null>(null)
   const [addingDay, setAddingDay] = useState(false)
@@ -370,6 +372,56 @@ export default function MealPlanViewPage() {
       toast.error('Failed to remove day')
     } finally {
       setRemovingDay(false)
+    }
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!mealPlan) return
+    setDownloadingPdf(true)
+    try {
+      const res = await fetch(`/api/meal-plans/${mealPlan.id}/export`)
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const disposition = res.headers.get('Content-Disposition')
+      const match = disposition?.match(/filename="?([^";\n]+)"?/)
+      const filename = match ? match[1] : `meal-plan-${mealPlan.id}.pdf`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('PDF downloaded')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to download PDF')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
+  const handleDownloadWeekPdf = async (week: number) => {
+    if (!mealPlan) return
+    setDownloadingWeekPdf(week)
+    try {
+      const res = await fetch(`/api/meal-plans/${mealPlan.id}/export?week=${week}`)
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const disposition = res.headers.get('Content-Disposition')
+      const match = disposition?.match(/filename="?([^";\n]+)"?/)
+      const filename = match ? match[1] : `meal-plan-${mealPlan.id}-week-${week}.pdf`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(`Week ${week} PDF downloaded`)
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to download week PDF')
+    } finally {
+      setDownloadingWeekPdf(null)
     }
   }
 
@@ -1052,6 +1104,14 @@ export default function MealPlanViewPage() {
       <div className="flex justify-between items-center mb-3 lg:mb-6">
         <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Meal Plan Details</h1>
         <div className="flex gap-2 lg:p-4">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
+          >
+            {downloadingPdf ? 'Downloading…' : 'Download PDF'}
+          </button>
           <Link
             href={`/meal-plans/${mealPlan.id}/edit`}
             className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
@@ -1343,8 +1403,32 @@ export default function MealPlanViewPage() {
                       <span className="font-bold">{weekTotal.calories} kcal</span>
                       {' '}• P: {weekTotal.protein.toFixed(1)}g | C: {weekTotal.carbs.toFixed(1)}g | F: {weekTotal.fats.toFixed(1)}g
                     </div>
-                    {/* Week duplicate / actions */}
-                    <div className="relative week-menu-container ml-2">
+                    {/* Week download PDF + actions */}
+                    <div className="flex items-center gap-0.5 ml-2">
+                      {mealPlan.startDate && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDownloadWeekPdf(week)
+                        }}
+                        disabled={downloadingWeekPdf === week}
+                        title="Download week PDF"
+                        aria-label="Download week PDF"
+                        className="p-1.5 rounded text-white hover:bg-white/20 transition-colors disabled:opacity-50"
+                      >
+                        {downloadingWeekPdf === week ? (
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        )}
+                      </button>
+                      )}
+                    <div className="relative week-menu-container">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1375,6 +1459,7 @@ export default function MealPlanViewPage() {
                           </button>
                         </div>
                       )}
+                    </div>
                     </div>
                   </div>
                 </div>
