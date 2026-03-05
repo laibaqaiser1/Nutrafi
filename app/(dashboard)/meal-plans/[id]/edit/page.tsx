@@ -40,11 +40,13 @@ interface MealPlan {
   planType: string
   startDate: string
   endDate: string
+  days: number
   mealsPerDay: number
-  // timeSlots removed - delivery times stored per meal item
   status: string
   notes: string | null
   totalAmount: number | null
+  totalMeals?: number | null
+  remainingMeals?: number | null
   mealPlanItems?: MealPlanItem[]
   payments?: Array<{
     id: string

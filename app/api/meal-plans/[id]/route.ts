@@ -173,7 +173,7 @@ export async function PUT(
     if (data.notes !== undefined) updateData.notes = data.notes
 
     // Explicit totalMeals override: use when provided (e.g. customer wants 8 meals, not days×mealsPerDay)
-    if (data.totalMeals !== undefined) {
+    if (data.totalMeals !== undefined && data.totalMeals !== null) {
       updateData.totalMeals = data.totalMeals
       const deliveredCount = await prisma.mealPlanItem.count({
         where: {
@@ -182,7 +182,7 @@ export async function PUT(
           isSkipped: false,
         },
       })
-      updateData.remainingMeals = Math.max(0, (data.totalMeals ?? 0) - deliveredCount)
+      updateData.remainingMeals = Math.max(0, data.totalMeals - deliveredCount)
     } else {
       // Recalculate totalMeals only when not overridden: from days × mealsPerDay
       const finalDays = updateData.days !== undefined ? updateData.days : currentMealPlan.days
