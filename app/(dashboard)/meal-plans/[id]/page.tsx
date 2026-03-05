@@ -113,6 +113,7 @@ export default function MealPlanViewPage() {
   })
   const [savingDish, setSavingDish] = useState(false)
   const [skippingMeal, setSkippingMeal] = useState(false)
+  const [removingDay, setRemovingDay] = useState(false)
   const [dishDropdownOpen, setDishDropdownOpen] = useState(false)
   const [dishSearchQuery, setDishSearchQuery] = useState('')
   const [showDishDetails, setShowDishDetails] = useState(false)
@@ -338,6 +339,37 @@ export default function MealPlanViewPage() {
     } catch (e) {
       console.error(e)
       toast.error('Failed to delete meal')
+    }
+  }
+
+  // Remove the entire day (all meals on that date) from the schedule
+  const handleRemoveDay = async () => {
+    if (!mealPlan || !selectedItem) return
+    const dateStr = new Date(selectedItem.date).toISOString().slice(0, 10) // YYYY-MM-DD
+    setRemovingDay(true)
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items?date=${encodeURIComponent(dateStr)}`, { method: 'DELETE' })
+      if (response.ok) {
+        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(selectedItem.date).getDay()]
+        setMealPlan({
+          ...mealPlan,
+          mealPlanItems: mealPlan.mealPlanItems.filter(item => {
+            const itemDate = new Date(item.date).toISOString().slice(0, 10)
+            return itemDate !== dateStr
+          }),
+        })
+        setShowModal(false)
+        setSelectedItem(null)
+        toast.success(`${dayName} removed from schedule`)
+      } else {
+        const err = await response.json()
+        toast.error(err?.error || 'Failed to remove day')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to remove day')
+    } finally {
+      setRemovingDay(false)
     }
   }
 
@@ -1088,7 +1120,10 @@ export default function MealPlanViewPage() {
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500">Total Meals</label>
-            <p className="text-sm text-gray-900 font-semibold">{mealPlan.totalMeals !== null ? mealPlan.totalMeals : (mealPlan.days && mealPlan.mealsPerDay ? mealPlan.days * mealPlan.mealsPerDay : '-')}</p>
+            <p className="text-sm text-gray-900 font-semibold">
+              {mealPlan.totalMeals !== null ? mealPlan.totalMeals : (mealPlan.days && mealPlan.mealsPerDay ? mealPlan.days * mealPlan.mealsPerDay : '-')}
+              <Link href={`/meal-plans/${mealPlan.id}/edit`} className="ml-2 text-xs text-nutrafi-primary hover:underline">Edit</Link>
+            </p>
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500">Remaining Meals</label>
@@ -2116,6 +2151,17 @@ export default function MealPlanViewPage() {
                         className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
                         Delete meal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false)
+                          handleRemoveDay()
+                        }}
+                        disabled={removingDay}
+                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {removingDay ? 'Removing...' : `Remove ${getDayName(selectedItem.date)} from schedule`}
                       </button>
                     </div>
                   )}

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import ExcelJS from 'exceljs'
 import path from 'path'
 import fs from 'fs'
+import { format } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
@@ -221,6 +222,21 @@ export async function GET(request: NextRequest) {
     const deliveryTimeForExport = (row: { deliveryTime: string; timeSlot: string }) =>
       formatTime12h(row.deliveryTime || row.timeSlot || '')
 
+    // Date for export: "3 March 2026"
+    const formatDateExport = (d: Date) => format(new Date(d), 'd MMMM yyyy')
+
+    // Contact number for export: from customer.phone, with fallback from first item's mealPlan.customer
+    type ExportRow = AggregatedRow | SkippedDayRow
+    const contactNoForRow = (rowData: ExportRow): string => {
+      const fromCustomer = (rowData as { customer?: { phone?: string | null } }).customer?.phone
+      if (fromCustomer != null && String(fromCustomer).trim() !== '') return String(fromCustomer).trim()
+      const firstItem = (rowData as { items?: unknown[] }).items?.[0] as { mealPlan?: { customer?: { phone?: string | null } } } | undefined
+      const fromItem = firstItem?.mealPlan?.customer?.phone
+      return fromItem != null ? String(fromItem).trim() : ''
+    }
+
+    // Alignment/wrap: applied in template (wrap text + vertical center); code does not set alignment.
+
     // Light red fill for paused (customer not available) rows; keep cell borders visible
     const LIGHT_RED = 'FFFFCCCB' // argb style for ExcelJS
     const LIGHT_YELLOW = 'FFFFFF00' // bright yellow for "no meal for today"
@@ -261,7 +277,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Merge normal + skipped-day rows and sort by time then customer name
-    type ExportRow = AggregatedRow | SkippedDayRow
     // Item shape for chef row math (skipped-day items don't have dish)
     type ItemWithOptionalDish = { customNote: string | null; ingredients: string | null; allergens: string | null; calories: number | null; protein: number | null; carbs: number | null; fats: number | null; dish?: { ingredients?: string | null; allergens?: string | null; calories?: number; protein?: number; carbs?: number; fats?: number } | null }
     const allRows: ExportRow[] = [...aggregated, ...skippedDayRows]
@@ -296,16 +311,15 @@ export async function GET(request: NextRequest) {
           allRows.forEach((rowData, index) => {
             const row = worksheet.getRow(startRow + index)
             const isSkippedDay = 'isSkippedDay' in rowData && rowData.isSkippedDay
-            row.getCell(1).value = new Date(rowData.date).toLocaleDateString() // Date
+            row.getCell(1).value = formatDateExport(rowData.date) // Date
             row.getCell(2).value = deliveryTimeForExport(rowData) // Delivery Time (12h, skipped rows use timeSlot if needed)
             row.getCell(3).value = rowData.customerName // Customer Name
-            row.getCell(4).value = rowData.customer.phone || '' // Contact Number
+            row.getCell(4).value = contactNoForRow(rowData) // Contact Number
             row.getCell(5).value = rowData.customer.address || '' // Delivery Address
             row.getCell(6).value = rowData.customer.deliveryArea || '' // Delivery Area
             const dishCell = row.getCell(7)
             const dishText = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
             dishCell.value = rowData.isPaused ? dishText + '\n(customer not available)' : dishText
-            dishCell.alignment = { wrapText: true, vertical: 'top' }
             if (rowData.isPaused) applyPausedRowStyle(row, riderLastCol)
             else if (isSkippedDay) applySkippedDayRowStyle(row, riderLastCol)
             row.commit()
@@ -316,21 +330,23 @@ export async function GET(request: NextRequest) {
         const worksheet = workbook.addWorksheet('Rider')
         worksheet.getCell('A1').value = 'Nutrafi Kitchen Abu Dhabi'
         worksheet.getRow(2).values = ['Date', 'Delivery Time', 'Customer Name', 'Contact Number', 'Delivery Address', 'Delivery Area', 'Dish Name']
+        // Column widths so wrapped text fits (approx character width)
+        const riderWidths = [14, 14, 22, 14, 32, 18, 28]
+        riderWidths.forEach((w, i) => worksheet.getColumn(i + 1).width = w)
         
         const riderLastCol = 7
         allRows.forEach((rowData, index) => {
           const row = worksheet.getRow(3 + index)
           const isSkippedDay = 'isSkippedDay' in rowData && rowData.isSkippedDay
-          row.getCell(1).value = new Date(rowData.date).toLocaleDateString()
+          row.getCell(1).value = formatDateExport(rowData.date)
           row.getCell(2).value = deliveryTimeForExport(rowData)
           row.getCell(3).value = rowData.customerName
-          row.getCell(4).value = rowData.customer.phone || ''
+          row.getCell(4).value = contactNoForRow(rowData)
           row.getCell(5).value = rowData.customer.address || ''
           row.getCell(6).value = rowData.customer.deliveryArea || ''
           const dishCell = row.getCell(7)
           const dishText = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
           dishCell.value = rowData.isPaused ? dishText + '\n(customer not available)' : dishText
-          dishCell.alignment = { wrapText: true, vertical: 'top' }
           if (rowData.isPaused) applyPausedRowStyle(row, riderLastCol)
           else if (isSkippedDay) applySkippedDayRowStyle(row, riderLastCol)
           row.commit()
@@ -353,69 +369,48 @@ export async function GET(request: NextRequest) {
             worksheet.spliceRows(3, worksheet.rowCount - 2)
           }
           
-          // Fill in data - one row per customer. A=Date, B=Delivery Time, C=Customer Name, D=Dish Name, E=Instructions, F=Ingredients, G=Allergens, H=Calories, I=Protein, J=Carbs, K=Fats, L=customer not available (when paused).
-          const chefLastCol = 12
+          // Fill in data - one row per customer. Template has Contact Number in F2, so: A=Date, B=Delivery Time, C=Customer Name, D=Dish Name, E=Instructions, F=Contact No, G=Note.
+          const chefLastCol = 7
           allRows.forEach((rowData, index) => {
             const groupItems = rowData.items as ItemWithOptionalDish[]
             const isSkippedDay = 'isSkippedDay' in rowData && rowData.isSkippedDay
             const instructions = groupItems.map(i => parseInstructions(i.customNote)).filter(Boolean).join('; ')
-            const ingredients = groupItems.map(i => i.ingredients || i.dish?.ingredients || '').filter(Boolean).join('; ')
-            const allergens = groupItems.map(i => i.allergens || i.dish?.allergens || '').filter(Boolean).join('; ')
-            const calories = groupItems.reduce((s, i) => s + (Number(i.calories) || Number(i.dish?.calories) || 0), 0)
-            const protein = groupItems.reduce((s, i) => s + (Number(i.protein) || Number(i.dish?.protein) || 0), 0)
-            const carbs = groupItems.reduce((s, i) => s + (Number(i.carbs) || Number(i.dish?.carbs) || 0), 0)
-            const fats = groupItems.reduce((s, i) => s + (Number(i.fats) || Number(i.dish?.fats) || 0), 0)
             const row = worksheet.getRow(startRow + index)
-            row.getCell(1).value = new Date(rowData.date).toLocaleDateString()   // A = Date
-            row.getCell(2).value = deliveryTimeForExport(rowData)                // B = Delivery Time
-            row.getCell(3).value = rowData.customerName                           // C = Customer Name
+            row.getCell(1).value = formatDateExport(rowData.date)   // A = Date
+            row.getCell(2).value = deliveryTimeForExport(rowData)  // B = Delivery Time
+            row.getCell(3).value = rowData.customerName            // C = Customer Name
             const chefDishCell = row.getCell(4)
             chefDishCell.value = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
-            chefDishCell.alignment = { wrapText: true, vertical: 'top' }         // D = Dish Name
-            row.getCell(5).value = instructions                                   // E = Instructions
-            row.getCell(6).value = ingredients                                    // F = Ingredients
-            row.getCell(7).value = allergens                                      // G = Allergens
-            row.getCell(8).value = calories                                       // H = Calories
-            row.getCell(9).value = protein                                         // I = Protein
-            row.getCell(10).value = carbs                                         // J = Carbs
-            row.getCell(11).value = fats                                          // K = Fats
-            row.getCell(12).value = rowData.isPaused ? 'customer not available' : ''  // L = customer not available
+            row.getCell(5).value = instructions                    // E = Instructions
+            row.getCell(6).value = contactNoForRow(rowData)        // F = Contact Number (F2 in template)
+            row.getCell(7).value = rowData.isPaused ? 'customer not available' : ''  // G = Note
             if (rowData.isPaused) applyPausedRowStyle(row, chefLastCol)
             else if (isSkippedDay) applySkippedDayRowStyle(row, chefLastCol)
             row.commit()
           })
         }
       } else {
-        // Fallback: create new sheet if template doesn't exist (no Time Slot column)
+        // Fallback: create new sheet if template doesn't exist. Column order matches template: F = Contact Number.
         const worksheet = workbook.addWorksheet('Chef')
-        worksheet.getRow(1).values = ['Date', 'Delivery Time', 'Customer Name', 'Dish Name', 'Ingredients', 'Allergens', 'Calories (kcal)', 'Protein (g)', 'Carbs (g)', 'Fats (g)', 'Instructions', 'Note']
-        
-        const chefLastCol = 12
+        worksheet.getRow(1).values = ['Date', 'Delivery Time', 'Customer Name', 'Dish Name', 'Instructions', 'Contact Number', 'Note']
+        // Column widths so wrapped text fits (approx character width)
+        const chefWidths = [14, 14, 22, 28, 38, 14, 18]
+        chefWidths.forEach((w, i) => worksheet.getColumn(i + 1).width = w)
+
+        const chefLastCol = 7
         allRows.forEach((rowData, index) => {
           const groupItems = rowData.items as ItemWithOptionalDish[]
           const isSkippedDay = 'isSkippedDay' in rowData && rowData.isSkippedDay
           const instructions = groupItems.map(i => parseInstructions(i.customNote)).filter(Boolean).join('; ')
-          const ingredients = groupItems.map(i => i.ingredients || i.dish?.ingredients || '').filter(Boolean).join('; ')
-          const allergens = groupItems.map(i => i.allergens || i.dish?.allergens || '').filter(Boolean).join('; ')
-          const calories = groupItems.reduce((s, i) => s + (Number(i.calories) || Number(i.dish?.calories) || 0), 0)
-          const protein = groupItems.reduce((s, i) => s + (Number(i.protein) || Number(i.dish?.protein) || 0), 0)
-          const carbs = groupItems.reduce((s, i) => s + (Number(i.carbs) || Number(i.dish?.carbs) || 0), 0)
-          const fats = groupItems.reduce((s, i) => s + (Number(i.fats) || Number(i.dish?.fats) || 0), 0)
           const row = worksheet.getRow(2 + index)
-          const dishCell = row.getCell(4)
-          dishCell.value = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
-          dishCell.alignment = { wrapText: true, vertical: 'top' }
-          row.getCell(1).value = new Date(rowData.date).toLocaleDateString()
+          row.getCell(1).value = formatDateExport(rowData.date)
           row.getCell(2).value = deliveryTimeForExport(rowData)
           row.getCell(3).value = rowData.customerName
-          row.getCell(5).value = ingredients
-          row.getCell(6).value = allergens
-          row.getCell(7).value = calories
-          row.getCell(8).value = protein
-          row.getCell(9).value = carbs
-          row.getCell(10).value = fats
-          row.getCell(11).value = instructions
-          row.getCell(12).value = rowData.isPaused ? 'customer not available' : ''  // L = customer not available
+          const dishCell = row.getCell(4)
+          dishCell.value = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
+          row.getCell(5).value = instructions
+          row.getCell(6).value = contactNoForRow(rowData)  // F = Contact Number
+          row.getCell(7).value = rowData.isPaused ? 'customer not available' : ''
           if (rowData.isPaused) applyPausedRowStyle(row, chefLastCol)
           else if (isSkippedDay) applySkippedDayRowStyle(row, chefLastCol)
           row.commit()

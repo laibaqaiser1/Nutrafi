@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         customer: true,
-        plan: true,
+        payments: { select: { amount: true, status: true } },
         _count: {
           select: { mealPlanItems: true },
         },

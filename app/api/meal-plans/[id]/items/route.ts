@@ -118,3 +118,52 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to update meal plan item' }, { status: 500 })
   }
 }
+
+// DELETE - Delete all meal plan items for a given date (remove day from schedule)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession()
+    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid meal plan ID' }, { status: 400 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const dateStr = searchParams.get('date')
+    if (!dateStr) {
+      return NextResponse.json({ error: 'Query parameter date is required (YYYY-MM-DD)' }, { status: 400 })
+    }
+    const date = new Date(dateStr)
+    if (Number.isNaN(date.getTime())) {
+      return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
+    }
+
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    const result = await prisma.mealPlanItem.deleteMany({
+      where: {
+        mealPlanId: id,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+    })
+
+    return NextResponse.json({ message: 'Day removed from schedule', count: result.count })
+  } catch (error) {
+    console.error('Error deleting meal plan items by date:', error)
+    return NextResponse.json({ error: 'Failed to remove day' }, { status: 500 })
+  }
+}

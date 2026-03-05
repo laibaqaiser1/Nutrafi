@@ -14,9 +14,9 @@ const mealPlanUpdateSchema = z.object({
   startDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   endDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   mealsPerDay: z.number().int().min(1).max(5).optional(),
-  // timeSlots removed - not stored in meal plan
   status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional(),
   notes: z.string().optional(),
+  totalMeals: z.number().int().min(0).optional().nullable(),
 })
 
 // GET - Get meal plan with items
@@ -169,19 +169,12 @@ export async function PUT(
     }
     
     if (data.mealsPerDay !== undefined) updateData.mealsPerDay = data.mealsPerDay
-    // timeSlots removed - not stored in meal plan
     if (data.status !== undefined) updateData.status = data.status
     if (data.notes !== undefined) updateData.notes = data.notes
 
-    // Recalculate totalMeals if days or mealsPerDay changed
-    const finalDays = updateData.days !== undefined ? updateData.days : currentMealPlan.days
-    const finalMealsPerDay = updateData.mealsPerDay !== undefined ? updateData.mealsPerDay : currentMealPlan.mealsPerDay
-    
-    if (finalDays !== null && finalDays > 0 && finalMealsPerDay > 0) {
-      const newTotalMeals = finalDays * finalMealsPerDay
-      updateData.totalMeals = newTotalMeals
-      
-      // Recalculate remaining meals: new total meals minus delivered meals
+    // Explicit totalMeals override: use when provided (e.g. customer wants 8 meals, not days×mealsPerDay)
+    if (data.totalMeals !== undefined) {
+      updateData.totalMeals = data.totalMeals
       const deliveredCount = await prisma.mealPlanItem.count({
         where: {
           mealPlanId: id,
@@ -189,8 +182,26 @@ export async function PUT(
           isSkipped: false,
         },
       })
-      
-      updateData.remainingMeals = Math.max(0, newTotalMeals - deliveredCount)
+      updateData.remainingMeals = Math.max(0, (data.totalMeals ?? 0) - deliveredCount)
+    } else {
+      // Recalculate totalMeals only when not overridden: from days × mealsPerDay
+      const finalDays = updateData.days !== undefined ? updateData.days : currentMealPlan.days
+      const finalMealsPerDay = updateData.mealsPerDay !== undefined ? updateData.mealsPerDay : currentMealPlan.mealsPerDay
+
+      if (finalDays !== null && finalDays > 0 && finalMealsPerDay > 0) {
+        const newTotalMeals = finalDays * finalMealsPerDay
+        updateData.totalMeals = newTotalMeals
+
+        const deliveredCount = await prisma.mealPlanItem.count({
+          where: {
+            mealPlanId: id,
+            isDelivered: true,
+            isSkipped: false,
+          },
+        })
+
+        updateData.remainingMeals = Math.max(0, newTotalMeals - deliveredCount)
+      }
     }
 
     const mealPlan = await prisma.mealPlan.update({

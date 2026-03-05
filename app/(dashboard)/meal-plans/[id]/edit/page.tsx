@@ -96,11 +96,11 @@ export default function EditMealPlanPage() {
     planId: '',
     planType: 'WEEKLY',
     mealsPerDay: '2',
-    // timeSlots removed - not stored in meal plan
     startDate: '',
     endDate: '',
     status: 'ACTIVE',
     notes: '',
+    totalMeals: '', // Override: empty = use days × mealsPerDay
   })
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -131,11 +131,11 @@ export default function EditMealPlanPage() {
           planId: data.plan?.id || '',
           planType: data.planType,
           mealsPerDay: data.mealsPerDay.toString(),
-          // timeSlots removed - not stored in meal plan
           startDate: data.startDate ? data.startDate.split('T')[0] : '',
           endDate: data.endDate ? data.endDate.split('T')[0] : '',
           status: data.status,
           notes: data.notes || '',
+          totalMeals: data.totalMeals != null ? String(data.totalMeals) : '',
         })
       } else {
         toast.error('Failed to fetch meal plan')
@@ -199,6 +199,7 @@ export default function EditMealPlanPage() {
           mealsPerDay: parseInt(formData.mealsPerDay),
           planId: formData.planId || undefined,
           planType: formData.planType || undefined,
+          totalMeals: formData.totalMeals !== '' ? parseInt(formData.totalMeals, 10) : undefined,
         }),
       })
 
@@ -453,6 +454,23 @@ export default function EditMealPlanPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
             <p className="text-xs text-gray-500 mt-1">Optional - leave empty if not set</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Total Meals (override)</label>
+            <input
+              type="number"
+              min={0}
+              value={formData.totalMeals ?? ''}
+              onChange={(e) => setFormData({ ...formData, totalMeals: e.target.value })}
+              placeholder={mealPlan.days && mealPlan.mealsPerDay ? `Calculated: ${mealPlan.days * mealPlan.mealsPerDay}` : 'Optional'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Meals in use now: <span className="font-semibold text-gray-900">{mealPlan.totalMeals ?? (mealPlan.days && mealPlan.mealsPerDay ? mealPlan.days * mealPlan.mealsPerDay : '-')}</span>
+              {mealPlan.days != null && mealPlan.mealsPerDay != null && (
+                <span className="text-gray-400"> (leave empty to use {mealPlan.days} × {mealPlan.mealsPerDay})</span>
+              )}
+            </p>
           </div>
           {/* timeSlots removed - delivery times are stored per meal item, not in meal plan */}
           <div className="md:col-span-2">

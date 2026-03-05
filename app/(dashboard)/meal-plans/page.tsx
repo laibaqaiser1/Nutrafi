@@ -17,9 +17,17 @@ interface MealPlan {
   customer: {
     fullName: string
   }
+  payments?: Array<{ amount: number; status: string }>
   _count: {
     mealPlanItems: number
   }
+}
+
+// Paid if any payment has status COMPLETED; otherwise Unpaid. No comparison with plan amounts.
+function getPaymentStatus(plan: MealPlan): { label: string; className: string } {
+  const hasCompleted = (plan.payments || []).some((p) => p.status === 'COMPLETED')
+  if (hasCompleted) return { label: 'Paid', className: 'bg-[#f0f4e8] text-nutrafi-dark' }
+  return { label: 'Unpaid', className: 'bg-red-100 text-red-800' }
 }
 
 
@@ -108,6 +116,7 @@ export default function MealPlansPage() {
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Total Meals</th>
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Remaining Meals</th>
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
+                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Payment</th>
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -136,6 +145,16 @@ export default function MealPlansPage() {
                         }`}>
                           {plan.status}
                         </span>
+                      </td>
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
+                        {(() => {
+                          const { label, className } = getPaymentStatus(plan)
+                          return (
+                            <span className={`px-1.5 inline-flex text-xs leading-4 font-semibold rounded ${className}`}>
+                              {label}
+                            </span>
+                          )
+                        })()}
                       </td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap font-medium">
                         <Link href={`/meal-plans/${plan.id}`} className="text-nutrafi-primary hover:text-nutrafi-dark text-xs">
