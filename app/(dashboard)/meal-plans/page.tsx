@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 
 interface MealPlan {
@@ -32,6 +33,7 @@ function getPaymentStatus(plan: MealPlan): { label: string; className: string } 
 
 
 export default function MealPlansPage() {
+  const router = useRouter()
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
@@ -122,7 +124,11 @@ export default function MealPlansPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {mealPlans.map((plan) => (
-                    <tr key={plan.id}>
+                    <tr
+                      key={plan.id}
+                      onClick={() => router.push(`/meal-plans/${plan.id}`)}
+                      className="cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap font-medium text-gray-900">{plan.customer.fullName}</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{format(new Date(plan.startDate), 'MMM dd, yyyy')}</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{format(new Date(plan.endDate), 'MMM dd, yyyy')}</td>
@@ -156,7 +162,7 @@ export default function MealPlansPage() {
                           )
                         })()}
                       </td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap font-medium">
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap font-medium" onClick={(e) => e.stopPropagation()}>
                         <Link href={`/meal-plans/${plan.id}`} className="text-nutrafi-primary hover:text-nutrafi-dark text-xs">
                           View/Edit
                         </Link>

@@ -1374,7 +1374,7 @@ export default function MealPlanViewPage() {
                 }
                 
                 return (
-              <div key={week} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div key={week} className="border border-gray-200 rounded-lg overflow-hidden min-w-0">
                 {/* Week Header */}
                 <div 
                   className="px-2 py-1.5 lg:px-4 lg:py-2 border-b border-nutrafi-primary/30 bg-nutrafi-primary hover:opacity-95 transition-opacity"
@@ -1458,8 +1458,8 @@ export default function MealPlanViewPage() {
                 
                 {/* Week Content */}
                 {isExpanded && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
+                  <div className="overflow-x-auto w-full min-w-0">
+                    <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '800px' }}>
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day / Date</th>
