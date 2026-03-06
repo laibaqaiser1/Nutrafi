@@ -56,6 +56,8 @@ export type MealPlanItemMinAggregateOutputType = {
   timeSlot: string | null
   isSkipped: boolean | null
   customNote: string | null
+  deliveryType: string | null
+  deliveryLocation: string | null
   createdAt: Date | null
   updatedAt: Date | null
   isDelivered: boolean | null
@@ -81,6 +83,8 @@ export type MealPlanItemMaxAggregateOutputType = {
   timeSlot: string | null
   isSkipped: boolean | null
   customNote: string | null
+  deliveryType: string | null
+  deliveryLocation: string | null
   createdAt: Date | null
   updatedAt: Date | null
   isDelivered: boolean | null
@@ -106,6 +110,8 @@ export type MealPlanItemCountAggregateOutputType = {
   timeSlot: number
   isSkipped: number
   customNote: number
+  deliveryType: number
+  deliveryLocation: number
   createdAt: number
   updatedAt: number
   isDelivered: number
@@ -155,6 +161,8 @@ export type MealPlanItemMinAggregateInputType = {
   timeSlot?: true
   isSkipped?: true
   customNote?: true
+  deliveryType?: true
+  deliveryLocation?: true
   createdAt?: true
   updatedAt?: true
   isDelivered?: true
@@ -180,6 +188,8 @@ export type MealPlanItemMaxAggregateInputType = {
   timeSlot?: true
   isSkipped?: true
   customNote?: true
+  deliveryType?: true
+  deliveryLocation?: true
   createdAt?: true
   updatedAt?: true
   isDelivered?: true
@@ -205,6 +215,8 @@ export type MealPlanItemCountAggregateInputType = {
   timeSlot?: true
   isSkipped?: true
   customNote?: true
+  deliveryType?: true
+  deliveryLocation?: true
   createdAt?: true
   updatedAt?: true
   isDelivered?: true
@@ -317,6 +329,8 @@ export type MealPlanItemGroupByOutputType = {
   timeSlot: string
   isSkipped: boolean
   customNote: string | null
+  deliveryType: string | null
+  deliveryLocation: string | null
   createdAt: Date
   updatedAt: Date
   isDelivered: boolean
@@ -365,6 +379,8 @@ export type MealPlanItemWhereInput = {
   timeSlot?: Prisma.StringFilter<"MealPlanItem"> | string
   isSkipped?: Prisma.BoolFilter<"MealPlanItem"> | boolean
   customNote?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  deliveryType?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  deliveryLocation?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
@@ -392,6 +408,8 @@ export type MealPlanItemOrderByWithRelationInput = {
   timeSlot?: Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
   customNote?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryType?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryLocation?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
@@ -422,6 +440,8 @@ export type MealPlanItemWhereUniqueInput = Prisma.AtLeast<{
   timeSlot?: Prisma.StringFilter<"MealPlanItem"> | string
   isSkipped?: Prisma.BoolFilter<"MealPlanItem"> | boolean
   customNote?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  deliveryType?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  deliveryLocation?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
@@ -449,6 +469,8 @@ export type MealPlanItemOrderByWithAggregationInput = {
   timeSlot?: Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
   customNote?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryType?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryLocation?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
@@ -482,6 +504,8 @@ export type MealPlanItemScalarWhereWithAggregatesInput = {
   timeSlot?: Prisma.StringWithAggregatesFilter<"MealPlanItem"> | string
   isSkipped?: Prisma.BoolWithAggregatesFilter<"MealPlanItem"> | boolean
   customNote?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
+  deliveryType?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
+  deliveryLocation?: Prisma.StringNullableWithAggregatesFilter<"MealPlanItem"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"MealPlanItem"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"MealPlanItem"> | Date | string
   isDelivered?: Prisma.BoolWithAggregatesFilter<"MealPlanItem"> | boolean
@@ -504,6 +528,8 @@ export type MealPlanItemCreateInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -531,6 +557,8 @@ export type MealPlanItemUncheckedCreateInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -553,6 +581,8 @@ export type MealPlanItemUpdateInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -580,6 +610,8 @@ export type MealPlanItemUncheckedUpdateInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -605,6 +637,8 @@ export type MealPlanItemCreateManyInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -627,6 +661,8 @@ export type MealPlanItemUpdateManyMutationInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -652,6 +688,8 @@ export type MealPlanItemUncheckedUpdateManyInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -687,6 +725,8 @@ export type MealPlanItemCountOrderByAggregateInput = {
   timeSlot?: Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
   customNote?: Prisma.SortOrder
+  deliveryType?: Prisma.SortOrder
+  deliveryLocation?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
@@ -723,6 +763,8 @@ export type MealPlanItemMaxOrderByAggregateInput = {
   timeSlot?: Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
   customNote?: Prisma.SortOrder
+  deliveryType?: Prisma.SortOrder
+  deliveryLocation?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
@@ -748,6 +790,8 @@ export type MealPlanItemMinOrderByAggregateInput = {
   timeSlot?: Prisma.SortOrder
   isSkipped?: Prisma.SortOrder
   customNote?: Prisma.SortOrder
+  deliveryType?: Prisma.SortOrder
+  deliveryLocation?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
@@ -869,6 +913,8 @@ export type MealPlanItemCreateWithoutDishInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -894,6 +940,8 @@ export type MealPlanItemUncheckedCreateWithoutDishInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -948,6 +996,8 @@ export type MealPlanItemScalarWhereInput = {
   timeSlot?: Prisma.StringFilter<"MealPlanItem"> | string
   isSkipped?: Prisma.BoolFilter<"MealPlanItem"> | boolean
   customNote?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  deliveryType?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
+  deliveryLocation?: Prisma.StringNullableFilter<"MealPlanItem"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"MealPlanItem"> | Date | string
   isDelivered?: Prisma.BoolFilter<"MealPlanItem"> | boolean
@@ -970,6 +1020,8 @@ export type MealPlanItemCreateWithoutMealPlanInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -995,6 +1047,8 @@ export type MealPlanItemUncheckedCreateWithoutMealPlanInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -1045,6 +1099,8 @@ export type MealPlanItemCreateManyDishInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -1067,6 +1123,8 @@ export type MealPlanItemUpdateWithoutDishInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1092,6 +1150,8 @@ export type MealPlanItemUncheckedUpdateWithoutDishInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1116,6 +1176,8 @@ export type MealPlanItemUncheckedUpdateManyWithoutDishInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1140,6 +1202,8 @@ export type MealPlanItemCreateManyMealPlanInput = {
   timeSlot: string
   isSkipped?: boolean
   customNote?: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   isDelivered?: boolean
@@ -1162,6 +1226,8 @@ export type MealPlanItemUpdateWithoutMealPlanInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1187,6 +1253,8 @@ export type MealPlanItemUncheckedUpdateWithoutMealPlanInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1211,6 +1279,8 @@ export type MealPlanItemUncheckedUpdateManyWithoutMealPlanInput = {
   timeSlot?: Prisma.StringFieldUpdateOperationsInput | string
   isSkipped?: Prisma.BoolFieldUpdateOperationsInput | boolean
   customNote?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deliveryLocation?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1238,6 +1308,8 @@ export type MealPlanItemSelect<ExtArgs extends runtime.Types.Extensions.Internal
   timeSlot?: boolean
   isSkipped?: boolean
   customNote?: boolean
+  deliveryType?: boolean
+  deliveryLocation?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   isDelivered?: boolean
@@ -1265,6 +1337,8 @@ export type MealPlanItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   timeSlot?: boolean
   isSkipped?: boolean
   customNote?: boolean
+  deliveryType?: boolean
+  deliveryLocation?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   isDelivered?: boolean
@@ -1292,6 +1366,8 @@ export type MealPlanItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   timeSlot?: boolean
   isSkipped?: boolean
   customNote?: boolean
+  deliveryType?: boolean
+  deliveryLocation?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   isDelivered?: boolean
@@ -1319,6 +1395,8 @@ export type MealPlanItemSelectScalar = {
   timeSlot?: boolean
   isSkipped?: boolean
   customNote?: boolean
+  deliveryType?: boolean
+  deliveryLocation?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   isDelivered?: boolean
@@ -1336,7 +1414,7 @@ export type MealPlanItemSelectScalar = {
   protein?: boolean
 }
 
-export type MealPlanItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "mealPlanId" | "dishId" | "date" | "timeSlot" | "isSkipped" | "customNote" | "createdAt" | "updatedAt" | "isDelivered" | "deliveredAt" | "allergens" | "calories" | "carbs" | "deliveryTime" | "dishCategory" | "dishDescription" | "dishName" | "fats" | "ingredients" | "price" | "protein", ExtArgs["result"]["mealPlanItem"]>
+export type MealPlanItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "mealPlanId" | "dishId" | "date" | "timeSlot" | "isSkipped" | "customNote" | "deliveryType" | "deliveryLocation" | "createdAt" | "updatedAt" | "isDelivered" | "deliveredAt" | "allergens" | "calories" | "carbs" | "deliveryTime" | "dishCategory" | "dishDescription" | "dishName" | "fats" | "ingredients" | "price" | "protein", ExtArgs["result"]["mealPlanItem"]>
 export type MealPlanItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   dish?: boolean | Prisma.MealPlanItem$dishArgs<ExtArgs>
   mealPlan?: boolean | Prisma.MealPlanDefaultArgs<ExtArgs>
@@ -1364,6 +1442,8 @@ export type $MealPlanItemPayload<ExtArgs extends runtime.Types.Extensions.Intern
     timeSlot: string
     isSkipped: boolean
     customNote: string | null
+    deliveryType: string | null
+    deliveryLocation: string | null
     createdAt: Date
     updatedAt: Date
     isDelivered: boolean
@@ -1811,6 +1891,8 @@ export interface MealPlanItemFieldRefs {
   readonly timeSlot: Prisma.FieldRef<"MealPlanItem", 'String'>
   readonly isSkipped: Prisma.FieldRef<"MealPlanItem", 'Boolean'>
   readonly customNote: Prisma.FieldRef<"MealPlanItem", 'String'>
+  readonly deliveryType: Prisma.FieldRef<"MealPlanItem", 'String'>
+  readonly deliveryLocation: Prisma.FieldRef<"MealPlanItem", 'String'>
   readonly createdAt: Prisma.FieldRef<"MealPlanItem", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"MealPlanItem", 'DateTime'>
   readonly isDelivered: Prisma.FieldRef<"MealPlanItem", 'Boolean'>

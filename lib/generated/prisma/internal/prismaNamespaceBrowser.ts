@@ -171,6 +171,8 @@ export const MealPlanItemScalarFieldEnum = {
   timeSlot: 'timeSlot',
   isSkipped: 'isSkipped',
   customNote: 'customNote',
+  deliveryType: 'deliveryType',
+  deliveryLocation: 'deliveryLocation',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   isDelivered: 'isDelivered',

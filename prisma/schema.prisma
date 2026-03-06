@@ -113,30 +113,32 @@ model MealPlan {
 }
 
 model MealPlanItem {
-  id              Int          @id @default(autoincrement())
-  mealPlanId      Int
-  dishId          Int?
-  date            DateTime
-  timeSlot        String
-  isSkipped       Boolean      @default(false)
-  customNote      String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  isDelivered     Boolean      @default(false)
-  deliveredAt     DateTime?
-  allergens       String?
-  calories        Int?
-  carbs           Float?
-  deliveryTime    String?
-  dishCategory    DishCategory?
-  dishDescription String?
-  dishName        String?
-  fats            Float?
-  ingredients     String?
-  price           Float?
-  protein         Float?
-  dish            Dish?        @relation(fields: [dishId], references: [id])
-  mealPlan        MealPlan     @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  id               Int          @id @default(autoincrement())
+  mealPlanId       Int
+  dishId           Int?
+  date             DateTime
+  timeSlot         String
+  isSkipped        Boolean      @default(false)
+  customNote       String?      // Plain text note only (no JSON)
+  deliveryType     String?      // 'delivery' | 'pickup'
+  deliveryLocation String?      // Address/location for delivery
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  isDelivered      Boolean      @default(false)
+  deliveredAt      DateTime?
+  allergens        String?
+  calories         Int?
+  carbs            Float?
+  deliveryTime     String?
+  dishCategory     DishCategory?
+  dishDescription  String?
+  dishName         String?
+  fats             Float?
+  ingredients      String?
+  price            Float?
+  protein          Float?
+  dish             Dish?        @relation(fields: [dishId], references: [id])
+  mealPlan         MealPlan     @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
 
   @@index([mealPlanId])
   @@index([date])

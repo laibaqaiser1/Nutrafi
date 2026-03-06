@@ -86,16 +86,13 @@ export async function POST(
       }
     }
 
-    // Prepare custom note - merge user notes with delivery info
-    const customNoteObj: any = {}
-    if (data.deliveryType) customNoteObj.deliveryType = data.deliveryType
-    if (data.location) customNoteObj.location = data.location
-    if (data.customNote) customNoteObj.note = data.customNote
-
+    // customNote = plain text only. deliveryType and location stored in their own columns.
     const updateData: any = {
       ...dishData,
       deliveryTime: data.deliveryTime || undefined,
-      customNote: Object.keys(customNoteObj).length > 0 ? JSON.stringify(customNoteObj) : undefined,
+      deliveryType: data.deliveryType || undefined,
+      deliveryLocation: data.location ?? undefined,
+      customNote: data.customNote != null && String(data.customNote).trim() !== '' ? String(data.customNote).trim() : undefined,
       isSkipped: data.isSkipped !== undefined ? data.isSkipped : undefined,
     }
 

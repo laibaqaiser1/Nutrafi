@@ -22,6 +22,8 @@ interface MealPlanItem {
   fats: number | null
   price: number | null
   deliveryTime: string | null
+  deliveryType?: string | null
+  deliveryLocation?: string | null
   isSkipped: boolean
   isDelivered: boolean
   customNote: string | null
@@ -922,6 +924,28 @@ function SkippedMealForm({
   onCancel: () => void
   saving: boolean
 }) {
+  const getNoteText = (cn: string | null) => {
+    if (!cn || !cn.trim()) return ''
+    if (!cn.trim().startsWith('{')) return cn
+    try {
+      const p = JSON.parse(cn) as Record<string, unknown>
+      const v = p.note ?? p.instructions
+      return typeof v === 'string' ? v : ''
+    } catch {
+      return cn
+    }
+  }
+  const getDeliveryFromItem = (item: MealPlanItem) => {
+    if (item.deliveryType != null || item.deliveryLocation != null) return { type: item.deliveryType ?? 'delivery', loc: item.deliveryLocation ?? '' }
+    try {
+      if (item.customNote && item.customNote.trim().startsWith('{')) {
+        const p = JSON.parse(item.customNote) as Record<string, string>
+        return { type: p.deliveryType ?? 'delivery', loc: p.location ?? p.deliveryLocation ?? '' }
+      }
+    } catch { /* ignore */ }
+    return { type: 'delivery' as const, loc: '' }
+  }
+  const delivery = getDeliveryFromItem(mealItem)
   const [mealData, setMealData] = useState({
     dishId: mealItem.dishId || '',
     dishName: mealItem.dishName || '',
@@ -935,9 +959,9 @@ function SkippedMealForm({
     fats: mealItem.fats || '',
     price: mealItem.price || '',
     deliveryTime: mealItem.deliveryTime || '',
-    deliveryType: 'delivery' as 'delivery' | 'pickup',
-    location: '',
-    customNote: '',
+    deliveryType: delivery.type as 'delivery' | 'pickup',
+    location: delivery.loc,
+    customNote: getNoteText(mealItem.customNote),
   })
 
   const handleDishSelect = (dishId: string) => {

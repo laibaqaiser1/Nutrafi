@@ -160,10 +160,12 @@ export default function KitchenPlanningPage() {
   }
 
   const getInstructions = (customNote: string | null): string => {
-    if (!customNote) return ''
+    if (!customNote || !customNote.trim()) return ''
+    const raw = customNote.trim()
+    if (!raw.startsWith('{')) return raw
     try {
-      const parsed = JSON.parse(customNote)
-      return parsed.instructions || ''
+      const parsed = JSON.parse(customNote) as Record<string, string>
+      return parsed.note ?? parsed.instructions ?? ''
     } catch {
       return ''
     }

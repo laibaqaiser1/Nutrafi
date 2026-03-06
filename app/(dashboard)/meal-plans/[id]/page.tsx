@@ -52,6 +52,8 @@ interface MealPlan {
     fats: number | null
     price: number | null
     deliveryTime: string | null
+    deliveryType: string | null
+    deliveryLocation: string | null
     isSkipped: boolean
     isDelivered: boolean
     deliveredAt: string | null
@@ -433,17 +435,14 @@ export default function MealPlanViewPage() {
     setActionsMenuOpen(false)
     setDishSearchQuery('')
     setShowDishDetails(false) // Hide details by default
-    // Initialize dish form data from item
-    const customNote = parseCustomNote(item.customNote)
-    // Convert timeSlot to deliveryTime format if deliveryTime is not set
+    // Initialize dish form: customNote is plain text; deliveryType/deliveryLocation from item or legacy JSON
     let deliveryTime = item.deliveryTime || ''
     if (!deliveryTime && item.timeSlot) {
-      // Convert timeSlot (HH:MM) to deliveryTime format (HH:MM:00)
       const timeMatch = item.timeSlot.match(/(\d{1,2}):(\d{2})/)
-      if (timeMatch) {
-        deliveryTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`
-      }
+      if (timeMatch) deliveryTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}:00`
     }
+    const parsedLegacy = parseCustomNote(item.customNote)
+    const isPlainNote = typeof item.customNote === 'string' && !item.customNote.trim().startsWith('{')
     setDishFormData({
       dishId: item.dishId || '',
       dishName: item.dishName || '',
@@ -456,10 +455,10 @@ export default function MealPlanViewPage() {
       carbs: item.carbs?.toString() || '',
       fats: item.fats?.toString() || '',
       price: item.price?.toString() || '',
-      deliveryType: customNote?.deliveryType || 'delivery',
+      deliveryType: ((item as { deliveryType?: string }).deliveryType ?? parsedLegacy?.deliveryType) || 'delivery',
       deliveryTime: deliveryTime,
-      location: customNote?.location || mealPlan?.customer.deliveryArea || '',
-      customNote: customNote?.note || '',
+      location: (item as { deliveryLocation?: string }).deliveryLocation ?? parsedLegacy?.location ?? parsedLegacy?.deliveryLocation ?? mealPlan?.customer.deliveryArea ?? '',
+      customNote: isPlainNote ? (item.customNote || '') : (parsedLegacy?.note ?? parsedLegacy?.instructions ?? ''),
     })
   }
 
@@ -502,10 +501,11 @@ export default function MealPlanViewPage() {
     return dayNames[new Date(date).getDay()]
   }
 
-  // Parse custom note JSON
+  // Parse custom note: support legacy JSON for backward compat when reading
   const parseCustomNote = (customNote: string | null) => {
     if (!customNote) return null
     try {
+      if (!customNote.trim().startsWith('{')) return { note: customNote }
       return JSON.parse(customNote)
     } catch {
       return { note: customNote }
@@ -549,12 +549,7 @@ export default function MealPlanViewPage() {
 
     setSavingDish(true)
     try {
-      const customNoteObj: Record<string, string> = {}
-      if (dishFormData.deliveryType) customNoteObj.deliveryType = dishFormData.deliveryType
-      if (dishFormData.location) customNoteObj.location = dishFormData.location
-      if (dishFormData.customNote) customNoteObj.note = dishFormData.customNote
-
-      // Convert deliveryTime to timeSlot format (HH:MM)
+      // customNote = plain text only. deliveryType and location sent separately (API saves to their columns).
       let timeSlot = selectedItem.timeSlot
       if (dishFormData.deliveryTime) {
         timeSlot = dishFormData.deliveryTime.substring(0, 5)
@@ -578,7 +573,7 @@ export default function MealPlanViewPage() {
         deliveryType: dishFormData.deliveryType,
         location: dishFormData.location || undefined,
         isSkipped: false,
-        customNote: Object.keys(customNoteObj).length > 0 ? JSON.stringify(customNoteObj) : undefined,
+        customNote: dishFormData.customNote?.trim() || undefined,
       }
 
       if (isUpdatingExisting) {
@@ -965,13 +960,10 @@ export default function MealPlanViewPage() {
         const sourceDate = new Date(item.date)
         const targetDate = addDays(sourceDate, dayOffset)
         const targetDateStr = format(targetDate, 'yyyy-MM-dd')
-        
-        const customNoteObj: any = {}
-        const customNote = parseCustomNote(item.customNote)
-        if (customNote?.deliveryType) customNoteObj.deliveryType = customNote.deliveryType
-        if (customNote?.location) customNoteObj.location = customNote.location
-        if (customNote?.note) customNoteObj.note = customNote.note
-        
+        const parsedLegacy = parseCustomNote(item.customNote)
+        const isPlainNote = typeof item.customNote === 'string' && !item.customNote.trim().startsWith('{')
+        const noteText = isPlainNote ? (item.customNote || '') : (parsedLegacy?.note ?? parsedLegacy?.instructions ?? '')
+        const itemAny = item as { deliveryType?: string; deliveryLocation?: string }
         return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -990,10 +982,10 @@ export default function MealPlanViewPage() {
             fats: item.fats || undefined,
             price: item.price || undefined,
             deliveryTime: item.deliveryTime || undefined,
-            deliveryType: customNote?.deliveryType || 'delivery',
-            location: customNote?.location || mealPlan.customer.deliveryArea || '',
+            deliveryType: itemAny.deliveryType ?? parsedLegacy?.deliveryType ?? 'delivery',
+            location: itemAny.deliveryLocation ?? parsedLegacy?.location ?? parsedLegacy?.deliveryLocation ?? mealPlan.customer.deliveryArea ?? '',
             isSkipped: item.isSkipped,
-            customNote: Object.keys(customNoteObj).length > 0 ? JSON.stringify(customNoteObj) : undefined,
+            customNote: noteText?.trim() || undefined,
           }),
         })
       })
@@ -1837,16 +1829,18 @@ export default function MealPlanViewPage() {
               )}
 
 
-              {/* Instructions */}
+              {/* Instructions / Notes */}
               {(() => {
-                const customNote = parseCustomNote(selectedItem.customNote)
-                const instructions = customNote?.instructions
-                
-                if (instructions) {
+                const itemAny = selectedItem as { deliveryType?: string; deliveryLocation?: string }
+                const parsed = parseCustomNote(selectedItem.customNote)
+                const noteText = (selectedItem.customNote && !selectedItem.customNote.trim().startsWith('{'))
+                  ? selectedItem.customNote
+                  : (parsed?.note ?? parsed?.instructions)
+                if (noteText) {
                   return (
                     <div className="border-t border-gray-200 pt-4">
-                      <label className="text-xs font-medium text-gray-500">Instructions</label>
-                      <p className="text-sm text-gray-900 mt-1">{instructions}</p>
+                      <label className="text-xs font-medium text-gray-500">Notes</label>
+                      <p className="text-sm text-gray-900 mt-1">{noteText}</p>
                     </div>
                   )
                 }
@@ -1855,25 +1849,27 @@ export default function MealPlanViewPage() {
 
               {/* Delivery Information */}
               {(() => {
-                const customNote = parseCustomNote(selectedItem.customNote)
-                const deliveryLocation = customNote?.deliveryLocation
-                const deliveryType = customNote?.deliveryType
-                
-                if (deliveryLocation || deliveryType) {
+                const itemAny = selectedItem as { deliveryType?: string; deliveryLocation?: string }
+                const deliveryType = itemAny.deliveryType
+                const deliveryLocation = itemAny.deliveryLocation
+                const parsed = parseCustomNote(selectedItem.customNote)
+                const loc = deliveryLocation ?? parsed?.deliveryLocation ?? parsed?.location
+                const type = deliveryType ?? parsed?.deliveryType
+                if (loc || type) {
                   return (
                     <div className="border-t border-gray-200 pt-4">
                       <h4 className="text-md font-semibold text-gray-900 mb-3 lg:mb-6">Delivery Information</h4>
                       <div className="grid grid-cols-2 gap-2 lg:p-4">
-                        {deliveryType && (
+                        {type && (
                           <div>
                             <label className="text-xs font-medium text-gray-500">Delivery Type</label>
-                            <p className="text-sm text-gray-900 capitalize">{deliveryType}</p>
+                            <p className="text-sm text-gray-900 capitalize">{type}</p>
                           </div>
                         )}
-                        {deliveryLocation && (
+                        {loc && (
                           <div>
                             <label className="text-xs font-medium text-gray-500">Location</label>
-                            <p className="text-sm text-gray-900">{deliveryLocation}</p>
+                            <p className="text-sm text-gray-900">{loc}</p>
                           </div>
                         )}
                       </div>

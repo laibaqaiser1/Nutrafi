@@ -18,6 +18,7 @@
     "db:cleanup-placeholders": "tsx scripts/cleanup-placeholder-customers.ts",
     "db:cleanup-duplicate-meal-plans": "tsx scripts/cleanup-duplicate-meal-plans.ts",
     "db:cleanup-customers": "tsx scripts/cleanup-customers.ts",
+    "db:migrate-custom-note": "tsx scripts/migrate-custom-note-to-columns.ts",
     "db:add-dua-meals": "tsx scripts/add-dua-meal-items.ts",
     "db:add-garry-meals": "tsx scripts/add-garry-meal-items.ts",
     "db:migrate": "prisma migrate dev",

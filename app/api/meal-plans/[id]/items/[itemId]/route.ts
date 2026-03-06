@@ -91,17 +91,15 @@ export async function PATCH(
       }
     }
 
-    const customNoteObj: Record<string, string> = {}
-    if (data.deliveryType) customNoteObj.deliveryType = data.deliveryType
-    if (data.location !== undefined) customNoteObj.location = data.location
-    if (typeof data.customNote === 'string') customNoteObj.note = data.customNote
-
+    // customNote = plain text only. deliveryType and location in their own columns.
     const updatePayload: Record<string, unknown> = {
       ...(data.date !== undefined && { date: data.date }),
       ...(data.timeSlot !== undefined && { timeSlot: data.timeSlot }),
       ...(data.deliveryTime !== undefined && { deliveryTime: data.deliveryTime }),
+      ...(data.deliveryType !== undefined && { deliveryType: data.deliveryType }),
+      ...(data.location !== undefined && { deliveryLocation: data.location }),
+      ...(data.customNote !== undefined && { customNote: data.customNote === null || (typeof data.customNote === 'string' && data.customNote.trim() === '') ? null : String(data.customNote).trim() }),
       ...(data.isSkipped !== undefined && { isSkipped: data.isSkipped }),
-      ...(Object.keys(customNoteObj).length > 0 && { customNote: JSON.stringify(customNoteObj) }),
       ...dishData,
     }
 
