@@ -87,25 +87,63 @@ export async function GET(
     })
     y += 8
 
-    // Meals table - Date column shows day name + date (e.g. Monday, 3 Mar 2026)
+    // Meals table - group by date: one Day/Date cell with rowSpan, then meal rows
     const tableHead = [['Day / Date', 'Time', 'Dish', 'Category', 'Status']]
-    const tableBody = items.map((item) => {
-      const status = item.isSkipped ? 'Skipped' : item.isDelivered ? 'Delivered' : 'Scheduled'
-      return [
-        format(new Date(item.date), 'EEEE, d MMM yyyy'),
-        item.timeSlot || '-',
-        item.dishName || (item.isSkipped ? '—' : 'Not set'),
-        item.dishCategory ? formatCategory(item.dishCategory) : '-',
-        status,
-      ]
-    })
+    const itemsByDate = new Map<string, typeof items>()
+    for (const item of items) {
+      const key = format(new Date(item.date), 'yyyy-MM-dd')
+      if (!itemsByDate.has(key)) itemsByDate.set(key, [])
+      itemsByDate.get(key)!.push(item)
+    }
+    type CellStyle = { fillColor?: [number, number, number] }
+    type BodyRow =
+      | (string | { content: string; rowSpan?: number; styles?: CellStyle })[]
+      | Record<string, string>
+    const tableBodyFinal: BodyRow[] = []
+    const LIGHT_GREY: [number, number, number] = [248, 248, 248]
+    const WHITE: [number, number, number] = [255, 255, 255]
+    for (const [, dateItems] of itemsByDate) {
+      const dateLabel = format(new Date(dateItems[0].date), 'EEEE, d MMM yyyy')
+      dateItems.forEach((item, i) => {
+        const status = item.isSkipped ? 'Skipped' : item.isDelivered ? 'Delivered' : 'Scheduled'
+        const time = item.timeSlot || '-'
+        const dish = item.dishName || (item.isSkipped ? '—' : 'Not set')
+        const category = item.dishCategory ? formatCategory(item.dishCategory) : '-'
+        if (i === 0) {
+          tableBodyFinal.push([
+            { content: dateLabel, rowSpan: dateItems.length, styles: { fillColor: LIGHT_GREY } },
+            time,
+            dish,
+            category,
+            status,
+          ])
+        } else {
+          // Omit column 0 (spanned); use object form so columns 1–4 are correct
+          tableBodyFinal.push({
+            1: time,
+            2: dish,
+            3: category,
+            4: status,
+          })
+        }
+      })
+      // Extra blank row after each date – white background only for empty row
+      tableBodyFinal.push([
+        { content: '', styles: { fillColor: WHITE } },
+        { content: '', styles: { fillColor: WHITE } },
+        { content: '', styles: { fillColor: WHITE } },
+        { content: '', styles: { fillColor: WHITE } },
+        { content: '', styles: { fillColor: WHITE } },
+      ])
+    }
 
     autoTable(doc, {
       head: tableHead,
-      body: tableBody,
+      body: tableBodyFinal,
       startY: y,
-      theme: 'striped',
+      theme: 'plain',
       headStyles: { fillColor: [114, 141, 83], textColor: 255, fontStyle: 'bold' },
+      bodyStyles: { fillColor: LIGHT_GREY },
       margin: { left: 14, right: 14 },
       columnStyles: {
         0: { cellWidth: 46 },
