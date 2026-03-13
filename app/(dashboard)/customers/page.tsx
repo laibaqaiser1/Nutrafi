@@ -29,6 +29,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [deleteConfirmCustomer, setDeleteConfirmCustomer] = useState<Customer | null>(null)
   const [total, setTotal] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -92,6 +93,18 @@ export default function CustomersPage() {
       console.error('Error disabling customer:', error)
       toast.error('Failed to disable customer')
     }
+  }
+
+  const handleDeleteClick = (customer: Customer) => {
+    setOpenDropdown(null)
+    setDeleteConfirmCustomer(customer)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmCustomer) return
+    const id = deleteConfirmCustomer.id
+    setDeleteConfirmCustomer(null)
+    await handleDelete(id)
   }
 
   const handleDelete = async (id: string) => {
@@ -279,10 +292,7 @@ export default function CustomersPage() {
                                       </button>
                                     )}
                                     <button
-                                      onClick={() => {
-                                        setOpenDropdown(null)
-                                        handleDelete(customer.id)
-                                      }}
+                                      onClick={() => handleDeleteClick(customer)}
                                       className="block w-full text-left px-2 py-1.5 text-red-600 hover:bg-red-50"
                                     >
                                       Delete
@@ -380,6 +390,45 @@ export default function CustomersPage() {
                   </button>
                 </nav>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete customer confirmation modal */}
+      {deleteConfirmCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteConfirmCustomer(null)} />
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-5">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete customer?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {deleteConfirmCustomer.mealPlans && deleteConfirmCustomer.mealPlans.length > 0 ? (
+                <>
+                  This will delete <strong>{deleteConfirmCustomer.fullName}</strong> and the{' '}
+                  <strong>{deleteConfirmCustomer.mealPlans.length} meal plan(s)</strong> associated with this customer.
+                  This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  This will permanently delete <strong>{deleteConfirmCustomer.fullName}</strong>. This action cannot be undone.
+                </>
+              )}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmCustomer(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Yes, delete
+              </button>
             </div>
           </div>
         </div>

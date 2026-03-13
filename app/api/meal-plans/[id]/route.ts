@@ -14,7 +14,7 @@ const mealPlanUpdateSchema = z.object({
   startDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   endDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   mealsPerDay: z.number().int().min(1).max(5).optional(),
-  status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional(),
+  status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED', 'COMPLETED']).optional(),
   notes: z.string().optional(),
   totalMeals: z.number().int().min(0).optional().nullable(),
   updateItemDatesFromStartDate: z.boolean().optional(),

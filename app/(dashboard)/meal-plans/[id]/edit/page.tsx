@@ -460,6 +460,7 @@ export default function EditMealPlanPage() {
               <option value="ACTIVE">Active</option>
               <option value="PAUSED">Paused</option>
               <option value="CANCELLED">Cancelled</option>
+              <option value="COMPLETED">Completed</option>
             </select>
           </div>
           <div>

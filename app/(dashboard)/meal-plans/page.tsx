@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
@@ -42,22 +42,40 @@ export default function MealPlansPage() {
   const itemsPerPage = 10
   const [filters, setFilters] = useState({
     status: '',
+    customerName: '',
   })
 
   useEffect(() => {
-    setCurrentPage(1) // Reset to first page when filters change
-  }, [filters.status])
+    setCurrentPage(1) // Reset to first page when status or customer search changes
+  }, [filters.status, filters.customerName])
+
+  // Auto-search when customer name changes (debounced); skip initial mount
+  const isFirstCustomerSearch = useRef(true)
+  useEffect(() => {
+    if (isFirstCustomerSearch.current) {
+      isFirstCustomerSearch.current = false
+      return
+    }
+    if (filters.customerName.trim() === '') {
+      fetchMealPlans(1)
+      return
+    }
+    const t = setTimeout(() => fetchMealPlans(1), 300)
+    return () => clearTimeout(t)
+  }, [filters.customerName])
 
   useEffect(() => {
     fetchMealPlans()
-  }, [currentPage, filters])
+  }, [currentPage, filters.status])
 
-  const fetchMealPlans = async () => {
+  const fetchMealPlans = async (pageOverride?: number) => {
     setLoading(true)
     try {
+      const page = pageOverride ?? currentPage
       const params = new URLSearchParams()
       if (filters.status) params.append('status', filters.status)
-      params.append('page', currentPage.toString())
+      if (filters.customerName.trim()) params.append('customer', filters.customerName.trim())
+      params.append('page', page.toString())
       params.append('limit', itemsPerPage.toString())
 
       const response = await fetch(`/api/meal-plans?${params.toString()}`)
@@ -66,6 +84,7 @@ export default function MealPlansPage() {
         setMealPlans(data.mealPlans || data)
         setTotal(data.total || data.length || 0)
         setTotalPages(data.totalPages || Math.ceil((data.total || data.length || 0) / itemsPerPage))
+        if (pageOverride !== undefined) setCurrentPage(pageOverride)
       }
     } catch (error) {
       console.error('Error fetching meal plans:', error)
@@ -90,7 +109,14 @@ export default function MealPlansPage() {
       {/* Meal Plans */}
       <>
           {/* Filters */}
-          <div className="bg-white p-2 lg:p-4 rounded shadow lg:rounded-lg mb-3 lg:mb-6">
+          <div className="bg-white p-2 lg:p-4 rounded shadow lg:rounded-lg mb-3 lg:mb-6 flex flex-wrap items-center gap-2 lg:gap-4">
+            <input
+              type="text"
+              placeholder="Search by customer name..."
+              value={filters.customerName}
+              onChange={(e) => setFilters({ ...filters, customerName: e.target.value })}
+              className="px-2 py-1.5 lg:px-3 lg:py-2 text-sm border border-gray-300 rounded min-w-[160px] lg:min-w-[220px]"
+            />
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -100,6 +126,7 @@ export default function MealPlansPage() {
               <option value="ACTIVE">Active</option>
               <option value="PAUSED">Paused</option>
               <option value="CANCELLED">Cancelled</option>
+              <option value="COMPLETED">Completed</option>
             </select>
           </div>
 
@@ -147,6 +174,7 @@ export default function MealPlansPage() {
                         <span className={`px-1.5 inline-flex text-xs leading-4 font-semibold rounded ${
                           plan.status === 'ACTIVE' ? 'bg-[#f0f4e8] text-nutrafi-dark' :
                           plan.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
+                          plan.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
                           'bg-red-100 text-red-800'
                         }`}>
                           {plan.status}

@@ -1236,6 +1236,7 @@ export default function MealPlanViewPage() {
             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
               mealPlan.status === 'ACTIVE' ? 'bg-[#f0f4e8] text-nutrafi-dark' :
               mealPlan.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
+              mealPlan.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
               'bg-red-100 text-red-800'
             }`}>
               {mealPlan.status}

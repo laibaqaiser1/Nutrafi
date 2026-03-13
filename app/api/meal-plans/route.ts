@@ -21,7 +21,7 @@ const mealPlanSchema = z.object({
   days: z.number().int().min(1).optional(),
   mealsPerDay: z.number().int().min(1).max(5),
   // timeSlots removed - not stored in meal plan, only used in UI to set deliveryTime
-  status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).default('ACTIVE'),
+  status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED', 'COMPLETED']).default('ACTIVE'),
   notes: z.string().optional(),
   totalAmount: z.number().optional(),
   totalMeals: z.number().int().optional(),
@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const customerId = searchParams.get('customerId')
+    const customerName = searchParams.get('customer')?.trim() || searchParams.get('customerName')?.trim() || ''
     const status = searchParams.get('status')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
@@ -47,8 +48,13 @@ export async function GET(request: NextRequest) {
       const cid = parseInt(customerId, 10)
       if (!Number.isNaN(cid)) where.customerId = cid
     }
+    if (customerName) {
+      where.customer = {
+        fullName: { contains: customerName, mode: 'insensitive' },
+      }
+    }
     // Only filter by status when a specific status is requested; otherwise show all
-    if (status && ['ACTIVE', 'PAUSED', 'CANCELLED'].includes(status)) {
+    if (status && ['ACTIVE', 'PAUSED', 'CANCELLED', 'COMPLETED'].includes(status)) {
       where.status = status
     }
 
