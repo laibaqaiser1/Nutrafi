@@ -127,6 +127,8 @@ export default function MealPlanViewPage() {
   const [addingDay, setAddingDay] = useState(false)
   const [duplicatingWeek, setDuplicatingWeek] = useState(false)
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
+  const [itemDateEdit, setItemDateEdit] = useState('')
+  const [savingDate, setSavingDate] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -203,7 +205,7 @@ export default function MealPlanViewPage() {
       if (response.ok) {
         const data = await response.json()
         setMealPlan(data)
-        
+
         // Initialize visible weeks and days based on existing meal items
         if (data.mealPlanItems && data.mealPlanItems.length > 0) {
           const weeks = new Set<number>()
@@ -239,6 +241,8 @@ export default function MealPlanViewPage() {
           setExpandedWeeks(new Set([1]))
           setVisibleDaysByWeek({})
         }
+
+        return data as MealPlan
       } else {
         toast.error('Failed to fetch meal plan')
         router.push('/meal-plans')
@@ -429,6 +433,7 @@ export default function MealPlanViewPage() {
 
   const handleItemClick = (item: MealPlan['mealPlanItems'][0]) => {
     setSelectedItem(item)
+    setItemDateEdit(format(new Date(item.date), 'yyyy-MM-dd'))
     setShowModal(true)
     setEditingDish(false)
     setDishDropdownOpen(false)
@@ -556,7 +561,7 @@ export default function MealPlanViewPage() {
       }
 
       const payload = {
-        date: selectedItem.date,
+        date: (isUpdatingExisting ? itemDateEdit : (itemDateEdit || selectedItem.date)),
         timeSlot,
         dishId: dishFormData.dishId || undefined,
         dishName: dishFormData.dishName || undefined,
@@ -584,7 +589,12 @@ export default function MealPlanViewPage() {
           body: JSON.stringify(payload),
         })
         if (response.ok) {
-          await fetchMealPlan(mealPlan.id)
+          const updatedPlan = await fetchMealPlan(mealPlan.id)
+          if (updatedPlan) {
+            const updated = updatedPlan.mealPlanItems.find((i) => i.id === selectedItem.id)
+            if (updated) setSelectedItem(updated)
+            setItemDateEdit(updated ? format(new Date(updated.date), 'yyyy-MM-dd') : itemDateEdit)
+          }
           setEditingDish(false)
           setShowModal(false)
           toast.success('Meal updated successfully!')
@@ -614,6 +624,44 @@ export default function MealPlanViewPage() {
     } finally {
       setSavingDish(false)
     }
+  }
+
+  const handleUpdateDate = async () => {
+    if (!mealPlan || !selectedItem?.id || !itemDateEdit) return
+    setSavingDate(true)
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${selectedItem.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: itemDateEdit }),
+      })
+      if (response.ok) {
+        const updatedPlan = await fetchMealPlan(mealPlan.id)
+        if (updatedPlan) {
+          const updated = updatedPlan.mealPlanItems.find((i) => i.id === selectedItem.id)
+          if (updated) {
+            setSelectedItem(updated)
+            setItemDateEdit(format(new Date(updated.date), 'yyyy-MM-dd'))
+          }
+        }
+        toast.success('Date updated')
+      } else {
+        const err = await response.json()
+        toast.error(err.error || 'Failed to update date')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to update date')
+    } finally {
+      setSavingDate(false)
+    }
+  }
+
+  // Derive time slots from existing plan items (same order), or fallback to default
+  const getPlanTimeSlots = (plan: MealPlan): string[] => {
+    const slots = [...new Set(plan.mealPlanItems.map((item) => item.timeSlot).filter(Boolean))].sort()
+    if (slots.length > 0) return slots.slice(0, plan.mealsPerDay)
+    return ['08:00', '13:00', '18:00'].slice(0, plan.mealsPerDay)
   }
 
   // Function to add another week (only creates first day)
@@ -656,8 +704,8 @@ export default function MealPlanViewPage() {
       const weekStartDate = addDays(startDate, weekStartDay)
       const firstDate = format(weekStartDate, 'yyyy-MM-dd')
       
-      // Generate default time slots
-      const defaultTimeSlots = ['08:00', '13:00', '18:00'].slice(0, mealPlan.mealsPerDay)
+      // Replicate this plan's time slots (from existing items)
+      const defaultTimeSlots = getPlanTimeSlots(mealPlan)
       
       // Create meal items for only the first day
       const mealItemPromises = defaultTimeSlots.map((timeSlot) => {
@@ -797,8 +845,8 @@ export default function MealPlanViewPage() {
       const nextDayDate = addDays(weekStartDate, nextDayIndex)
       const nextDayDateStr = format(nextDayDate, 'yyyy-MM-dd')
       
-      // Generate default time slots
-      const defaultTimeSlots = ['08:00', '13:00', '18:00'].slice(0, mealPlan.mealsPerDay)
+      // Replicate this plan's time slots (from existing items)
+      const defaultTimeSlots = getPlanTimeSlots(mealPlan)
       
       // Create meal items for the new day
       const mealItemPromises = defaultTimeSlots.map((timeSlot) => {
@@ -869,10 +917,10 @@ export default function MealPlanViewPage() {
         return
       }
       
-      // Get default time slots and find the next available one
-      const defaultTimeSlots = ['08:00', '13:00', '18:00'].slice(0, mealPlan.mealsPerDay)
+      // Use this plan's time slots and find the next available one for this day
+      const planTimeSlots = getPlanTimeSlots(mealPlan)
       const existingTimeSlots = existingMeals.map(item => item.timeSlot)
-      const nextTimeSlot = defaultTimeSlots.find(ts => !existingTimeSlots.includes(ts)) || defaultTimeSlots[existingMeals.length]
+      const nextTimeSlot = planTimeSlots.find(ts => !existingTimeSlots.includes(ts)) || planTimeSlots[existingMeals.length]
       
       // Convert timeSlot to 24-hour format for deliveryTime
       const timeMatch = nextTimeSlot.match(/(\d{1,2}):(\d{2})/)
@@ -1747,7 +1795,24 @@ export default function MealPlanViewPage() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">Date</label>
-                  <p className="text-sm text-gray-900">{format(new Date(selectedItem.date), 'MMM dd, yyyy')}</p>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={itemDateEdit}
+                      onChange={(e) => setItemDateEdit(e.target.value)}
+                      className="block rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-nutrafi-primary focus:ring-nutrafi-primary"
+                    />
+                    {itemDateEdit !== format(new Date(selectedItem.date), 'yyyy-MM-dd') && (
+                      <button
+                        type="button"
+                        onClick={handleUpdateDate}
+                        disabled={savingDate}
+                        className="rounded-md bg-nutrafi-primary px-2 py-1.5 text-xs font-medium text-white hover:bg-nutrafi-primary/90 disabled:opacity-50"
+                      >
+                        {savingDate ? 'Updating…' : 'Update date'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">Time Slot</label>

@@ -17,6 +17,7 @@ const mealPlanUpdateSchema = z.object({
   status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional(),
   notes: z.string().optional(),
   totalMeals: z.number().int().min(0).optional().nullable(),
+  updateItemDatesFromStartDate: z.boolean().optional(),
 })
 
 // GET - Get meal plan with items
@@ -212,6 +213,27 @@ export async function PUT(
         plan: true,
       },
     })
+
+    // If start date was changed and client asked to align item dates: shift each item by day offset from old start to new start
+    if (data.updateItemDatesFromStartDate && data.startDate != null && currentMealPlan.startDate) {
+      const oldStart = new Date(currentMealPlan.startDate)
+      const newStart = data.startDate
+      const dayMs = 24 * 60 * 60 * 1000
+
+      const items = await prisma.mealPlanItem.findMany({
+        where: { mealPlanId: id },
+      })
+
+      for (const item of items) {
+        const itemDate = new Date(item.date)
+        const dayOffset = Math.floor((itemDate.getTime() - oldStart.getTime()) / dayMs)
+        const newDate = new Date(newStart.getTime() + dayOffset * dayMs)
+        await prisma.mealPlanItem.update({
+          where: { id: item.id },
+          data: { date: newDate },
+        })
+      }
+    }
 
     return NextResponse.json(mealPlan)
   } catch (error) {

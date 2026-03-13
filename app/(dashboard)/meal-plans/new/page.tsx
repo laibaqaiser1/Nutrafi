@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { format, addDays, eachDayOfInterval } from 'date-fns'
@@ -72,6 +72,9 @@ export default function NewMealPlanPage() {
   const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set()) // Track collapsed weeks
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set()) // Track collapsed days
   const [visibleDaysByWeek, setVisibleDaysByWeek] = useState<Record<number, string[]>>({}) // Track visible days per week
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('')
+  const customerDropdownRef = useRef<HTMLDivElement>(null)
   
   const [formData, setFormData] = useState({
     customerId: '',
@@ -132,6 +135,19 @@ export default function NewMealPlanPage() {
       }
     }
   }, [])
+
+  // Close customer dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
+        setCustomerDropdownOpen(false)
+      }
+    }
+    if (customerDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [customerDropdownOpen])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -880,21 +896,93 @@ export default function NewMealPlanPage() {
         {step === 1 && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Customer</h2>
-            <div className="mb-4">
+            <div className="mb-4" ref={customerDropdownRef}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Customer *</label>
-              <select
-                required
-                value={formData.customerId}
-                onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              >
-                <option value="">Select a customer</option>
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.fullName} - {customer.phone} ({customer.deliveryArea})
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <div
+                  role="combobox"
+                  aria-expanded={customerDropdownOpen}
+                  aria-haspopup="listbox"
+                  className="w-full min-h-[42px] px-3 py-2 border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer focus-within:ring-2 focus-within:ring-nutrafi-primary focus-within:border-nutrafi-primary"
+                  onClick={() => setCustomerDropdownOpen((v) => !v)}
+                >
+                  {!customerDropdownOpen ? (
+                    formData.customerId && selectedCustomer ? (
+                      <span className="text-gray-900">
+                        {selectedCustomer.fullName} – {selectedCustomer.phone} ({selectedCustomer.deliveryArea})
+                      </span>
+                    ) : (
+                      <span className={formData.customerId ? 'text-gray-900' : 'text-gray-400'}>
+                        {formData.customerId
+                          ? customers.find((c) => c.id === formData.customerId)?.fullName ?? 'Select a customer'
+                          : 'Select a customer'}
+                      </span>
+                    )
+                  ) : (
+                    <input
+                      type="text"
+                      value={customerDropdownOpen ? customerSearchQuery : ''}
+                      onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                      onFocus={() => setCustomerDropdownOpen(true)}
+                      placeholder="Type customer name, phone, or area..."
+                      className="flex-1 min-w-0 border-0 p-0 focus:ring-0 focus:outline-none text-gray-900 placeholder:text-gray-400"
+                      autoFocus={customerDropdownOpen}
+                    />
+                  )}
+                  <svg
+                    className={`w-5 h-5 text-gray-400 flex-shrink-0 ml-2 transition-transform ${customerDropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+                {customerDropdownOpen && (
+                  <ul
+                    role="listbox"
+                    className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-md border border-gray-300 bg-white py-1 shadow-lg"
+                  >
+                    {(() => {
+                      const q = customerSearchQuery.trim().toLowerCase()
+                      const filtered = q
+                        ? customers.filter(
+                            (c) =>
+                              (c.fullName || '').toLowerCase().includes(q) ||
+                              (c.phone || '').toLowerCase().includes(q) ||
+                              (c.deliveryArea || '').toLowerCase().includes(q)
+                          )
+                        : customers
+                      if (filtered.length === 0) {
+                        return (
+                          <li className="px-3 py-2 text-sm text-gray-500" role="option">
+                            No customer found. Try a different search.
+                          </li>
+                        )
+                      }
+                      return filtered.map((customer) => (
+                        <li
+                          key={customer.id}
+                          role="option"
+                          aria-selected={formData.customerId === customer.id}
+                          className={`px-3 py-2 text-sm cursor-pointer ${
+                            formData.customerId === customer.id
+                              ? 'bg-nutrafi-primary/15 text-nutrafi-dark font-medium'
+                              : 'text-gray-900 hover:bg-gray-100'
+                          }`}
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, customerId: customer.id }))
+                            setCustomerDropdownOpen(false)
+                            setCustomerSearchQuery('')
+                          }}
+                        >
+                          {customer.fullName} – {customer.phone} ({customer.deliveryArea})
+                        </li>
+                      ))
+                    })()}
+                  </ul>
+                )}
+              </div>
             </div>
             {selectedCustomer && (
               <div className="bg-gray-50 p-4 rounded-md">

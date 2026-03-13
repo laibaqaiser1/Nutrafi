@@ -116,6 +116,7 @@ export default function EditMealPlanPage() {
   type PaymentItem = NonNullable<MealPlan['payments']>[number]
   const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null)
   const [savingPaymentEdit, setSavingPaymentEdit] = useState(false)
+  const [showStartDateConfirm, setShowStartDateConfirm] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -190,10 +191,14 @@ export default function EditMealPlanPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  const submitMealPlan = async (updateItemDatesFromStartDate: boolean) => {
+    if (!mealPlan) return
+    const originalStart = mealPlan.startDate ? mealPlan.startDate.split('T')[0] : ''
+    const newStart = formData.startDate || ''
+    const startDateChanged = newStart !== originalStart
+    const hasItems = (mealPlan.mealPlanItems?.length ?? 0) > 0
 
+    setLoading(true)
     try {
       const response = await fetch(`/api/meal-plans/${params.id}`, {
         method: 'PUT',
@@ -204,6 +209,7 @@ export default function EditMealPlanPage() {
           planId: formData.planId || undefined,
           planType: formData.planType || undefined,
           totalMeals: formData.totalMeals !== '' ? parseInt(formData.totalMeals, 10) : undefined,
+          updateItemDatesFromStartDate: startDateChanged && hasItems ? updateItemDatesFromStartDate : undefined,
         }),
       })
 
@@ -219,6 +225,23 @@ export default function EditMealPlanPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!mealPlan) return
+
+    const originalStart = mealPlan.startDate ? mealPlan.startDate.split('T')[0] : ''
+    const newStart = formData.startDate || ''
+    const startDateChanged = newStart !== originalStart
+    const hasItems = (mealPlan.mealPlanItems?.length ?? 0) > 0
+
+    if (startDateChanged && hasItems) {
+      setShowStartDateConfirm(true)
+      return
+    }
+
+    await submitMealPlan(false)
   }
 
   const handleAddPayment = async (e: React.FormEvent) => {
@@ -811,6 +834,44 @@ export default function EditMealPlanPage() {
           <p className="text-sm text-gray-500">No payments recorded for this meal plan.</p>
         )}
       </div>
+
+      {/* Start date change confirmation popup */}
+      {showStartDateConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowStartDateConfirm(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Update start date</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              You&apos;ve changed the start date. Do you want to update existing meal plan days to align with the new start date?
+            </p>
+            <ul className="text-sm text-gray-600 mb-4 list-disc list-inside space-y-1">
+              <li><strong>Yes:</strong> We&apos;ll shift all meal days (Day 1 → {formData.startDate ? format(new Date(formData.startDate), 'MMM d, yyyy') : 'new start date'}, Day 2 → next day, etc.).</li>
+              <li><strong>No:</strong> We&apos;ll keep the current dates for each meal as they are.</li>
+            </ul>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStartDateConfirm(false)
+                  submitMealPlan(false)
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"
+              >
+                No, keep as is
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStartDateConfirm(false)
+                  submitMealPlan(true)
+                }}
+                className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium"
+              >
+                Yes, update days
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Payment Modal */}
       {editingPayment && (

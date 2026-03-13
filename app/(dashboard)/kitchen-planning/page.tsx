@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
+
+const BATCH_DELIVER_PAGE_SIZE = 12
 
 interface MealPlanItem {
   id: string
@@ -80,6 +82,15 @@ export default function KitchenPlanningPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const PAGE_SIZE_OPTIONS = [10, 20, 50]
+  const [batchDeliverOpen, setBatchDeliverOpen] = useState(false)
+  const [batchDeliverItems, setBatchDeliverItems] = useState<MealPlanItem[]>([])
+  const [batchDeliverSelected, setBatchDeliverSelected] = useState<Set<string>>(new Set())
+  const [batchDeliverSearch, setBatchDeliverSearch] = useState('')
+  const [batchDeliverVisibleCount, setBatchDeliverVisibleCount] = useState(BATCH_DELIVER_PAGE_SIZE)
+  const [batchDeliverSubmitting, setBatchDeliverSubmitting] = useState(false)
+  const [batchDeliverLoading, setBatchDeliverLoading] = useState(false)
+  const batchDeliverListRef = useRef<HTMLDivElement>(null)
+  const batchDeliverFilteredLengthRef = useRef(0)
 
   useEffect(() => {
     fetchKitchenPlanningData()
@@ -250,6 +261,94 @@ export default function KitchenPlanningPage() {
     }
   }
 
+  const openBatchDeliverModal = async () => {
+    setBatchDeliverOpen(true)
+    setBatchDeliverSearch('')
+    setBatchDeliverVisibleCount(BATCH_DELIVER_PAGE_SIZE)
+    setBatchDeliverLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.append('date', filters.date)
+      params.append('status', 'active')
+      if (filters.startTime) params.append('startTime', filters.startTime)
+      if (filters.endTime) params.append('endTime', filters.endTime)
+      const response = await fetch(`/api/kitchen-planning?${params.toString()}`)
+      if (response.ok) {
+        const result = await response.json()
+        const items = result.items || []
+        setBatchDeliverItems(items)
+        setBatchDeliverSelected(new Set(items.map((i: MealPlanItem) => String(i.id))))
+      } else {
+        toast.error('Failed to load meals')
+        setBatchDeliverItems([])
+        setBatchDeliverSelected(new Set())
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to load meals')
+      setBatchDeliverItems([])
+      setBatchDeliverSelected(new Set())
+    } finally {
+      setBatchDeliverLoading(false)
+    }
+  }
+
+  // Reset visible count when search changes so user sees first page of search results
+  useEffect(() => {
+    if (batchDeliverOpen) setBatchDeliverVisibleCount(BATCH_DELIVER_PAGE_SIZE)
+  }, [batchDeliverSearch, batchDeliverOpen])
+
+  const handleBatchDeliverScroll = useCallback(() => {
+    const el = batchDeliverListRef.current
+    if (!el) return
+    const { scrollTop, clientHeight, scrollHeight } = el
+    const nearBottom = scrollTop + clientHeight >= scrollHeight - 80
+    if (!nearBottom) return
+    const filteredLen = batchDeliverFilteredLengthRef.current
+    setBatchDeliverVisibleCount((prev) => (prev >= filteredLen ? prev : prev + BATCH_DELIVER_PAGE_SIZE))
+  }, [])
+
+  const toggleBatchDeliverItem = (id: string) => {
+    setBatchDeliverSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleBatchDeliverSubmit = async () => {
+    const selectedIds = batchDeliverItems
+      .filter((i) => batchDeliverSelected.has(String(i.id)))
+      .map((i) => (typeof i.id === 'number' ? i.id : parseInt(String(i.id), 10)))
+      .filter((n) => !Number.isNaN(n))
+    if (selectedIds.length === 0) {
+      toast.warning('Select at least one meal to mark as delivered')
+      return
+    }
+    setBatchDeliverSubmitting(true)
+    try {
+      const response = await fetch('/api/kitchen-planning/deliver-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds: selectedIds }),
+      })
+      if (response.ok) {
+        toast.success(`Marked ${selectedIds.length} meal(s) as delivered`)
+        setBatchDeliverOpen(false)
+        await fetchKitchenPlanningData()
+      } else {
+        const err = await response.json()
+        toast.error(err.error || 'Failed to mark meals as delivered')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to mark meals as delivered')
+    } finally {
+      setBatchDeliverSubmitting(false)
+    }
+  }
+
   return (
     <div className="p-2 lg:p-6">
       <div className="flex justify-between items-center mb-3 lg:mb-6">
@@ -299,6 +398,16 @@ export default function KitchenPlanningPage() {
               />
             </svg>
             Download Rider Sheet
+          </button>
+          <button
+            onClick={openBatchDeliverModal}
+            disabled={loading || !filters.date}
+            className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-dark text-white rounded lg:rounded-lg hover:bg-nutrafi-dark/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 lg:gap-2"
+          >
+            <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Mark all as delivered
           </button>
         </div>
       </div>
@@ -832,6 +941,151 @@ export default function KitchenPlanningPage() {
                     Close
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Mark as Delivered Modal */}
+      {batchDeliverOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !batchDeliverSubmitting && setBatchDeliverOpen(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[88vh] overflow-hidden flex flex-col border border-gray-200">
+            {/* Header */}
+            <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-4 py-4">
+              <div className="flex justify-between items-start gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Mark meals as delivered</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {format(new Date(filters.date), 'EEEE, MMMM dd, yyyy')}
+                    {filters.startTime || filters.endTime ? ` · ${filters.startTime || '—'} – ${filters.endTime || '—'}` : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => !batchDeliverSubmitting && setBatchDeliverOpen(false)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="mt-3 relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="search"
+                  placeholder="Search by customer or dish..."
+                  value={batchDeliverSearch}
+                  onChange={(e) => setBatchDeliverSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-nutrafi-primary focus:border-nutrafi-primary bg-white placeholder:text-gray-400"
+                />
+              </div>
+            </div>
+            {/* List: search runs over all meals for the day; only 12 load at a time, more on scroll */}
+            <div
+              ref={batchDeliverListRef}
+              onScroll={handleBatchDeliverScroll}
+              className="flex-1 overflow-y-auto p-4 min-h-0"
+            >
+              {batchDeliverLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="animate-spin rounded-full h-9 w-9 border-2 border-nutrafi-primary border-t-transparent" />
+                  <p className="text-sm text-gray-500">Loading meals...</p>
+                </div>
+              ) : batchDeliverItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-sm text-gray-500">No undelivered meals for this date.</p>
+                </div>
+              ) : (
+                (() => {
+                  const q = batchDeliverSearch.trim().toLowerCase()
+                  const filtered = q
+                    ? batchDeliverItems.filter(
+                        (i) =>
+                          (i.mealPlan.customer.fullName || '').toLowerCase().includes(q) ||
+                          (i.dishName || i.dish?.name || '').toLowerCase().includes(q)
+                      )
+                    : batchDeliverItems
+                  batchDeliverFilteredLengthRef.current = filtered.length
+                  const visible = filtered.slice(0, batchDeliverVisibleCount)
+                  const hasMore = visible.length < filtered.length
+                  return (
+                    <>
+                      <ul className="space-y-2">
+                        {visible.map((item) => {
+                          const idStr = String(item.id)
+                          const checked = batchDeliverSelected.has(idStr)
+                          return (
+                            <li
+                              key={item.id}
+                              className={`flex items-center gap-3 py-3 px-3 rounded-lg border transition-colors ${
+                                checked
+                                  ? 'border-nutrafi-primary/30 bg-nutrafi-primary/5'
+                                  : 'border-gray-200 bg-gray-50/50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                id={`batch-${idStr}`}
+                                checked={checked}
+                                onChange={() => toggleBatchDeliverItem(idStr)}
+                                className="h-4 w-4 rounded border-gray-300 text-nutrafi-dark focus:ring-nutrafi-dark focus:ring-offset-0"
+                              />
+                              <label htmlFor={`batch-${idStr}`} className="flex-1 cursor-pointer text-sm min-w-0">
+                                <span className="font-medium text-gray-900">{item.mealPlan.customer.fullName}</span>
+                                <span className="text-gray-400 mx-1.5">·</span>
+                                <span className="text-gray-700">{item.dishName || item.dish?.name || 'Not Assigned'}</span>
+                                <span className="text-gray-400 text-xs ml-1.5 whitespace-nowrap">
+                                  {formatTime12h(item.timeSlot) || item.timeSlot}
+                                </span>
+                              </label>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                      {hasMore && (
+                        <p className="text-xs text-gray-400 text-center py-3">
+                          Showing {visible.length} of {filtered.length} — scroll for more
+                        </p>
+                      )}
+                    </>
+                  )
+                })()
+              )}
+            </div>
+            {/* Footer */}
+            <div className="flex-shrink-0 px-4 py-3 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-sm text-gray-600 font-medium">
+                {batchDeliverSelected.size} of {batchDeliverItems.length} selected
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => !batchDeliverSubmitting && setBatchDeliverOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBatchDeliverSubmit}
+                  disabled={batchDeliverSubmitting || batchDeliverSelected.size === 0}
+                  className="px-4 py-2 text-sm font-medium text-white bg-nutrafi-dark rounded-lg hover:bg-nutrafi-dark/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                >
+                  {batchDeliverSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                      Marking...
+                    </>
+                  ) : (
+                    <>Mark selected as delivered</>
+                  )}
+                </button>
               </div>
             </div>
           </div>
