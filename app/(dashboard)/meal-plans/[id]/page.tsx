@@ -917,13 +917,19 @@ export default function MealPlanViewPage() {
         return
       }
       
-      // Use this plan's time slots and find the next available one for this day
+      // Use only time slots from this plan (user-defined). Prefer an unused slot for this day;
+      // if all are used or the plan has a single slot, repeat the user's primary slot — never invent new times.
       const planTimeSlots = getPlanTimeSlots(mealPlan)
       const existingTimeSlots = existingMeals.map(item => item.timeSlot)
-      const nextTimeSlot = planTimeSlots.find(ts => !existingTimeSlots.includes(ts)) || planTimeSlots[existingMeals.length]
-      
+      const userPrimarySlot =
+        planTimeSlots[0] || existingMeals[0]?.timeSlot || '08:00'
+      const nextTimeSlot =
+        planTimeSlots.find(ts => !existingTimeSlots.includes(ts)) ??
+        planTimeSlots[existingMeals.length] ??
+        userPrimarySlot
+
       // Convert timeSlot to 24-hour format for deliveryTime
-      const timeMatch = nextTimeSlot.match(/(\d{1,2}):(\d{2})/)
+      const timeMatch = String(nextTimeSlot).match(/(\d{1,2}):(\d{2})/)
       let deliveryTime = ''
       if (timeMatch) {
         let hours = parseInt(timeMatch[1])
