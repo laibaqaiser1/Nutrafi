@@ -567,15 +567,6 @@ export default function KitchenPlanningPage() {
                     Delivery Area
                   </th>
                   <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Calories
-                  </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Macros
-                  </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Allergens
-                  </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
@@ -585,11 +576,6 @@ export default function KitchenPlanningPage() {
                   if (row.type === 'item') {
                     const item = row.data
                     const instructions = getInstructions(item.customNote)
-                    const calories = item.calories || item.dish?.calories || 0
-                    const protein = item.protein || item.dish?.protein || 0
-                    const carbs = item.carbs || item.dish?.carbs || 0
-                    const fats = item.fats || item.dish?.fats || 0
-                    const allergens = item.allergens || item.dish?.allergens || 'None'
                     const dishName = item.dishName || item.dish?.name || 'Not Assigned'
                     const isPaused = String(item.mealPlan.status || '').toUpperCase() === 'PAUSED'
 
@@ -626,29 +612,9 @@ export default function KitchenPlanningPage() {
                               <span className="font-medium">Note:</span> {instructions}
                             </div>
                           )}
-                          {item.ingredients && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              {item.ingredients}
-                            </div>
-                          )}
                         </td>
                         <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.mealPlan.customer.deliveryArea || '-'}
-                        </td>
-                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-900">
-                          {calories} kcal
-                        </td>
-                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="text-xs">
-                            <div>P: {protein.toFixed(1)}g</div>
-                            <div>C: {carbs.toFixed(1)}g</div>
-                            <div>F: {fats.toFixed(1)}g</div>
-                          </div>
-                        </td>
-                        <td className="px-2 lg:px-6 py-2 lg:py-4 text-sm text-gray-500">
-                          <div className="text-xs max-w-xs">
-                            {allergens}
-                          </div>
                         </td>
                         <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
                           {item.isDelivered ? (
@@ -700,9 +666,6 @@ export default function KitchenPlanningPage() {
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-600">
                         {sk.deliveryArea || '—'}
                       </td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">—</td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">—</td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 text-sm text-gray-500">—</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-200 text-yellow-900">
                           No meal
