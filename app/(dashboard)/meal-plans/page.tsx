@@ -78,7 +78,7 @@ export default function MealPlansPage() {
       params.append('page', page.toString())
       params.append('limit', itemsPerPage.toString())
 
-      const response = await fetch(`/api/meal-plans?${params.toString()}`)
+      const response = await fetch(`/api/meal-plans?${params.toString()}`, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setMealPlans(data.mealPlans || data)

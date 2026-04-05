@@ -115,6 +115,7 @@ export type MealPlanCountAggregateOutputType = {
   totalAmount: number
   totalMeals: number
   vatAmount: number
+  timeSlots: number
   _all: number
 }
 
@@ -208,6 +209,7 @@ export type MealPlanCountAggregateInputType = {
   totalAmount?: true
   totalMeals?: true
   vatAmount?: true
+  timeSlots?: true
   _all?: true
 }
 
@@ -316,6 +318,7 @@ export type MealPlanGroupByOutputType = {
   totalAmount: number | null
   totalMeals: number | null
   vatAmount: number | null
+  timeSlots: runtime.JsonValue | null
   _count: MealPlanCountAggregateOutputType | null
   _avg: MealPlanAvgAggregateOutputType | null
   _sum: MealPlanSumAggregateOutputType | null
@@ -360,6 +363,7 @@ export type MealPlanWhereInput = {
   totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  timeSlots?: Prisma.JsonNullableFilter<"MealPlan">
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   plan?: Prisma.XOR<Prisma.PlanNullableScalarRelationFilter, Prisma.PlanWhereInput> | null
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
@@ -385,6 +389,7 @@ export type MealPlanOrderByWithRelationInput = {
   totalAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   totalMeals?: Prisma.SortOrderInput | Prisma.SortOrder
   vatAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  timeSlots?: Prisma.SortOrderInput | Prisma.SortOrder
   customer?: Prisma.CustomerOrderByWithRelationInput
   plan?: Prisma.PlanOrderByWithRelationInput
   mealPlanItems?: Prisma.MealPlanItemOrderByRelationAggregateInput
@@ -413,6 +418,7 @@ export type MealPlanWhereUniqueInput = Prisma.AtLeast<{
   totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  timeSlots?: Prisma.JsonNullableFilter<"MealPlan">
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   plan?: Prisma.XOR<Prisma.PlanNullableScalarRelationFilter, Prisma.PlanWhereInput> | null
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
@@ -438,6 +444,7 @@ export type MealPlanOrderByWithAggregationInput = {
   totalAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   totalMeals?: Prisma.SortOrderInput | Prisma.SortOrder
   vatAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  timeSlots?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.MealPlanCountOrderByAggregateInput
   _avg?: Prisma.MealPlanAvgOrderByAggregateInput
   _max?: Prisma.MealPlanMaxOrderByAggregateInput
@@ -467,6 +474,7 @@ export type MealPlanScalarWhereWithAggregatesInput = {
   totalAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
   totalMeals?: Prisma.IntNullableWithAggregatesFilter<"MealPlan"> | number | null
   vatAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
+  timeSlots?: Prisma.JsonNullableWithAggregatesFilter<"MealPlan">
 }
 
 export type MealPlanCreateInput = {
@@ -485,6 +493,7 @@ export type MealPlanCreateInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
@@ -510,6 +519,7 @@ export type MealPlanUncheckedCreateInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
@@ -530,6 +540,7 @@ export type MealPlanUpdateInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
@@ -555,6 +566,7 @@ export type MealPlanUncheckedUpdateInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -578,6 +590,7 @@ export type MealPlanCreateManyInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanUpdateManyMutationInput = {
@@ -596,6 +609,7 @@ export type MealPlanUpdateManyMutationInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanUncheckedUpdateManyInput = {
@@ -617,6 +631,7 @@ export type MealPlanUncheckedUpdateManyInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanListRelationFilter = {
@@ -648,6 +663,7 @@ export type MealPlanCountOrderByAggregateInput = {
   totalAmount?: Prisma.SortOrder
   totalMeals?: Prisma.SortOrder
   vatAmount?: Prisma.SortOrder
+  timeSlots?: Prisma.SortOrder
 }
 
 export type MealPlanAvgOrderByAggregateInput = {
@@ -872,6 +888,7 @@ export type MealPlanCreateWithoutCustomerInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -895,6 +912,7 @@ export type MealPlanUncheckedCreateWithoutCustomerInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
@@ -947,6 +965,7 @@ export type MealPlanScalarWhereInput = {
   totalAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
+  timeSlots?: Prisma.JsonNullableFilter<"MealPlan">
 }
 
 export type MealPlanCreateWithoutPlanInput = {
@@ -965,6 +984,7 @@ export type MealPlanCreateWithoutPlanInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -988,6 +1008,7 @@ export type MealPlanUncheckedCreateWithoutPlanInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
@@ -1034,6 +1055,7 @@ export type MealPlanCreateWithoutMealPlanItemsInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -1058,6 +1080,7 @@ export type MealPlanUncheckedCreateWithoutMealPlanItemsInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
@@ -1093,6 +1116,7 @@ export type MealPlanUpdateWithoutMealPlanItemsInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1117,6 +1141,7 @@ export type MealPlanUncheckedUpdateWithoutMealPlanItemsInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
@@ -1136,6 +1161,7 @@ export type MealPlanCreateWithoutPaymentsInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
@@ -1160,6 +1186,7 @@ export type MealPlanUncheckedCreateWithoutPaymentsInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
@@ -1195,6 +1222,7 @@ export type MealPlanUpdateWithoutPaymentsInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
@@ -1219,6 +1247,7 @@ export type MealPlanUncheckedUpdateWithoutPaymentsInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
@@ -1240,6 +1269,7 @@ export type MealPlanCreateManyCustomerInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanUpdateWithoutCustomerInput = {
@@ -1258,6 +1288,7 @@ export type MealPlanUpdateWithoutCustomerInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1281,6 +1312,7 @@ export type MealPlanUncheckedUpdateWithoutCustomerInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -1303,6 +1335,7 @@ export type MealPlanUncheckedUpdateManyWithoutCustomerInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanCreateManyPlanInput = {
@@ -1323,6 +1356,7 @@ export type MealPlanCreateManyPlanInput = {
   totalAmount?: number | null
   totalMeals?: number | null
   vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanUpdateWithoutPlanInput = {
@@ -1341,6 +1375,7 @@ export type MealPlanUpdateWithoutPlanInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1364,6 +1399,7 @@ export type MealPlanUncheckedUpdateWithoutPlanInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -1386,6 +1422,7 @@ export type MealPlanUncheckedUpdateManyWithoutPlanInput = {
   totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 
@@ -1447,6 +1484,7 @@ export type MealPlanSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   totalAmount?: boolean
   totalMeals?: boolean
   vatAmount?: boolean
+  timeSlots?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
   mealPlanItems?: boolean | Prisma.MealPlan$mealPlanItemsArgs<ExtArgs>
@@ -1473,6 +1511,7 @@ export type MealPlanSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   totalAmount?: boolean
   totalMeals?: boolean
   vatAmount?: boolean
+  timeSlots?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlan"]>
@@ -1496,6 +1535,7 @@ export type MealPlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   totalAmount?: boolean
   totalMeals?: boolean
   vatAmount?: boolean
+  timeSlots?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlan"]>
@@ -1519,9 +1559,10 @@ export type MealPlanSelectScalar = {
   totalAmount?: boolean
   totalMeals?: boolean
   vatAmount?: boolean
+  timeSlots?: boolean
 }
 
-export type MealPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "customerId" | "planId" | "startDate" | "endDate" | "mealsPerDay" | "status" | "notes" | "createdAt" | "updatedAt" | "averageMealRate" | "baseAmount" | "days" | "planType" | "remainingMeals" | "totalAmount" | "totalMeals" | "vatAmount", ExtArgs["result"]["mealPlan"]>
+export type MealPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "customerId" | "planId" | "startDate" | "endDate" | "mealsPerDay" | "status" | "notes" | "createdAt" | "updatedAt" | "averageMealRate" | "baseAmount" | "days" | "planType" | "remainingMeals" | "totalAmount" | "totalMeals" | "vatAmount" | "timeSlots", ExtArgs["result"]["mealPlan"]>
 export type MealPlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
@@ -1565,6 +1606,10 @@ export type $MealPlanPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     totalAmount: number | null
     totalMeals: number | null
     vatAmount: number | null
+    /**
+     * Delivery time labels per day, e.g. ["08:00","13:00","19:00"] — copied to each new MealPlanItem unless overridden
+     */
+    timeSlots: runtime.JsonValue | null
   }, ExtArgs["result"]["mealPlan"]>
   composites: {}
 }
@@ -2010,6 +2055,7 @@ export interface MealPlanFieldRefs {
   readonly totalAmount: Prisma.FieldRef<"MealPlan", 'Float'>
   readonly totalMeals: Prisma.FieldRef<"MealPlan", 'Int'>
   readonly vatAmount: Prisma.FieldRef<"MealPlan", 'Float'>
+  readonly timeSlots: Prisma.FieldRef<"MealPlan", 'Json'>
 }
     
 

@@ -39,6 +39,11 @@ interface Dish {
 
 type PlanMode = 'predefined' | 'custom'
 
+/** User-selected times only — excludes empty placeholders before a time is chosen. */
+function effectiveMealPlanTimeSlots(slots: string[] | undefined): string[] {
+  return (Array.isArray(slots) ? slots : []).filter((s) => typeof s === 'string' && s.trim().length > 0)
+}
+
 // Day colors: different colour per day – pink, blue, green, red, teal, orange, violet (solid header + gradient day background)
 const getDayOfWeekIndex = (date: string) => new Date(date).getDay()
 const DAY_COLORS = [
@@ -82,7 +87,7 @@ export default function NewMealPlanPage() {
     planType: 'WEEKLY',
     days: '',
     mealsPerDay: '2',
-    timeSlots: ['08:00'] as string[], // One default time slot; user can add more for special cases
+    timeSlots: [''] as string[], // User must choose a time; no preset default
     startDate: '',
     endDate: '',
     status: 'ACTIVE',
@@ -118,6 +123,9 @@ export default function NewMealPlanPage() {
     }>,
     skippedWeeks: [] as number[], // Array of week numbers to skip
     skippedDays: [] as string[], // Array of dates to skip
+    /** Customer already had a plan off-portal — only this many meals are left on the contract */
+    legacyMidPlan: false,
+    legacyMealsRemaining: '',
   })
 
   useEffect(() => {
@@ -210,7 +218,7 @@ export default function NewMealPlanPage() {
           mealsPerDay: selectedPlan.mealsPerDay.toString(),
           paymentAmount: selectedPlan.price.toString(),
           days: selectedPlan.days.toString(),
-          timeSlots: Array.isArray(prev.timeSlots) && prev.timeSlots.length > 0 ? prev.timeSlots : ['08:00'],
+          timeSlots: effectiveMealPlanTimeSlots(prev.timeSlots).length > 0 ? prev.timeSlots : [''],
         }))
       }
     }
@@ -238,7 +246,7 @@ export default function NewMealPlanPage() {
   useEffect(() => {
     // Only generate meals if we have all required fields and we're on step 4 or beyond
     // This prevents generating meals too early or multiple times
-    if (step >= 4 && formData.startDate && formData.days && formData.mealsPerDay && Array.isArray(formData.timeSlots) && formData.timeSlots.length > 0) {
+    if (step >= 4 && formData.startDate && formData.days && formData.mealsPerDay && effectiveMealPlanTimeSlots(formData.timeSlots).length > 0) {
       generateMeals()
     }
   }, [step, formData.startDate, formData.days, formData.mealsPerDay, formData.timeSlots, formData.deliveryType, formData.customerId])
@@ -248,7 +256,7 @@ export default function NewMealPlanPage() {
 
   // Regenerate meals when visible weeks change
   useEffect(() => {
-    if (step >= 4 && formData.startDate && formData.days && formData.mealsPerDay && Array.isArray(formData.timeSlots) && formData.timeSlots.length > 0) {
+    if (step >= 4 && formData.startDate && formData.days && formData.mealsPerDay && effectiveMealPlanTimeSlots(formData.timeSlots).length > 0) {
       generateMeals()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -262,7 +270,7 @@ export default function NewMealPlanPage() {
         const today = new Date().toISOString().split('T')[0]
         setFormData(prev => ({ ...prev, startDate: today }))
         // The main useEffect will handle meal generation when startDate is set
-      } else if (formData.startDate && formData.days && formData.mealsPerDay && Array.isArray(formData.timeSlots) && formData.timeSlots.length > 0) {
+      } else if (formData.startDate && formData.days && formData.mealsPerDay && effectiveMealPlanTimeSlots(formData.timeSlots).length > 0) {
         // Check if we need to generate meals for visible weeks
         const hasMealsForVisibleWeeks = visibleWeeks.some(week => {
           const startDate = new Date(formData.startDate)
@@ -410,9 +418,7 @@ export default function NewMealPlanPage() {
       const endDate = addDays(startDate, days - 1)
       const dates = eachDayOfInterval({ start: startDate, end: endDate })
       
-      // timeSlots is now an array, not a JSON string
-      const timeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
-      
+      const timeSlots = effectiveMealPlanTimeSlots(formData.timeSlots)
       if (timeSlots.length === 0) {
         console.warn('No valid time slots found')
         return
@@ -421,29 +427,50 @@ export default function NewMealPlanPage() {
       const selectedCustomer = customers.find(c => c.id == formData.customerId)
       const mealsPerDay = parseInt(formData.mealsPerDay)
 
-      // Meal keys: date + meal index (multiple meals per day can share same time slot)
-      const mealKeys = new Set<string>()
-      const existingMeals = formData.meals.filter(meal => {
+      // Only create rows for days the user has opened ("Add Day"), not the whole week — keeps capacity in sync with the UI.
+      const effectiveVisibleDaysByWeek: Record<number, string[]> = { ...visibleDaysByWeek }
+      visibleWeeks.forEach((week) => {
+        if (!effectiveVisibleDaysByWeek[week]?.length) {
+          const weekStartDay = (week - 1) * 7
+          const weekStartDate = addDays(startDate, weekStartDay)
+          effectiveVisibleDaysByWeek[week] = [format(weekStartDate, 'yyyy-MM-dd')]
+        }
+      })
+
+      const existingMeals = formData.meals.filter((meal) => {
         const mealDate = new Date(meal.date)
         const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
         const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
         if (!visibleWeeks.includes(week)) return true
+        if (effectiveVisibleDaysByWeek[week]?.includes(meal.date)) return true
         if (meal.dishId || meal.dishName) return true
         return false
       })
-      
+
+      const mealKeys = new Set<string>()
+      for (const meal of existingMeals) {
+        const mealDate = new Date(meal.date)
+        const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+        if (!visibleWeeks.includes(week)) continue
+        if (!effectiveVisibleDaysByWeek[week]?.includes(meal.date)) continue
+        const dayMeals = existingMeals.filter((m) => m.date === meal.date)
+        const idx = dayMeals.indexOf(meal)
+        mealKeys.add(`${meal.date}-${idx}`)
+      }
+
       const newMeals: typeof formData.meals = []
-      
-      dates.forEach(date => {
+
+      dates.forEach((date) => {
         const dateStr = format(date, 'yyyy-MM-dd')
         const mealDate = new Date(date)
         const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
         const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
-        
+
         if (!visibleWeeks.includes(week)) return
-        if (!Array.isArray(timeSlots) || timeSlots.length === 0) return
-        
-        // All meals use first time slot by default; optional extra slots assign in order (meal 0 -> slot 0, meal 1 -> slot 1, etc.)
+        if (!effectiveVisibleDaysByWeek[week]?.includes(dateStr)) return
+        if (timeSlots.length === 0) return
+
         for (let mealIndex = 0; mealIndex < mealsPerDay; mealIndex++) {
           const mealKey = `${dateStr}-${mealIndex}`
           if (mealKeys.has(mealKey)) continue
@@ -476,21 +503,9 @@ export default function NewMealPlanPage() {
         }
       })
 
-      // Combine existing meals (from non-visible weeks) with new meals (from visible weeks)
       const allMeals = [...existingMeals, ...newMeals]
-      
-      // Initialize visibleDaysByWeek - only show first day for each week
-      const newVisibleDaysByWeek: Record<number, string[]> = { ...visibleDaysByWeek }
-      visibleWeeks.forEach(week => {
-        if (!newVisibleDaysByWeek[week]) {
-          // Find the first date for this week
-          const weekStartDay = (week - 1) * 7
-          const weekStartDate = addDays(startDate, weekStartDay)
-          const firstDateStr = format(weekStartDate, 'yyyy-MM-dd')
-          newVisibleDaysByWeek[week] = [firstDateStr]
-        }
-      })
-      setVisibleDaysByWeek(newVisibleDaysByWeek)
+
+      setVisibleDaysByWeek(effectiveVisibleDaysByWeek)
       
       setFormData(prev => ({ ...prev, meals: allMeals, endDate: format(endDate, 'yyyy-MM-dd') }))
     } catch (error) {
@@ -528,7 +543,7 @@ export default function NewMealPlanPage() {
       [week]: [...currentVisibleDays, nextDay].sort()
     }))
     
-    const timeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
+    const timeSlots = effectiveMealPlanTimeSlots(formData.timeSlots)
     if (timeSlots.length === 0) return
     
     const selectedCustomer = customers.find(c => c.id == formData.customerId)
@@ -629,8 +644,7 @@ export default function NewMealPlanPage() {
     const weekEndDate = addDays(startDate, weekEndDay)
     const weekDates = [weekStartDate] // Only first day initially
     
-    // Get time slots
-    const timeSlots = Array.isArray(formData.timeSlots) ? formData.timeSlots : []
+    const timeSlots = effectiveMealPlanTimeSlots(formData.timeSlots)
     if (timeSlots.length === 0) {
       console.warn('No valid time slots found')
       return
@@ -688,9 +702,32 @@ export default function NewMealPlanPage() {
         const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
         
         if (formData.skippedDays.includes(date)) return false
-        if (formData.planType === 'MONTHLY' && formData.skippedWeeks.includes(week)) return false
+        if (
+          (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
+          formData.skippedWeeks.includes(week)
+        ) {
+          return false
+        }
         return true
       }).length
+
+      const daysNum = parseInt(formData.days, 10)
+      const mpd = parseInt(formData.mealsPerDay, 10)
+      const theoreticalTotal = daysNum * mpd
+      const hasSkips =
+        formData.skippedDays.length > 0 ||
+        ((formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
+          formData.skippedWeeks.length > 0)
+      // Contract total: full grid when no skips; when weeks/days are skipped, use actual non-skipped slot count
+      const totalMealsForPlan = hasSkips ? activeMealsCount : theoreticalTotal
+
+      if (totalMealsForPlan < 1) {
+        toast.warning('This plan has no meals (check skipped days/weeks or plan length).')
+        setLoading(false)
+        return
+      }
+
+      const planTimeSlots = effectiveMealPlanTimeSlots(formData.timeSlots)
 
       // Create meal plan
       const mealPlanResponse = await fetch('/api/meal-plans', {
@@ -702,17 +739,16 @@ export default function NewMealPlanPage() {
           planType: formData.planType,
           startDate: formData.startDate,
           endDate: formData.endDate,
-          days: parseInt(formData.days),
-          mealsPerDay: parseInt(formData.mealsPerDay),
-          // timeSlots not sent - only used in UI to set deliveryTime when creating meal items
+          days: daysNum,
+          mealsPerDay: mpd,
+          ...(planTimeSlots.length > 0 ? { timeSlots: planTimeSlots } : {}),
           status: formData.status,
           notes: formData.notes,
-          // Calculate totalMeals based on plan configuration (days * mealsPerDay)
-          totalMeals: parseInt(formData.days) * parseInt(formData.mealsPerDay),
+          totalMeals: totalMealsForPlan,
           // Calculate amounts
           totalAmount: planMode === 'predefined' 
             ? parseFloat(formData.paymentAmount)
-            : parseFloat(formData.pricePerMeal) * (parseInt(formData.days) * parseInt(formData.mealsPerDay)),
+            : parseFloat(formData.pricePerMeal) * totalMealsForPlan,
         }),
       })
 
@@ -760,8 +796,10 @@ export default function NewMealPlanPage() {
           return false
         }
         
-        // Skip if week is skipped (only for monthly plans)
-        if (formData.planType === 'MONTHLY' && formData.skippedWeeks.includes(week)) {
+        if (
+          (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
+          formData.skippedWeeks.includes(week)
+        ) {
           return false
         }
         
@@ -806,7 +844,12 @@ export default function NewMealPlanPage() {
         const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
         
         if (formData.skippedDays.includes(date)) return true
-        if (formData.planType === 'MONTHLY' && formData.skippedWeeks.includes(week)) return true
+        if (
+          (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
+          formData.skippedWeeks.includes(week)
+        ) {
+          return true
+        }
         return false
       })
       
@@ -850,7 +893,12 @@ export default function NewMealPlanPage() {
     const week = Math.floor(daysDiff / 7) + 1
     
     if (formData.skippedDays.includes(date)) return false
-    if (formData.planType === 'MONTHLY' && formData.skippedWeeks.includes(week)) return false
+    if (
+      (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
+      formData.skippedWeeks.includes(week)
+    ) {
+      return false
+    }
     return true
   }).length
   
@@ -1066,13 +1114,14 @@ export default function NewMealPlanPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Delivery time (all meals) *</label>
                     <div className="space-y-2">
-                      {(formData.timeSlots || ['08:00']).map((slot, index) => (
+                      {(formData.timeSlots?.length ? formData.timeSlots : ['']).map((slot, index) => (
                         <div key={index} className="flex gap-2 items-center">
                           <select
                             required={index === 0}
                             value={slot}
                             onChange={(e) => {
-                              const newTimeSlots = [...(formData.timeSlots || ['08:00'])]
+                              const base = formData.timeSlots?.length ? [...formData.timeSlots] : ['']
+                              const newTimeSlots = [...base]
                               newTimeSlots[index] = e.target.value
                               setFormData({ ...formData, timeSlots: newTimeSlots })
                             }}
@@ -1090,7 +1139,10 @@ export default function NewMealPlanPage() {
                               type="button"
                               onClick={() => {
                                 const newTimeSlots = formData.timeSlots.filter((_, i) => i !== index)
-                                setFormData({ ...formData, timeSlots: newTimeSlots })
+                                setFormData({
+                                  ...formData,
+                                  timeSlots: newTimeSlots.length > 0 ? newTimeSlots : [''],
+                                })
                               }}
                               className="text-red-600 hover:text-red-800 text-sm"
                             >
@@ -1101,7 +1153,12 @@ export default function NewMealPlanPage() {
                       ))}
                       <button
                         type="button"
-                        onClick={() => setFormData({ ...formData, timeSlots: [...(formData.timeSlots || ['08:00']), '08:00'] })}
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            timeSlots: [...(formData.timeSlots?.length ? formData.timeSlots : ['']), ''],
+                          })
+                        }
                         className="text-sm text-nutrafi-dark hover:underline"
                       >
                         + Add time slot (for special cases)
@@ -1167,13 +1224,14 @@ export default function NewMealPlanPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Delivery time (all meals) *</label>
                   <div className="space-y-2">
-                    {(formData.timeSlots || ['08:00']).map((slot, index) => (
+                    {(formData.timeSlots?.length ? formData.timeSlots : ['']).map((slot, index) => (
                       <div key={index} className="flex gap-2 items-center">
                         <select
                           required={index === 0}
                           value={slot}
                           onChange={(e) => {
-                            const newTimeSlots = [...(formData.timeSlots || ['08:00'])]
+                            const base = formData.timeSlots?.length ? [...formData.timeSlots] : ['']
+                            const newTimeSlots = [...base]
                             newTimeSlots[index] = e.target.value
                             setFormData({ ...formData, timeSlots: newTimeSlots })
                           }}
@@ -1191,7 +1249,10 @@ export default function NewMealPlanPage() {
                             type="button"
                             onClick={() => {
                               const newTimeSlots = formData.timeSlots.filter((_, i) => i !== index)
-                              setFormData({ ...formData, timeSlots: newTimeSlots })
+                              setFormData({
+                                ...formData,
+                                timeSlots: newTimeSlots.length > 0 ? newTimeSlots : [''],
+                              })
                             }}
                             className="text-red-600 hover:text-red-800 text-sm"
                           >
@@ -1202,7 +1263,12 @@ export default function NewMealPlanPage() {
                     ))}
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, timeSlots: [...(formData.timeSlots || ['08:00']), '08:00'] })}
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          timeSlots: [...(formData.timeSlots?.length ? formData.timeSlots : ['']), ''],
+                        })
+                      }
                       className="text-sm text-nutrafi-dark hover:underline"
                     >
                       + Add time slot (for special cases)
@@ -1274,8 +1340,8 @@ export default function NewMealPlanPage() {
                   }
                 }}
                 disabled={
-                  (planMode === 'predefined' && (!formData.planId || !formData.startDate || !formData.timeSlots || formData.timeSlots.length === 0 || !formData.timeSlots[0])) ||
-                  (planMode === 'custom' && (!formData.days || !formData.startDate || !formData.pricePerMeal || !formData.timeSlots || formData.timeSlots.length === 0 || !formData.timeSlots[0]))
+                  (planMode === 'predefined' && (!formData.planId || !formData.startDate || effectiveMealPlanTimeSlots(formData.timeSlots).length === 0)) ||
+                  (planMode === 'custom' && (!formData.days || !formData.startDate || !formData.pricePerMeal || effectiveMealPlanTimeSlots(formData.timeSlots).length === 0))
                 }
                 className="px-3 py-1.5 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1495,9 +1561,9 @@ export default function NewMealPlanPage() {
             return acc
           }, {} as Record<string, typeof formData.meals>)
 
-          // For monthly plans, organize by week
+          // Organize by calendar week from plan start (used by MONTHLY and WEEKLY step-4 UI)
           const mealsByWeek: Record<number, Record<string, typeof formData.meals>> = {}
-          if (formData.planType === 'MONTHLY') {
+          if (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') {
             Object.entries(mealsByDay).forEach(([date, meals]) => {
               const mealDate = new Date(date)
               const startDate = new Date(formData.startDate)
@@ -1522,7 +1588,12 @@ export default function NewMealPlanPage() {
             const week = Math.floor(daysDiff / 7) + 1
             
             if (formData.skippedDays.includes(date)) return false
-            if (formData.planType === 'MONTHLY' && formData.skippedWeeks.includes(week)) return false
+            if (
+              (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
+              formData.skippedWeeks.includes(week)
+            ) {
+              return false
+            }
             return true
           }).length
 
@@ -1545,8 +1616,9 @@ export default function NewMealPlanPage() {
                   </p>
                 )}
                 {remainingMeals === 0 && (
-                  <p className="text-sm text-orange-600 font-medium">
-                    Plan limit reached. Cannot add more meals.
+                  <p className="text-sm text-blue-800">
+                    All {totalMealsAllowed} meal slots are on your schedule for this plan. Assign dishes below; use{" "}
+                    <span className="font-medium">Add Day</span> to show more days in each week when needed.
                   </p>
                 )}
               </div>

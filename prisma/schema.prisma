@@ -100,6 +100,8 @@ model MealPlan {
   totalAmount     Float?
   totalMeals      Int?
   vatAmount       Float?
+  /// Delivery time labels per day, e.g. ["08:00","13:00","19:00"] — copied to each new MealPlanItem unless overridden
+  timeSlots       Json?
   customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
   plan            Plan?          @relation(fields: [planId], references: [id])
   mealPlanItems   MealPlanItem[]

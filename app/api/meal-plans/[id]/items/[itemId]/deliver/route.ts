@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
+import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 
 // POST - Mark meal plan item as delivered
 export async function POST(
@@ -21,36 +22,29 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
 
-    // Update meal plan item to mark as delivered
-    const mealPlanItem = await prisma.mealPlanItem.update({
-      where: { id: itemId },
-      data: {
-        isDelivered: true,
-        deliveredAt: new Date(),
-      },
-      include: {
-        mealPlan: true,
-      },
-    })
+    const { mealPlanItem, remainingMeals } = await prisma.$transaction(async (tx) => {
+      const existing = await tx.mealPlanItem.findFirst({
+        where: { id: itemId, mealPlanId: id },
+        include: { mealPlan: true },
+      })
+      if (!existing) {
+        throw new Error('NOT_FOUND')
+      }
 
-    // Recalculate remaining meals for the meal plan
-    const totalMeals = mealPlanItem.mealPlan.totalMeals || 0
-    const deliveredCount = await prisma.mealPlanItem.count({
-      where: {
-        mealPlanId: id,
-        isDelivered: true,
-        isSkipped: false,
-      },
-    })
-    
-    const remainingMeals = Math.max(0, totalMeals - deliveredCount)
+      const updated = await tx.mealPlanItem.update({
+        where: { id: itemId },
+        data: {
+          isDelivered: true,
+          deliveredAt: new Date(),
+        },
+        include: {
+          mealPlan: true,
+        },
+      })
 
-    // Update meal plan with new remaining meals count
-    await prisma.mealPlan.update({
-      where: { id },
-      data: {
-        remainingMeals: remainingMeals,
-      },
+      const nextRemaining = (await syncMealPlanRemainingMeals(tx, id)) ?? updated.mealPlan.remainingMeals
+
+      return { mealPlanItem: updated, remainingMeals: nextRemaining }
     })
 
     return NextResponse.json({
@@ -58,6 +52,9 @@ export async function POST(
       remainingMeals,
     })
   } catch (error) {
+    if (error instanceof Error && error.message === 'NOT_FOUND') {
+      return NextResponse.json({ error: 'Meal item not found' }, { status: 404 })
+    }
     console.error('Error marking meal as delivered:', error)
     return NextResponse.json({ error: 'Failed to mark meal as delivered' }, { status: 500 })
   }
@@ -81,52 +78,40 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
 
-    // Update meal plan item to unmark as delivered
-    const mealPlanItem = await prisma.mealPlanItem.update({
-      where: { id: itemId },
-      data: {
-        isDelivered: false,
-        deliveredAt: null,
-      },
-      include: {
-        mealPlan: true,
-      },
-    })
-
-    // Recalculate remaining meals for the meal plan
-    const totalMeals = mealPlanItem.mealPlan.totalMeals
-    if (totalMeals !== null && totalMeals > 0) {
-      const deliveredCount = await prisma.mealPlanItem.count({
-        where: {
-          mealPlanId: id,
-          isDelivered: true,
-          isSkipped: false,
-        },
+    const { mealPlanItem, remainingMeals } = await prisma.$transaction(async (tx) => {
+      const existing = await tx.mealPlanItem.findFirst({
+        where: { id: itemId, mealPlanId: id },
+        include: { mealPlan: true },
       })
-      
-      const remainingMeals = Math.max(0, totalMeals - deliveredCount)
+      if (!existing) {
+        throw new Error('NOT_FOUND')
+      }
 
-      // Update meal plan with new remaining meals count
-      await prisma.mealPlan.update({
-        where: { id },
+      const updated = await tx.mealPlanItem.update({
+        where: { id: itemId },
         data: {
-          remainingMeals: remainingMeals,
+          isDelivered: false,
+          deliveredAt: null,
+        },
+        include: {
+          mealPlan: true,
         },
       })
 
-      return NextResponse.json({
-        mealPlanItem,
-        remainingMeals,
-      })
-    }
+      const nextRemaining = (await syncMealPlanRemainingMeals(tx, id)) ?? updated.mealPlan.remainingMeals
+
+      return { mealPlanItem: updated, remainingMeals: nextRemaining }
+    })
 
     return NextResponse.json({
       mealPlanItem,
-      remainingMeals: mealPlanItem.mealPlan.remainingMeals,
+      remainingMeals,
     })
   } catch (error) {
+    if (error instanceof Error && error.message === 'NOT_FOUND') {
+      return NextResponse.json({ error: 'Meal item not found' }, { status: 404 })
+    }
     console.error('Error unmarking meal as delivered:', error)
     return NextResponse.json({ error: 'Failed to unmark meal as delivered' }, { status: 500 })
   }
 }
-

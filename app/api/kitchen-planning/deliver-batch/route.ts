@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 
 // POST - Mark multiple meal plan items as delivered (batch)
 export async function POST(request: NextRequest) {
@@ -20,10 +21,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No valid item IDs provided' }, { status: 400 })
     }
 
-    // Fetch items to ensure they exist and get meal plan ids
     const items = await prisma.mealPlanItem.findMany({
       where: { id: { in: itemIds } },
-      select: { id: true, mealPlanId: true, isSkipped: true },
+      select: { id: true, mealPlanId: true, isSkipped: true, isDelivered: true },
     })
 
     if (items.length === 0) {
@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
     }
 
     const idsToUpdate = items.map((i) => i.id)
-    const affectedMealPlanIds = [...new Set(items.map((i) => i.mealPlanId))]
 
     await prisma.$transaction(async (tx) => {
       await tx.mealPlanItem.updateMany({
@@ -42,26 +41,13 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      for (const mealPlanId of affectedMealPlanIds) {
-        const plan = await tx.mealPlan.findUnique({
-          where: { id: mealPlanId },
-          select: { totalMeals: true },
-        })
-        if (!plan || plan.totalMeals == null) continue
-        const deliveredCount = await tx.mealPlanItem.count({
-          where: {
-            mealPlanId,
-            isDelivered: true,
-            isSkipped: false,
-          },
-        })
-        const remainingMeals = Math.max(0, plan.totalMeals - deliveredCount)
-        await tx.mealPlan.update({
-          where: { id: mealPlanId },
-          data: { remainingMeals },
-        })
+      const planIds = [...new Set(items.map((i) => i.mealPlanId))]
+      for (const mealPlanId of planIds) {
+        await syncMealPlanRemainingMeals(tx, mealPlanId)
       }
     })
+
+    const affectedMealPlanIds = [...new Set(items.map((i) => i.mealPlanId))]
 
     return NextResponse.json({
       updated: idsToUpdate.length,

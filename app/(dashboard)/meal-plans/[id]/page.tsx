@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format, addDays, eachDayOfInterval } from 'date-fns'
 import { formatCategory } from '@/lib/utils'
+import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface MealPlan {
@@ -27,7 +28,8 @@ interface MealPlan {
   startDate: string
   endDate: string
   mealsPerDay: number
-  // timeSlots removed - delivery times stored per meal item
+  /** Plan-level default times (JSON array), applied to new items */
+  timeSlots?: unknown
   status: string
   notes: string | null
   baseAmount: number | null
@@ -201,7 +203,7 @@ export default function MealPlanViewPage() {
 
   const fetchMealPlan = async (id: string) => {
     try {
-      const response = await fetch(`/api/meal-plans/${id}`)
+      const response = await fetch(`/api/meal-plans/${id}`, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setMealPlan(data)
@@ -657,11 +659,50 @@ export default function MealPlanViewPage() {
     }
   }
 
-  // Derive time slots from existing plan items (same order), or fallback to default
-  const getPlanTimeSlots = (plan: MealPlan): string[] => {
-    const slots = [...new Set(plan.mealPlanItems.map((item) => item.timeSlot).filter(Boolean))].sort()
-    if (slots.length > 0) return slots.slice(0, plan.mealsPerDay)
-    return ['08:00', '13:00', '18:00'].slice(0, plan.mealsPerDay)
+  /** Prefer timeSlot; else derive HH:MM from deliveryTime. */
+  const slotLabelFromItem = (item: MealPlan['mealPlanItems'][0]): string | null => {
+    const ts = (item.timeSlot || '').trim()
+    if (ts) return ts
+    const dt = (item.deliveryTime || '').trim()
+    const m = dt.match(/(\d{1,2}):(\d{2})/)
+    if (!m) return null
+    const h = parseInt(m[1], 10)
+    const min = m[2]
+    if (Number.isNaN(h)) return null
+    return `${h.toString().padStart(2, '0')}:${min}`
+  }
+
+  /**
+   * Per-meal slot pattern from an existing day (cycles like create flow).
+   * If no times exist yet, uses 12:00 per meal so Add Day / Add Week works; adjust times in the UI.
+   */
+  const resolveMealTimeSlotTemplate = (plan: MealPlan): string[] => {
+    const n = plan.mealsPerDay
+    const placeholder = '12:00'
+    const fromPlan = parseMealPlanTimeSlots(plan.timeSlots)
+    if (fromPlan.length > 0) {
+      return Array.from({ length: n }, (_, i) => fromPlan[i % fromPlan.length]!)
+    }
+    if (!plan.mealPlanItems?.length) {
+      return Array.from({ length: n }, () => placeholder)
+    }
+    const byDate = new Map<string, MealPlan['mealPlanItems']>()
+    for (const item of plan.mealPlanItems) {
+      const d = format(new Date(item.date), 'yyyy-MM-dd')
+      if (!byDate.has(d)) byDate.set(d, [])
+      byDate.get(d)!.push(item)
+    }
+    const sortedDates = [...byDate.keys()].sort()
+    for (const dateKey of sortedDates) {
+      const dayItems = [...(byDate.get(dateKey) || [])].sort((a, b) => {
+        const c = (a.timeSlot || '').localeCompare(b.timeSlot || '')
+        return c !== 0 ? c : String(a.id).localeCompare(String(b.id), undefined, { numeric: true })
+      })
+      const raw = dayItems.map((i) => slotLabelFromItem(i)).filter((s): s is string => Boolean(s))
+      if (raw.length === 0) continue
+      return Array.from({ length: n }, (_, i) => raw[i % raw.length])
+    }
+    return Array.from({ length: n }, () => placeholder)
   }
 
   // Function to add another week (only creates first day)
@@ -704,9 +745,8 @@ export default function MealPlanViewPage() {
       const weekStartDate = addDays(startDate, weekStartDay)
       const firstDate = format(weekStartDate, 'yyyy-MM-dd')
       
-      // Replicate this plan's time slots (from existing items)
-      const defaultTimeSlots = getPlanTimeSlots(mealPlan)
-      
+      const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
+
       // Create meal items for only the first day
       const mealItemPromises = defaultTimeSlots.map((timeSlot) => {
         const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
@@ -845,9 +885,8 @@ export default function MealPlanViewPage() {
       const nextDayDate = addDays(weekStartDate, nextDayIndex)
       const nextDayDateStr = format(nextDayDate, 'yyyy-MM-dd')
       
-      // Replicate this plan's time slots (from existing items)
-      const defaultTimeSlots = getPlanTimeSlots(mealPlan)
-      
+      const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
+
       // Create meal items for the new day
       const mealItemPromises = defaultTimeSlots.map((timeSlot) => {
         const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
@@ -917,16 +956,8 @@ export default function MealPlanViewPage() {
         return
       }
       
-      // Use only time slots from this plan (user-defined). Prefer an unused slot for this day;
-      // if all are used or the plan has a single slot, repeat the user's primary slot — never invent new times.
-      const planTimeSlots = getPlanTimeSlots(mealPlan)
-      const existingTimeSlots = existingMeals.map(item => item.timeSlot)
-      const userPrimarySlot =
-        planTimeSlots[0] || existingMeals[0]?.timeSlot || '08:00'
-      const nextTimeSlot =
-        planTimeSlots.find(ts => !existingTimeSlots.includes(ts)) ??
-        planTimeSlots[existingMeals.length] ??
-        userPrimarySlot
+      const template = resolveMealTimeSlotTemplate(mealPlan)
+      const nextTimeSlot = template[existingMeals.length]!
 
       // Convert timeSlot to 24-hour format for deliveryTime
       const timeMatch = String(nextTimeSlot).match(/(\d{1,2}):(\d{2})/)
@@ -1224,6 +1255,14 @@ export default function MealPlanViewPage() {
             <label className="text-xs font-medium text-gray-500">Meals Per Day</label>
             <p className="text-sm text-gray-900">{mealPlan.mealsPerDay}</p>
           </div>
+          {parseMealPlanTimeSlots(mealPlan.timeSlots).length > 0 && (
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-gray-500">Default time slots (plan)</label>
+              <p className="text-sm text-gray-900">
+                {parseMealPlanTimeSlots(mealPlan.timeSlots).join(' · ')}
+              </p>
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-gray-500">Total Meals</label>
             <p className="text-sm text-gray-900 font-semibold">
@@ -1236,6 +1275,9 @@ export default function MealPlanViewPage() {
             <p className={`text-sm font-semibold ${mealPlan.remainingMeals !== null && mealPlan.remainingMeals < 10 ? 'text-orange-600' : 'text-nutrafi-primary'}`}>
               {mealPlan.remainingMeals !== null ? mealPlan.remainingMeals : '-'}
             </p>
+            {mealPlan.totalMeals != null && (
+              <p className="text-xs text-gray-500 mt-0.5">Total meals minus delivered (non-skipped) slots.</p>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500">Status</label>

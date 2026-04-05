@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { eachDayOfInterval, format } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
+
 const mealPlanSchema = z.object({
   customerId: z.union([z.string(), z.number()]).transform((v) => {
     const n = typeof v === 'number' ? v : parseInt(String(v), 10)
@@ -20,7 +22,8 @@ const mealPlanSchema = z.object({
   endDate: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
   days: z.number().int().min(1).optional(),
   mealsPerDay: z.number().int().min(1).max(5),
-  // timeSlots removed - not stored in meal plan, only used in UI to set deliveryTime
+  /** Stored on MealPlan; new items use these when timeSlot is omitted */
+  timeSlots: z.array(z.string()).optional(),
   status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED', 'COMPLETED']).default('ACTIVE'),
   notes: z.string().optional(),
   totalAmount: z.number().optional(),
@@ -77,40 +80,22 @@ export async function GET(request: NextRequest) {
       distinct: ['id'], // Ensure no duplicates
     })
 
-    // Recalculate remaining meals for each meal plan
-    const mealPlansWithRecalculatedRemaining = await Promise.all(
-      mealPlans.map(async (plan) => {
-        if (plan.totalMeals !== null && plan.totalMeals > 0) {
-          const deliveredCount = await prisma.mealPlanItem.count({
-            where: {
-              mealPlanId: plan.id,
-              isDelivered: true,
-              isSkipped: false,
-            },
-          })
-          
-          const remainingMeals = Math.max(0, plan.totalMeals - deliveredCount)
-          
-          // Update if different from stored value
-          if (remainingMeals !== plan.remainingMeals) {
-            await prisma.mealPlan.update({
-              where: { id: plan.id },
-              data: { remainingMeals },
-            })
-            return { ...plan, remainingMeals }
-          }
-        }
-        return plan
-      })
-    )
+    // remainingMeals is stored on each plan and adjusted when deliveries are recorded (not recomputed on list)
 
-    return NextResponse.json({
-      mealPlans: mealPlansWithRecalculatedRemaining,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    })
+    return NextResponse.json(
+      {
+        mealPlans,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching meal plans:', error)
     return NextResponse.json({ error: 'Failed to fetch meal plans' }, { status: 500 })
@@ -127,8 +112,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const data = mealPlanSchema.parse(body)
-
-    // timeSlots are not used here - meal items are created separately when dishes are assigned
 
     // Generate dates only if both start and end dates are provided
     let dates: Date[] = []
@@ -166,30 +149,21 @@ export async function POST(request: NextRequest) {
     // Calculate remaining meals (initially equals total meals since none are delivered yet)
     const remainingMeals = totalMeals
 
-    // Create meal plan (timeSlots not stored - meal items are created separately when dishes are assigned)
-    const mealPlanData: any = {
-      customerId: data.customerId,
-      planId: data.planId ?? null,
-      planType: planType,
-      days: days,
-      mealsPerDay: data.mealsPerDay,
-      // timeSlots is NOT stored in meal plan - it's only used in the UI to set deliveryTime when creating meal items
-      status: data.status,
-      notes: data.notes,
-      totalMeals: totalMeals,
-      remainingMeals: remainingMeals,
-    }
-    
-    // Only include dates if provided
-    if (data.startDate) {
-      mealPlanData.startDate = data.startDate
-    }
-    if (data.endDate) {
-      mealPlanData.endDate = data.endDate
-    }
-
     const mealPlan = await prisma.mealPlan.create({
-      data: mealPlanData,
+      data: {
+        planType,
+        days,
+        mealsPerDay: data.mealsPerDay,
+        status: data.status,
+        notes: data.notes ?? undefined,
+        totalMeals,
+        remainingMeals,
+        ...(data.startDate ? { startDate: data.startDate } : {}),
+        ...(data.endDate ? { endDate: data.endDate } : {}),
+        ...(data.timeSlots && data.timeSlots.length > 0 ? { timeSlots: data.timeSlots } : {}),
+        customer: { connect: { id: data.customerId } },
+        ...(data.planId != null ? { plan: { connect: { id: data.planId } } } : {}),
+      },
     })
 
     // DO NOT create empty meal items here - meal items are created only when dishes are assigned

@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
+import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { z } from 'zod'
 
 const mealPlanItemSchema = z.object({
   date: z.string().transform((str) => new Date(str)),
-  timeSlot: z.string(),
+  /** Optional when MealPlan.timeSlots is set — server picks next slot for that date */
+  timeSlot: z.string().optional().nullable(),
   dishId: z.union([z.string(), z.number()]).transform((v) => {
     const n = typeof v === 'number' ? v : parseInt(String(v), 10)
     return Number.isNaN(n) ? undefined : n
@@ -47,6 +49,40 @@ export async function POST(
 
     const body = await request.json()
     const data = mealPlanItemSchema.parse(body)
+
+    const mealPlanRow = await prisma.mealPlan.findUnique({ where: { id } })
+    if (!mealPlanRow) {
+      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
+    }
+
+    const requestedSlot =
+      typeof data.timeSlot === 'string' && data.timeSlot.trim().length > 0
+        ? data.timeSlot.trim()
+        : undefined
+    let timeSlot = requestedSlot
+    if (!timeSlot) {
+      const slots = parseMealPlanTimeSlots(mealPlanRow.timeSlots)
+      const countSameDay = await prisma.mealPlanItem.count({
+        where: { mealPlanId: id, date: data.date },
+      })
+      if (slots.length > 0) {
+        timeSlot = slots[countSameDay % slots.length]!
+      } else {
+        timeSlot = '12:00'
+      }
+    }
+
+    let deliveryTime = data.deliveryTime?.trim() || undefined
+    if (!deliveryTime && timeSlot) {
+      const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
+      if (timeMatch) {
+        const hours = parseInt(timeMatch[1], 10)
+        const minutes = timeMatch[2]
+        deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
+      } else {
+        deliveryTime = timeSlot
+      }
+    }
 
     // If dishId is provided, fetch the dish to copy its data
     let dishData: any = {}
@@ -89,7 +125,7 @@ export async function POST(
     // customNote = plain text only. deliveryType and location stored in their own columns.
     const updateData: any = {
       ...dishData,
-      deliveryTime: data.deliveryTime || undefined,
+      deliveryTime: deliveryTime || undefined,
       deliveryType: data.deliveryType || undefined,
       deliveryLocation: data.location ?? undefined,
       customNote: data.customNote != null && String(data.customNote).trim() !== '' ? String(data.customNote).trim() : undefined,
@@ -101,7 +137,7 @@ export async function POST(
       data: {
         mealPlanId: id,
         date: data.date,
-        timeSlot: data.timeSlot,
+        timeSlot,
         isSkipped: data.isSkipped || false,
         ...updateData,
       },

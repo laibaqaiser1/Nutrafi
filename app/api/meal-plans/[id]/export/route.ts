@@ -150,9 +150,11 @@ export async function GET(
     const mealsPerDayLine = `Meals per day: ${mealPlan.mealsPerDay}${dateRange ? `  |  ${dateRange}` : ''}`
     doc.text(mealsPerDayLine, headerX, y)
     y += 5
-    const totalMeals = items.length
-    const remainingMeals = items.filter((i) => !i.isDelivered).length
-    doc.text(`Total meals: ${totalMeals}  |  Remaining meals: ${remainingMeals}`, headerX, y)
+    const totalLine =
+      mealPlan.totalMeals != null ? String(mealPlan.totalMeals) : String(items.length)
+    const remainingLine =
+      mealPlan.remainingMeals != null ? String(mealPlan.remainingMeals) : '—'
+    doc.text(`Total meals: ${totalLine}  |  Remaining meals: ${remainingLine}`, headerX, y)
     y += 8
 
     // Table: Day/Date | Time | Item | Ingredients | Allergens | Calories | Protein | Carbs | Fats | Notes (per meal) | Status

@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
+import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 
 interface MealPlanItem {
   id: string
@@ -49,6 +50,7 @@ interface MealPlan {
   totalAmount: number | null
   totalMeals?: number | null
   remainingMeals?: number | null
+  timeSlots?: unknown
   mealPlanItems?: MealPlanItem[]
   payments?: Array<{
     id: string
@@ -105,6 +107,8 @@ export default function EditMealPlanPage() {
     status: 'ACTIVE',
     notes: '',
     totalMeals: '', // Override: empty = use days × mealsPerDay
+    remainingMeals: '', // Stored balance; goes down when meals are marked delivered
+    timeSlotsText: '', // One time per line (HH:MM); saved on MealPlan.timeSlots
   })
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -128,7 +132,7 @@ export default function EditMealPlanPage() {
 
   const fetchMealPlan = async (id: string) => {
     try {
-      const response = await fetch(`/api/meal-plans/${id}`)
+      const response = await fetch(`/api/meal-plans/${id}`, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setMealPlan(data)
@@ -141,6 +145,8 @@ export default function EditMealPlanPage() {
           status: data.status,
           notes: data.notes || '',
           totalMeals: data.totalMeals != null ? String(data.totalMeals) : '',
+          remainingMeals: data.remainingMeals != null ? String(data.remainingMeals) : '',
+          timeSlotsText: parseMealPlanTimeSlots(data.timeSlots).join('\n'),
         })
       } else {
         toast.error('Failed to fetch meal plan')
@@ -200,15 +206,21 @@ export default function EditMealPlanPage() {
 
     setLoading(true)
     try {
+      const { timeSlotsText, ...planFields } = formData
+      const slotLines = timeSlotsText.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+
       const response = await fetch(`/api/meal-plans/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          mealsPerDay: parseInt(formData.mealsPerDay),
+          ...planFields,
+          mealsPerDay: parseInt(formData.mealsPerDay, 10),
           planId: formData.planId || undefined,
           planType: formData.planType || undefined,
           totalMeals: formData.totalMeals !== '' ? parseInt(formData.totalMeals, 10) : undefined,
+          remainingMeals:
+            formData.remainingMeals !== '' ? parseInt(formData.remainingMeals, 10) : undefined,
+          timeSlots: slotLines.length > 0 ? slotLines : null,
           updateItemDatesFromStartDate: startDateChanged && hasItems ? updateItemDatesFromStartDate : undefined,
         }),
       })
@@ -494,13 +506,41 @@ export default function EditMealPlanPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Meals in use now: <span className="font-semibold text-gray-900">{mealPlan.totalMeals ?? (mealPlan.days && mealPlan.mealsPerDay ? mealPlan.days * mealPlan.mealsPerDay : '-')}</span>
+              Contract total: <span className="font-semibold text-gray-900">{mealPlan.totalMeals ?? (mealPlan.days && mealPlan.mealsPerDay ? mealPlan.days * mealPlan.mealsPerDay : '-')}</span>
               {mealPlan.days != null && mealPlan.mealsPerDay != null && (
-                <span className="text-gray-400"> (leave empty to use {mealPlan.days} × {mealPlan.mealsPerDay})</span>
+                <span className="text-gray-400"> (leave empty to keep the stored total; enter a number to override)</span>
               )}
             </p>
           </div>
-          {/* timeSlots removed - delivery times are stored per meal item, not in meal plan */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Remaining meals (balance)</label>
+            <input
+              type="number"
+              min={0}
+              value={formData.remainingMeals ?? ''}
+              onChange={(e) => setFormData({ ...formData, remainingMeals: e.target.value })}
+              placeholder={mealPlan.remainingMeals != null ? String(mealPlan.remainingMeals) : '0'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              When total meals is set, remaining is recalculated as total minus delivered (non-skipped) meals. Leave empty to keep the current value only if this plan has no total meals set.
+            </p>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Default time slots (meal plan)
+            </label>
+            <textarea
+              value={formData.timeSlotsText}
+              onChange={(e) => setFormData({ ...formData, timeSlotsText: e.target.value })}
+              placeholder={'08:00\n13:00\n19:00'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+              rows={4}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              One time per line (24h). Stored on the meal plan and applied to new items. Clear all lines and save to remove.
+            </p>
+          </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
             <textarea
