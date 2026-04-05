@@ -2,7 +2,7 @@ import type { Prisma } from '@/lib/generated/prisma/client'
 
 /**
  * Remaining meals = totalMeals minus count of items delivered (non-skipped).
- * Single source of truth so list/detail stay aligned with deliveries.
+ * Call only from deliver/undeliver (and batch deliver) — not from GET/PUT meal plan.
  */
 export async function remainingMealsFromDelivered(
   tx: Prisma.TransactionClient,

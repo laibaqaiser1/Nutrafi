@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
-import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { Prisma } from '@/lib/generated/prisma/client'
 import { z } from 'zod'
 
@@ -22,7 +21,7 @@ const mealPlanUpdateSchema = z.object({
   status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED', 'COMPLETED']).optional(),
   notes: z.string().optional(),
   totalMeals: z.number().int().min(0).optional().nullable(),
-  /** Explicit balance override; otherwise remainingMeals is only changed by deliver/undeliver */
+  /** Manual balance correction; otherwise remainingMeals changes only when items are delivered/undelivered */
   remainingMeals: z.number().int().min(0).optional().nullable(),
   /** Default delivery times for new items; null or [] clears */
   timeSlots: z.array(z.string()).optional().nullable(),
@@ -66,14 +65,6 @@ export async function GET(
 
     if (!mealPlan) {
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
-    }
-
-    // Keep remainingMeals aligned with totalMeals − delivered (non-skipped) count
-    if (mealPlan.totalMeals != null) {
-      const synced = await prisma.$transaction(async (tx) => syncMealPlanRemainingMeals(tx, id))
-      if (synced !== null) {
-        mealPlan.remainingMeals = synced
-      }
     }
 
     return NextResponse.json(mealPlan, {
@@ -148,12 +139,7 @@ export async function PUT(
         (Array.isArray(data.timeSlots) && data.timeSlots.length === 0)
       updateData.timeSlots = cleared ? Prisma.DbNull : (data.timeSlots as string[])
     }
-    // remainingMeals is derived from totalMeals − delivered when totalMeals is set (sync after update)
-    if (
-      currentMealPlan.totalMeals == null &&
-      data.remainingMeals !== undefined &&
-      data.remainingMeals !== null
-    ) {
+    if (data.remainingMeals !== undefined) {
       updateData.remainingMeals = data.remainingMeals
     }
 
@@ -162,7 +148,7 @@ export async function PUT(
       updateData.totalMeals = data.totalMeals
     }
 
-    let mealPlan = await prisma.mealPlan.update({
+    const mealPlan = await prisma.mealPlan.update({
       where: { id },
       data: updateData,
       include: {
@@ -170,15 +156,6 @@ export async function PUT(
         plan: true,
       },
     })
-
-    if (mealPlan.totalMeals != null) {
-      await prisma.$transaction(async (tx) => syncMealPlanRemainingMeals(tx, id))
-      const refreshed = await prisma.mealPlan.findUnique({
-        where: { id },
-        include: { customer: true, plan: true },
-      })
-      if (refreshed) mealPlan = refreshed
-    }
 
     // If start date was changed and client asked to align item dates: shift each item by day offset from old start to new start
     if (data.updateItemDatesFromStartDate && data.startDate != null && currentMealPlan.startDate) {
