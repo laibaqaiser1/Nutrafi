@@ -523,7 +523,7 @@ export default function EditMealPlanPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
             <p className="text-xs text-gray-500 mt-1">
-              When total meals is set, remaining is recalculated as total minus delivered (non-skipped) meals. Leave empty to keep the current value only if this plan has no total meals set.
+              Remaining balance is updated when meals are marked delivered or not delivered. You can correct the number here when saving.
             </p>
           </div>
           <div className="md:col-span-2">

@@ -71,6 +71,24 @@ interface MealPlan {
   }>
 }
 
+/** Non-skipped rows count toward the plan meal cap; skipped slots free capacity for new days/meals. */
+function countActiveMealSlots(items: { isSkipped: boolean }[]): number {
+  return items.filter((i) => !i.isSkipped).length
+}
+
+/** Days with at least one non-skipped meal count toward the plan day budget. */
+function countUniqueActiveDays(
+  items: { date: string; isSkipped: boolean }[]
+): number {
+  const days = new Set<string>()
+  for (const item of items) {
+    if (!item.isSkipped) {
+      days.add(format(new Date(item.date), 'yyyy-MM-dd'))
+    }
+  }
+  return days.size
+}
+
 interface Dish {
   id: string
   name: string
@@ -712,29 +730,23 @@ export default function MealPlanViewPage() {
     setAddingWeek(true)
     try {
       // Check total days across all weeks - limit to plan days
-      const allDates = new Set<string>()
-      mealPlan.mealPlanItems.forEach(item => {
-        const date = format(new Date(item.date), 'yyyy-MM-dd')
-        allDates.add(date)
-      })
-      const totalDays = allDates.size
+      const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
       const maxDays = mealPlan.days || 22
       
       if (totalDays >= maxDays) {
-        toast.warning(`Cannot add another week. The meal plan is limited to ${maxDays} days.`)
+        toast.warning(`Cannot add another week. The meal plan is limited to ${maxDays} active days.`)
         setAddingWeek(false)
         return
       }
       
       const nextWeek = Math.max(...visibleWeeks, 0) + 1
       
-      // Check if adding this week would exceed total meals allowed
-      const currentMealsCount = mealPlan.mealPlanItems.length
+      const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
       const mealsPerDay = mealPlan.mealsPerDay
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
-      if (currentMealsCount + mealsPerDay > totalMealsAllowed) {
-        toast.warning(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+      if (activeMealSlots + mealsPerDay > totalMealsAllowed) {
+        toast.warning(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`)
         setAddingWeek(false)
         return
       }
@@ -810,17 +822,12 @@ export default function MealPlanViewPage() {
     setAddingDay(true)
     try {
       // Check total days across all weeks - limit to plan days
-      const allDates = new Set<string>()
-      mealPlan.mealPlanItems.forEach(item => {
-        const date = format(new Date(item.date), 'yyyy-MM-dd')
-        allDates.add(date)
-      })
-      const totalDays = allDates.size
+      const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
       const maxDays = mealPlan.days || 22
       const remainingDays = maxDays - totalDays
       
       if (remainingDays <= 0) {
-        toast.warning(`Cannot add another day. The meal plan is limited to ${maxDays} days.`)
+        toast.warning(`Cannot add another day. The meal plan is limited to ${maxDays} active days.`)
         setAddingDay(false)
         return
       }
@@ -867,13 +874,12 @@ export default function MealPlanViewPage() {
         return
       }
       
-      // Check if adding this day would exceed total meals allowed
-      const currentMealsCount = mealPlan.mealPlanItems.length
+      const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
       const mealsPerDay = mealPlan.mealsPerDay
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
-      if (currentMealsCount + mealsPerDay > totalMealsAllowed) {
-        toast.warning(`Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+      if (activeMealSlots + mealsPerDay > totalMealsAllowed) {
+        toast.warning(`Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`)
         setAddingDay(false)
         return
       }
@@ -941,23 +947,22 @@ export default function MealPlanViewPage() {
         format(new Date(item.date), 'yyyy-MM-dd') === date
       )
       
-      // Check if we've reached the meals per day limit
-      if (existingMeals.length >= mealPlan.mealsPerDay) {
-        toast.warning(`This day already has ${mealPlan.mealsPerDay} meals.`)
+      const activeMealsOnDay = existingMeals.filter((item) => !item.isSkipped).length
+      if (activeMealsOnDay >= mealPlan.mealsPerDay) {
+        toast.warning(`This day already has ${mealPlan.mealsPerDay} active meals.`)
         return
       }
       
-      // Check if adding this meal would exceed total meals allowed
-      const currentMealsCount = mealPlan.mealPlanItems.length
+      const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
-      if (currentMealsCount + 1 > totalMealsAllowed) {
-        toast.warning(`Cannot add another meal. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+      if (activeMealSlots + 1 > totalMealsAllowed) {
+        toast.warning(`Cannot add another meal. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`)
         return
       }
       
       const template = resolveMealTimeSlotTemplate(mealPlan)
-      const nextTimeSlot = template[existingMeals.length]!
+      const nextTimeSlot = template[activeMealsOnDay]!
 
       // Convert timeSlot to 24-hour format for deliveryTime
       const timeMatch = String(nextTimeSlot).match(/(\d{1,2}):(\d{2})/)
@@ -1024,12 +1029,12 @@ export default function MealPlanViewPage() {
         return
       }
       
-      // Check if duplicating would exceed total meals allowed
-      const currentMealsCount = mealPlan.mealPlanItems.length
+      const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
+      const activeSlotsBeingDuplicated = sourceItems.filter((i) => !i.isSkipped).length
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       
-      if (currentMealsCount + sourceItems.length > totalMealsAllowed) {
-        toast.warning(`Cannot duplicate week. This would exceed the plan's limit of ${totalMealsAllowed} meals.`)
+      if (activeMealSlots + activeSlotsBeingDuplicated > totalMealsAllowed) {
+        toast.warning(`Cannot duplicate week. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`)
         setDuplicatingWeek(false)
         return
       }
@@ -1416,21 +1421,14 @@ export default function MealPlanViewPage() {
           <h2 className="text-base lg:text-lg font-semibold text-gray-900">Meal Schedule</h2>
           {(() => {
             if (!mealPlan) return null
-            const currentMealsCount = mealPlan.mealPlanItems.length
+            const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
             const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
             const mealsPerDay = mealPlan.mealsPerDay
             
-            // Check total days across all weeks - limit to plan days
-            const allDates = new Set<string>()
-            mealPlan.mealPlanItems.forEach(item => {
-              const date = format(new Date(item.date), 'yyyy-MM-dd')
-              allDates.add(date)
-            })
-            const totalDays = allDates.size
+            const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
             const maxDays = mealPlan.days || 22
             
-            // Allow adding week if we have room for at least one more day and one more day's worth of meals
-            const canAddMoreWeeks = totalDays < maxDays && currentMealsCount + mealsPerDay <= totalMealsAllowed
+            const canAddMoreWeeks = totalDays < maxDays && activeMealSlots + mealsPerDay <= totalMealsAllowed
             
             return canAddMoreWeeks ? (
               <button
@@ -1687,16 +1685,10 @@ export default function MealPlanViewPage() {
                                 if (!isLastDay) return null
                                 
                                 // Check total days across all weeks - limit to plan days
-                                const allDates = new Set<string>()
-                                mealPlan.mealPlanItems.forEach(item => {
-                                  const itemDate = format(new Date(item.date), 'yyyy-MM-dd')
-                                  allDates.add(itemDate)
-                                })
-                                const totalDays = allDates.size
+                                const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
                                 const maxDays = mealPlan.days || 22
                                 const remainingDays = maxDays - totalDays
                                 
-                                // Get days already in this week
                                 const weekDatesSet = new Set<string>()
                                 mealPlan.mealPlanItems.forEach(item => {
                                   const itemWeek = getWeekNumber(item.date, mealPlan.startDate)
@@ -1707,14 +1699,13 @@ export default function MealPlanViewPage() {
                                 })
                                 const currentDaysInWeek = weekDatesSet.size
                                 
-                                // Can add day if: week has less than 7 days AND we have remaining days
                                 const canAddDayInWeek = currentDaysInWeek < 7
                                 const canAddDay = canAddDayInWeek && remainingDays > 0
                                 
-                                const currentMealsCount = mealPlan.mealPlanItems.length
+                                const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
                                 const mealsPerDay = mealPlan.mealsPerDay
                                 const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-                                const canAddMoreMeals = currentMealsCount + mealsPerDay <= totalMealsAllowed
+                                const canAddMoreMeals = activeMealSlots + mealsPerDay <= totalMealsAllowed
                                 
                                 return canAddDay && canAddMoreMeals ? (
                                   <tr>
@@ -1746,19 +1737,14 @@ export default function MealPlanViewPage() {
                                 </p>
                                 {(() => {
                                   // Check if we can add a day
-                                  const allDates = new Set<string>()
-                                  mealPlan.mealPlanItems.forEach(item => {
-                                    const date = format(new Date(item.date), 'yyyy-MM-dd')
-                                    allDates.add(date)
-                                  })
-                                  const totalDays = allDates.size
+                                  const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
                                   const maxDays = mealPlan.days || 22
                                   const remainingDays = maxDays - totalDays
                                   
-                                  const currentMealsCount = mealPlan.mealPlanItems.length
+                                  const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
                                   const mealsPerDay = mealPlan.mealsPerDay
                                   const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-                                  const canAddMoreMeals = currentMealsCount + mealsPerDay <= totalMealsAllowed
+                                  const canAddMoreMeals = activeMealSlots + mealsPerDay <= totalMealsAllowed
                                   
                                   return remainingDays > 0 && canAddMoreMeals ? (
                                     <button

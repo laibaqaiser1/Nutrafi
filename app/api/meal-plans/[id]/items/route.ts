@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { endOfDay, startOfDay } from 'date-fns'
 import { getServerSession } from '@/lib/auth-helpers'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
@@ -53,6 +54,43 @@ export async function POST(
     const mealPlanRow = await prisma.mealPlan.findUnique({ where: { id } })
     if (!mealPlanRow) {
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
+    }
+
+    const creatingSkipped = data.isSkipped === true
+    const totalMealsCap =
+      mealPlanRow.totalMeals ?? mealPlanRow.days * mealPlanRow.mealsPerDay
+    if (!creatingSkipped && totalMealsCap > 0) {
+      const activeCount = await prisma.mealPlanItem.count({
+        where: { mealPlanId: id, isSkipped: false },
+      })
+      if (activeCount + 1 > totalMealsCap) {
+        return NextResponse.json(
+          {
+            error: `This plan allows at most ${totalMealsCap} active (non-skipped) meals. Skip unused days or increase the plan total.`,
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (!creatingSkipped && mealPlanRow.mealsPerDay > 0) {
+      const dayStart = startOfDay(data.date)
+      const dayEnd = endOfDay(data.date)
+      const activeOnDate = await prisma.mealPlanItem.count({
+        where: {
+          mealPlanId: id,
+          isSkipped: false,
+          date: { gte: dayStart, lte: dayEnd },
+        },
+      })
+      if (activeOnDate >= mealPlanRow.mealsPerDay) {
+        return NextResponse.json(
+          {
+            error: `This day already has ${mealPlanRow.mealsPerDay} active meal(s).`,
+          },
+          { status: 400 }
+        )
+      }
     }
 
     const requestedSlot =
