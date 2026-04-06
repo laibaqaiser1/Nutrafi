@@ -142,9 +142,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate total meals based on plan configuration (days * mealsPerDay)
-    // Use provided totalMeals if given, otherwise calculate from days * mealsPerDay
-    const totalMeals = data.totalMeals || (days > 0 ? days * data.mealsPerDay : 0)
+    // Prefer client total (includes skipped days/weeks); fallback = full grid only when omitted
+    const gridTotal = days > 0 ? days * data.mealsPerDay : 0
+    const totalMeals =
+      typeof data.totalMeals === 'number' && Number.isFinite(data.totalMeals) && data.totalMeals >= 0
+        ? data.totalMeals
+        : gridTotal
 
     // Calculate remaining meals (initially equals total meals since none are delivered yet)
     const remainingMeals = totalMeals

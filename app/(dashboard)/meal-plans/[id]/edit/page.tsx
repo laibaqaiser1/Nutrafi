@@ -198,6 +198,14 @@ export default function EditMealPlanPage() {
     }
   }
 
+  /** Empty = omit (keep DB). Invalid/non-numeric = omit — never send NaN (JSON becomes null and would clear server fields). */
+  const optionalNonNegativeInt = (raw: string): number | undefined => {
+    const t = raw.trim()
+    if (t === '') return undefined
+    const n = parseInt(t, 10)
+    return Number.isFinite(n) && n >= 0 ? n : undefined
+  }
+
   const submitMealPlan = async (updateItemDatesFromStartDate: boolean) => {
     if (!mealPlan) return
     const originalStart = mealPlan.startDate ? mealPlan.startDate.split('T')[0] : ''
@@ -218,9 +226,8 @@ export default function EditMealPlanPage() {
           mealsPerDay: parseInt(formData.mealsPerDay, 10),
           planId: formData.planId || undefined,
           planType: formData.planType || undefined,
-          totalMeals: formData.totalMeals !== '' ? parseInt(formData.totalMeals, 10) : undefined,
-          remainingMeals:
-            formData.remainingMeals !== '' ? parseInt(formData.remainingMeals, 10) : undefined,
+          totalMeals: optionalNonNegativeInt(formData.totalMeals),
+          remainingMeals: optionalNonNegativeInt(formData.remainingMeals),
           timeSlots: slotLines.length > 0 ? slotLines : null,
           updateItemDatesFromStartDate: startDateChanged && hasItems ? updateItemDatesFromStartDate : undefined,
         }),

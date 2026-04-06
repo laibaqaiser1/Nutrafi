@@ -20,9 +20,16 @@ const mealPlanUpdateSchema = z.object({
   mealsPerDay: z.number().int().min(1).max(5).optional(),
   status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED', 'COMPLETED']).optional(),
   notes: z.string().optional(),
-  totalMeals: z.number().int().min(0).optional().nullable(),
-  /** Manual balance correction; otherwise remainingMeals changes only when items are delivered/undelivered */
-  remainingMeals: z.number().int().min(0).optional().nullable(),
+  /** null/NaN (from bad clients) must not clear DB — only a real number updates the contract total */
+  totalMeals: z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z.number().int().min(0).optional()
+  ),
+  /** Manual balance correction; same rule: never persist null from accidental JSON */
+  remainingMeals: z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z.number().int().min(0).optional()
+  ),
   /** Default delivery times for new items; null or [] clears */
   timeSlots: z.array(z.string()).optional().nullable(),
   updateItemDatesFromStartDate: z.boolean().optional(),
@@ -139,12 +146,13 @@ export async function PUT(
         (Array.isArray(data.timeSlots) && data.timeSlots.length === 0)
       updateData.timeSlots = cleared ? Prisma.DbNull : (data.timeSlots as string[])
     }
-    if (data.remainingMeals !== undefined) {
+    // remainingMeals / totalMeals: only real numbers (never null — avoids JSON NaN→null wiping the row)
+    if (typeof data.remainingMeals === 'number') {
       updateData.remainingMeals = data.remainingMeals
     }
 
-    // totalMeals: only when explicitly sent — do not overwrite stored contract with days × mealsPerDay on every save
-    if (data.totalMeals !== undefined) {
+    // Contract total: only when the client sends a finite int; item CRUD and other routes never touch this
+    if (typeof data.totalMeals === 'number') {
       updateData.totalMeals = data.totalMeals
     }
 

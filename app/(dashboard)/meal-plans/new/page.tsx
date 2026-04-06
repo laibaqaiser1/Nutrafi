@@ -44,6 +44,40 @@ function effectiveMealPlanTimeSlots(slots: string[] | undefined): string[] {
   return (Array.isArray(slots) ? slots : []).filter((s) => typeof s === 'string' && s.trim().length > 0)
 }
 
+/**
+ * Contract total meal slots for the plan (not `formData.meals.length`).
+ * The schedule grid often only has rows for days the user opened; skipped weeks/days must still
+ * reduce the contract from the full `days × mealsPerDay` range using the same rules as submit.
+ */
+function countContractMealSlots(input: {
+  startDateStr: string
+  days: number
+  mealsPerDay: number
+  planType: string
+  skippedDays: string[]
+  skippedWeeks: number[]
+}): number {
+  const { startDateStr, days, mealsPerDay, planType, skippedDays, skippedWeeks } = input
+  if (!startDateStr || !Number.isFinite(days) || days < 1 || !Number.isFinite(mealsPerDay) || mealsPerDay < 1) {
+    return 0
+  }
+  const startDate = new Date(startDateStr)
+  if (Number.isNaN(startDate.getTime())) return 0
+  const endDate = addDays(startDate, days - 1)
+  const dateRange = eachDayOfInterval({ start: startDate, end: endDate })
+  const useWeekSkips = planType === 'MONTHLY' || planType === 'WEEKLY'
+  let slots = 0
+  for (const d of dateRange) {
+    const dateStr = format(d, 'yyyy-MM-dd')
+    if (skippedDays.includes(dateStr)) continue
+    const daysDiff = Math.floor((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+    if (useWeekSkips && skippedWeeks.includes(week)) continue
+    slots += mealsPerDay
+  }
+  return slots
+}
+
 // Day colors: different colour per day – pink, blue, green, red, teal, orange, violet (solid header + gradient day background)
 const getDayOfWeekIndex = (date: string) => new Date(date).getDay()
 const DAY_COLORS = [
@@ -242,6 +276,31 @@ export default function NewMealPlanPage() {
       setVisibleWeeks([1]) // Reset to show only week 1
     }
   }, [planMode, formData.days, formData.mealsPerDay])
+
+  // On meal configuration, contract limit must match skipped days/weeks (same as POST totalMeals)
+  useEffect(() => {
+    if (step < 4 || !formData.startDate) return
+    const d = parseInt(formData.days, 10)
+    const mpd = parseInt(formData.mealsPerDay, 10)
+    if (!Number.isFinite(d) || d < 1 || !Number.isFinite(mpd) || mpd < 1) return
+    const n = countContractMealSlots({
+      startDateStr: formData.startDate,
+      days: d,
+      mealsPerDay: mpd,
+      planType: formData.planType,
+      skippedDays: formData.skippedDays,
+      skippedWeeks: formData.skippedWeeks,
+    })
+    if (n > 0) setTotalMealsAllowed(n)
+  }, [
+    step,
+    formData.startDate,
+    formData.days,
+    formData.mealsPerDay,
+    formData.planType,
+    formData.skippedDays,
+    formData.skippedWeeks,
+  ])
 
   useEffect(() => {
     // Only generate meals if we have all required fields and we're on step 4 or beyond
@@ -692,34 +751,16 @@ export default function NewMealPlanPage() {
     setLoading(true)
 
     try {
-      // Calculate active meals (excluding skipped days/weeks)
-      const activeMealsCount = formData.meals.filter(meal => {
-        const date = meal.date
-        const mealDate = new Date(date)
-        const startDate = new Date(formData.startDate)
-        const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        // Ensure week number is always >= 1 (no Week 0)
-        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
-        
-        if (formData.skippedDays.includes(date)) return false
-        if (
-          (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
-          formData.skippedWeeks.includes(week)
-        ) {
-          return false
-        }
-        return true
-      }).length
-
       const daysNum = parseInt(formData.days, 10)
       const mpd = parseInt(formData.mealsPerDay, 10)
-      const theoreticalTotal = daysNum * mpd
-      const hasSkips =
-        formData.skippedDays.length > 0 ||
-        ((formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
-          formData.skippedWeeks.length > 0)
-      // Contract total: full grid when no skips; when weeks/days are skipped, use actual non-skipped slot count
-      const totalMealsForPlan = hasSkips ? activeMealsCount : theoreticalTotal
+      const totalMealsForPlan = countContractMealSlots({
+        startDateStr: formData.startDate,
+        days: daysNum,
+        mealsPerDay: mpd,
+        planType: formData.planType,
+        skippedDays: formData.skippedDays,
+        skippedWeeks: formData.skippedWeeks,
+      })
 
       if (totalMealsForPlan < 1) {
         toast.warning('This plan has no meals (check skipped days/weeks or plan length).')
@@ -881,31 +922,19 @@ export default function NewMealPlanPage() {
 
   const selectedCustomer = customers.find(c => c.id == formData.customerId)
   const selectedPlan = plans.find(p => p.id == formData.planId)
-  
-  // Calculate active meals (excluding skipped)
-  const activeMealsCount = formData.meals.filter(meal => {
-    const date = meal.date
-    const mealDate = new Date(date)
-    const startDate = formData.startDate ? new Date(formData.startDate) : null
-    if (!startDate) return true
-    
-    const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    const week = Math.floor(daysDiff / 7) + 1
-    
-    if (formData.skippedDays.includes(date)) return false
-    if (
-      (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
-      formData.skippedWeeks.includes(week)
-    ) {
-      return false
-    }
-    return true
-  }).length
-  
-  // Calculate totalMeals based on plan configuration (days * mealsPerDay), not the number of meals added
-  const totalMeals = formData.days && formData.mealsPerDay 
-    ? parseInt(formData.days) * parseInt(formData.mealsPerDay) 
-    : 0
+
+  // Contract total from calendar + skips (same as POST body), not rows in the partial schedule grid
+  const totalMeals =
+    formData.startDate && formData.days && formData.mealsPerDay
+      ? countContractMealSlots({
+          startDateStr: formData.startDate,
+          days: parseInt(formData.days, 10),
+          mealsPerDay: parseInt(formData.mealsPerDay, 10),
+          planType: formData.planType,
+          skippedDays: formData.skippedDays,
+          skippedWeeks: formData.skippedWeeks,
+        })
+      : 0
   // Total Amount: from selected plan (predefined) or calculated (custom). Payment Amount field can override what's sent.
   const totalAmount = planMode === 'predefined' 
     ? (selectedPlan?.price ?? 0)
