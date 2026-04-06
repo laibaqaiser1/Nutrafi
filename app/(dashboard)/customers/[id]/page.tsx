@@ -33,6 +33,9 @@ export default function ViewCustomerPage() {
   const customerId = params.id as string
   const [fetching, setFetching] = useState(true)
   const [customer, setCustomer] = useState<Customer | null>(null)
+  const [mealPlanPage, setMealPlanPage] = useState(1)
+  const [mealPlanPageSize, setMealPlanPageSize] = useState(10)
+  const MEAL_PLAN_PAGE_OPTIONS = [10, 20, 50] as const
 
   useEffect(() => {
     async function fetchCustomer() {
@@ -59,6 +62,23 @@ export default function ViewCustomerPage() {
       fetchCustomer()
     }
   }, [customerId, router, toast])
+
+  useEffect(() => {
+    setMealPlanPage(1)
+  }, [customerId])
+
+  useEffect(() => {
+    const n = customer?.mealPlans?.length ?? 0
+    const pages = Math.max(1, Math.ceil(n / mealPlanPageSize))
+    setMealPlanPage((p) => Math.min(p, pages))
+  }, [customer?.mealPlans?.length, mealPlanPageSize])
+
+  const mealPlansList = customer?.mealPlans ?? []
+  const mpTotal = mealPlansList.length
+  const mpTotalPages = Math.max(1, Math.ceil(mpTotal / mealPlanPageSize))
+  const safeMealPlanPage = Math.min(mealPlanPage, mpTotalPages)
+  const mpStart = mpTotal === 0 ? 0 : (safeMealPlanPage - 1) * mealPlanPageSize
+  const paginatedMealPlans = mealPlansList.slice(mpStart, mpStart + mealPlanPageSize)
 
   if (fetching) {
     return (
@@ -137,8 +157,8 @@ export default function ViewCustomerPage() {
           <div className="mt-6 pt-4 border-t border-gray-200">
             <h2 className="text-sm font-semibold text-gray-900 mb-2">Meal Plans</h2>
             <ul className="space-y-2">
-              {customer.mealPlans.map((mp) => (
-                <li key={mp.id} className="flex items-center gap-3 text-sm">
+              {paginatedMealPlans.map((mp) => (
+                <li key={mp.id} className="flex flex-wrap items-center gap-3 text-sm">
                   <Link
                     href={`/meal-plans/${mp.id}`}
                     className="text-nutrafi-primary hover:underline font-medium"
@@ -156,6 +176,62 @@ export default function ViewCustomerPage() {
                 </li>
               ))}
             </ul>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between text-xs text-gray-600 border-t border-gray-100 pt-3">
+              <p>
+                Showing{' '}
+                <span className="font-medium text-gray-900">{mpTotal === 0 ? 0 : mpStart + 1}</span> to{' '}
+                <span className="font-medium text-gray-900">{Math.min(mpStart + mealPlanPageSize, mpTotal)}</span> of{' '}
+                <span className="font-medium text-gray-900">{mpTotal}</span> plans
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="customer-mp-page-size" className="whitespace-nowrap">
+                    Rows per page
+                  </label>
+                  <select
+                    id="customer-mp-page-size"
+                    value={String(mealPlanPageSize)}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10)
+                      if (!Number.isNaN(n) && n > 0) {
+                        setMealPlanPageSize(n)
+                        setMealPlanPage(1)
+                      }
+                    }}
+                    className="px-2 py-1 border border-gray-300 rounded text-gray-900 text-xs bg-white focus:ring-2 focus:ring-nutrafi-primary focus:border-transparent"
+                  >
+                    {MEAL_PLAN_PAGE_OPTIONS.map((n) => (
+                      <option key={n} value={String(n)}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {mpTotalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMealPlanPage((p) => Math.max(1, p - 1))}
+                      disabled={safeMealPlanPage <= 1}
+                      className="px-2 py-1 border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-gray-700">
+                      Page {safeMealPlanPage} of {mpTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMealPlanPage((p) => Math.min(mpTotalPages, p + 1))}
+                      disabled={safeMealPlanPage >= mpTotalPages}
+                      className="px-2 py-1 border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

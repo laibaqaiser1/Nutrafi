@@ -7,6 +7,7 @@ import { format, addDays, eachDayOfInterval } from 'date-fns'
 import { formatCategory } from '@/lib/utils'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { useNotification } from '@/components/notifications/NotificationContext'
+import { DeleteMealPlanButton } from '@/components/meal-plans/DeleteMealPlanButton'
 
 interface MealPlan {
   id: string
@@ -1185,7 +1186,7 @@ export default function MealPlanViewPage() {
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-3 lg:mb-6">
         <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Meal Plan Details</h1>
-        <div className="flex gap-2 lg:p-4">
+        <div className="flex flex-wrap gap-2 lg:p-4">
           <button
             type="button"
             onClick={handleDownloadPdf}
@@ -1200,6 +1201,7 @@ export default function MealPlanViewPage() {
           >
             Edit
           </Link>
+          <DeleteMealPlanButton mealPlanId={String(mealPlan.id)} customerName={mealPlan.customer.fullName} />
           <button
             onClick={() => router.back()}
             className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"

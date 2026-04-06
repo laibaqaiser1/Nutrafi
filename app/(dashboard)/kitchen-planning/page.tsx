@@ -79,9 +79,10 @@ export default function KitchenPlanningPage() {
     endTime: '',
     status: 'active' as 'active' | 'delivered' | 'all', // Default to 'active'
   })
-  const [page, setPage] = useState(1)
+  /** Avoid naming state `page` in `page.tsx` (can confuse tooling / hydration). */
+  const [tablePage, setTablePage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const PAGE_SIZE_OPTIONS = [10, 20, 50]
+  const PAGE_SIZE_OPTIONS = [10, 20, 50] as const
   const [batchDeliverOpen, setBatchDeliverOpen] = useState(false)
   const [batchDeliverItems, setBatchDeliverItems] = useState<MealPlanItem[]>([])
   const [batchDeliverSelected, setBatchDeliverSelected] = useState<Set<string>>(new Set())
@@ -98,15 +99,15 @@ export default function KitchenPlanningPage() {
 
   // Reset to first page when filters change
   useEffect(() => {
-    setPage(1)
+    setTablePage(1)
   }, [filters.date, filters.startTime, filters.endTime, filters.status])
 
-  // Clamp page when data shrinks (e.g. fewer results or larger pageSize)
+  // Clamp page when data shrinks (e.g. fewer results)
   useEffect(() => {
     if (!data) return
     const totalRows = data.items.length + (data.skippedDayRows?.length ?? 0)
     const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
-    setPage((p) => Math.min(p, totalPages))
+    setTablePage((p) => Math.min(p, totalPages))
   }, [data, pageSize])
 
   const fetchKitchenPlanningData = async () => {
@@ -510,7 +511,7 @@ export default function KitchenPlanningPage() {
           ]
           const totalRows = allRows.length
           const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
-          const currentPage = Math.min(page, totalPages)
+          const currentPage = Math.min(tablePage, totalPages)
           const start = (currentPage - 1) * pageSize
           const paginatedRows = allRows.slice(start, start + pageSize)
 
@@ -538,12 +539,20 @@ export default function KitchenPlanningPage() {
                   <label htmlFor="kitchen-page-size" className="text-gray-600 whitespace-nowrap">Rows per page</label>
                   <select
                     id="kitchen-page-size"
-                    value={pageSize}
-                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
+                    value={String(pageSize)}
+                    onChange={(e) => {
+                      const next = parseInt(e.target.value, 10)
+                      if (!Number.isNaN(next) && next > 0) {
+                        setPageSize(next)
+                        setTablePage(1)
+                      }
+                    }}
                     className="px-2 py-1 border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-nutrafi-primary focus:border-transparent"
                   >
                     {PAGE_SIZE_OPTIONS.map((n) => (
-                      <option key={n} value={n}>{n}</option>
+                      <option key={n} value={String(n)}>
+                        {n}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -677,18 +686,18 @@ export default function KitchenPlanningPage() {
               </tbody>
             </table>
           </div>
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-2 lg:px-6 py-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-medium">{start + 1}</span> to{' '}
-                <span className="font-medium">{Math.min(start + pageSize, totalRows)}</span> of{' '}
-                <span className="font-medium">{totalRows}</span> rows
-              </p>
+          {/* Pagination + row range (always show when there are rows so page size changes are visible) */}
+          <div className="px-2 lg:px-6 py-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-gray-600">
+              Showing <span className="font-medium">{totalRows === 0 ? 0 : start + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(start + pageSize, totalRows)}</span> of{' '}
+              <span className="font-medium">{totalRows}</span> rows
+            </p>
+            {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setTablePage((p) => Math.max(1, p - 1))}
                   disabled={currentPage <= 1}
                   className="px-2 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
                 >
@@ -699,15 +708,15 @@ export default function KitchenPlanningPage() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage >= totalPages}
                   className="px-2 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
                 >
                   Next
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
           )
         })()

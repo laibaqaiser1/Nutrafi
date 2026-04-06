@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
+import { DeleteMealPlanButton } from '@/components/meal-plans/DeleteMealPlanButton'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 
 interface MealPlanItem {
@@ -413,7 +414,10 @@ export default function EditMealPlanPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-lg font-bold text-gray-900 mb-3">Edit Meal Plan</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h1 className="text-lg font-bold text-gray-900">Edit Meal Plan</h1>
+        <DeleteMealPlanButton mealPlanId={String(mealPlan.id)} customerName={mealPlan.customer.fullName} />
+      </div>
       <div className="bg-white shadow rounded p-3 mb-3">
         <p className="text-sm text-gray-600">
           <strong>Customer:</strong> {mealPlan.customer.fullName}

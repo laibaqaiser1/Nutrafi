@@ -188,3 +188,38 @@ export async function PUT(
   }
 }
 
+// DELETE - Remove meal plan (items cascade; payments unlinked so history is kept)
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession()
+    const { id: idParam } = await params
+    const id = parseIdParam(idParam)
+    if (id === null) {
+      return NextResponse.json({ error: 'Invalid meal plan ID' }, { status: 400 })
+    }
+    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const existing = await prisma.mealPlan.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.updateMany({
+        where: { mealPlanId: id },
+        data: { mealPlanId: null },
+      })
+      await tx.mealPlan.delete({ where: { id } })
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('Error deleting meal plan:', error)
+    return NextResponse.json({ error: 'Failed to delete meal plan' }, { status: 500 })
+  }
+}

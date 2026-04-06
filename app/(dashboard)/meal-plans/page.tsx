@@ -39,7 +39,8 @@ export default function MealPlansPage() {
   const [total, setTotal] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const itemsPerPage = 10
+  const [pageSize, setPageSize] = useState(10)
+  const PAGE_SIZE_OPTIONS = [10, 20, 50] as const
   const [filters, setFilters] = useState({
     status: '',
     customerName: '',
@@ -66,7 +67,7 @@ export default function MealPlansPage() {
 
   useEffect(() => {
     fetchMealPlans()
-  }, [currentPage, filters.status])
+  }, [currentPage, filters.status, pageSize])
 
   const fetchMealPlans = async (pageOverride?: number) => {
     setLoading(true)
@@ -76,14 +77,14 @@ export default function MealPlansPage() {
       if (filters.status) params.append('status', filters.status)
       if (filters.customerName.trim()) params.append('customer', filters.customerName.trim())
       params.append('page', page.toString())
-      params.append('limit', itemsPerPage.toString())
+      params.append('limit', pageSize.toString())
 
       const response = await fetch(`/api/meal-plans?${params.toString()}`, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setMealPlans(data.mealPlans || data)
         setTotal(data.total || data.length || 0)
-        setTotalPages(data.totalPages || Math.ceil((data.total || data.length || 0) / itemsPerPage))
+        setTotalPages(data.totalPages || Math.ceil((data.total || data.length || 0) / pageSize))
         if (pageOverride !== undefined) setCurrentPage(pageOverride)
       }
     } catch (error) {
@@ -205,30 +206,78 @@ export default function MealPlansPage() {
               
               {/* Pagination */}
               {total > 0 && (
-                <div className="bg-white px-2 lg:px-4 py-2 lg:py-3 flex items-center justify-between border-t border-gray-200 sm:px-3 lg:px-6 text-sm">
-                  <div className="flex-1 flex justify-between sm:hidden">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1 || loading}
-                      className="relative inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages || loading}
-                      className="ml-2 relative inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
+                <div className="bg-white px-2 lg:px-4 py-2 lg:py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 sm:px-3 lg:px-6 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3 sm:hidden">
+                    <div className="flex items-center gap-2 text-xs">
+                      <label htmlFor="meal-plans-page-size-sm" className="text-gray-600 whitespace-nowrap">
+                        Rows per page
+                      </label>
+                      <select
+                        id="meal-plans-page-size-sm"
+                        value={String(pageSize)}
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value, 10)
+                          if (!Number.isNaN(n) && n > 0) {
+                            setPageSize(n)
+                            setCurrentPage(1)
+                          }
+                        }}
+                        className="px-2 py-1 border border-gray-300 rounded text-gray-900 text-xs"
+                      >
+                        {PAGE_SIZE_OPTIONS.map((n) => (
+                          <option key={n} value={String(n)}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1 || loading}
+                        className="relative inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages || loading}
+                        className="relative inline-flex items-center px-2 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
-                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
+                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between sm:gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                       <p className="text-xs text-gray-700">
-                        Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                        <span className="font-medium">{Math.min(currentPage * itemsPerPage, total)}</span> of{' '}
+                        Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to{' '}
+                        <span className="font-medium">{Math.min(currentPage * pageSize, total)}</span> of{' '}
                         <span className="font-medium">{total}</span> meal plans
                       </p>
+                      <div className="flex items-center gap-2 text-xs">
+                        <label htmlFor="meal-plans-page-size" className="text-gray-600 whitespace-nowrap">
+                          Rows per page
+                        </label>
+                        <select
+                          id="meal-plans-page-size"
+                          value={String(pageSize)}
+                          onChange={(e) => {
+                            const n = parseInt(e.target.value, 10)
+                            if (!Number.isNaN(n) && n > 0) {
+                              setPageSize(n)
+                              setCurrentPage(1)
+                            }
+                          }}
+                          className="px-2 py-1 border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-nutrafi-primary focus:border-transparent"
+                        >
+                          {PAGE_SIZE_OPTIONS.map((n) => (
+                            <option key={n} value={String(n)}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div>
                       <nav className="relative z-0 inline-flex rounded shadow-sm -space-x-px" aria-label="Pagination">
