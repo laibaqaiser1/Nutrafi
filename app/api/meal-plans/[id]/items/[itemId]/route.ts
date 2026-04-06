@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
+import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { z } from 'zod'
 
 const mealPlanItemUpdateSchema = z.object({
@@ -26,6 +27,8 @@ const mealPlanItemUpdateSchema = z.object({
   deliveryType: z.enum(['delivery', 'pickup']).optional(),
   location: z.string().optional(),
   isSkipped: z.boolean().optional(),
+  /** True = not counted toward balance (clears delivery). False = clear the flag only. */
+  wrongDelivery: z.boolean().optional(),
   customNote: z.string().optional().nullable(),
 })
 
@@ -101,6 +104,41 @@ export async function PATCH(
       ...(data.customNote !== undefined && { customNote: data.customNote === null || (typeof data.customNote === 'string' && data.customNote.trim() === '') ? null : String(data.customNote).trim() }),
       ...(data.isSkipped !== undefined && { isSkipped: data.isSkipped }),
       ...dishData,
+    }
+
+    if (data.wrongDelivery === true && (item.isSkipped || data.isSkipped === true)) {
+      return NextResponse.json(
+        { error: 'Skipped meals cannot be marked as wrong delivery' },
+        { status: 400 }
+      )
+    }
+
+    if (data.isSkipped === true) {
+      updatePayload.wrongDelivery = false
+      updatePayload.isDelivered = false
+      updatePayload.deliveredAt = null
+    }
+
+    if (data.wrongDelivery === true) {
+      updatePayload.wrongDelivery = true
+      updatePayload.isDelivered = false
+      updatePayload.deliveredAt = null
+    } else if (data.wrongDelivery === false) {
+      updatePayload.wrongDelivery = false
+    }
+
+    const syncBalance = data.wrongDelivery !== undefined
+
+    if (syncBalance) {
+      const { updated, remainingMeals } = await prisma.$transaction(async (tx) => {
+        const updated = await tx.mealPlanItem.update({
+          where: { id: itemId },
+          data: updatePayload,
+        })
+        const remainingMeals = await syncMealPlanRemainingMeals(tx, id)
+        return { updated, remainingMeals }
+      })
+      return NextResponse.json({ ...updated, remainingMeals })
     }
 
     const updated = await prisma.mealPlanItem.update({

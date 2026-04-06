@@ -177,6 +177,7 @@ export const MealPlanItemScalarFieldEnum = {
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   isDelivered: 'isDelivered',
+  wrongDelivery: 'wrongDelivery',
   deliveredAt: 'deliveredAt',
   allergens: 'allergens',
   calories: 'calories',

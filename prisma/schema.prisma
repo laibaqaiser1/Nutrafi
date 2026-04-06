@@ -127,6 +127,8 @@ model MealPlanItem {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   isDelivered      Boolean      @default(false)
+  /// Marked when delivery was incorrect; not counted toward remaining balance (isDelivered cleared)
+  wrongDelivery    Boolean      @default(false)
   deliveredAt      DateTime?
   allergens        String?
   calories         Int?

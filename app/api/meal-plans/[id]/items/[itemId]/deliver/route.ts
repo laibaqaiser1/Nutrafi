@@ -36,6 +36,7 @@ export async function POST(
         data: {
           isDelivered: true,
           deliveredAt: new Date(),
+          wrongDelivery: false,
         },
         include: {
           mealPlan: true,
@@ -92,6 +93,7 @@ export async function DELETE(
         data: {
           isDelivered: false,
           deliveredAt: null,
+          wrongDelivery: false,
         },
         include: {
           mealPlan: true,

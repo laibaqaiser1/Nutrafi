@@ -74,7 +74,7 @@ export function DeleteMealPlanButton({ mealPlanId, customerName, className = '' 
             </h3>
             <p className="mt-2 text-sm text-gray-600">
               This will permanently remove the plan for <strong>{customerName}</strong> and all scheduled
-              meals. Payment records stay on the customer but will no longer be linked to this plan.
+              meals.
             </p>
             <div className="mt-6 flex flex-wrap justify-end gap-2">
               <button

@@ -31,6 +31,7 @@ export async function GET(
         mealPlanId: id,
         date: new Date(date),
         isSkipped: false,
+        wrongDelivery: false,
       },
     })
 

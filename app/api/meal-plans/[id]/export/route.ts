@@ -3,6 +3,7 @@ import { getServerSession } from '@/lib/auth-helpers'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { format, addDays } from 'date-fns'
+import { getMondayOfPlanWeek } from '@/lib/meal-plan-weeks'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { formatCategory } from '@/lib/utils'
@@ -87,8 +88,7 @@ export async function GET(
     let filenameSuffix = format(new Date(), 'yyyy-MM-dd')
 
     if (weekNumber !== null && weekNumber >= 1 && mealPlan.startDate) {
-      const planStart = new Date(mealPlan.startDate)
-      const weekStart = addDays(planStart, (weekNumber - 1) * 7)
+      const weekStart = getMondayOfPlanWeek(mealPlan.startDate, weekNumber)
       const weekEnd = addDays(weekStart, 6)
       const weekStartStr = format(weekStart, 'yyyy-MM-dd')
       const weekEndStr = format(weekEnd, 'yyyy-MM-dd')
@@ -206,7 +206,13 @@ export async function GET(
         sumP += num(item.protein)
         sumC += num(item.carbs)
         sumF += num(item.fats)
-        const status = item.isSkipped ? 'Skipped' : item.isDelivered ? 'Delivered' : 'Scheduled'
+        const status = item.isSkipped
+          ? 'Skipped'
+          : item.wrongDelivery && !item.isDelivered
+            ? 'Wrong delivery'
+            : item.isDelivered
+              ? 'Delivered'
+              : 'Scheduled'
         const time = formatTime12h(item.timeSlot || null)
         const dish = item.dishName || (item.isSkipped ? '—' : 'Not set')
         const ingredients = item.ingredients || (item.isSkipped ? '—' : '')

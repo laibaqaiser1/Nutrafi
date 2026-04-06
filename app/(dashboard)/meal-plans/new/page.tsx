@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { format, addDays, eachDayOfInterval } from 'date-fns'
+import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns'
+import { getPlanWeekNumber, getMondayOfPlanWeek, planWeekDayStringsOnOrAfterStart } from '@/lib/meal-plan-weeks'
 import { useNotification } from '@/components/notifications/NotificationContext'
 
 interface Customer {
@@ -70,8 +71,7 @@ function countContractMealSlots(input: {
   for (const d of dateRange) {
     const dateStr = format(d, 'yyyy-MM-dd')
     if (skippedDays.includes(dateStr)) continue
-    const daysDiff = Math.floor((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+    const week = getPlanWeekNumber(dateStr, startDateStr)
     if (useWeekSkips && skippedWeeks.includes(week)) continue
     slots += mealsPerDay
   }
@@ -332,11 +332,8 @@ export default function NewMealPlanPage() {
       } else if (formData.startDate && formData.days && formData.mealsPerDay && effectiveMealPlanTimeSlots(formData.timeSlots).length > 0) {
         // Check if we need to generate meals for visible weeks
         const hasMealsForVisibleWeeks = visibleWeeks.some(week => {
-          const startDate = new Date(formData.startDate)
           return formData.meals.some(meal => {
-            const mealDate = new Date(meal.date)
-            const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-            const mealWeek = Math.max(1, Math.floor(daysDiff / 7) + 1)
+            const mealWeek = getPlanWeekNumber(meal.date, formData.startDate)
             return mealWeek === week
           })
         })
@@ -490,16 +487,18 @@ export default function NewMealPlanPage() {
       const effectiveVisibleDaysByWeek: Record<number, string[]> = { ...visibleDaysByWeek }
       visibleWeeks.forEach((week) => {
         if (!effectiveVisibleDaysByWeek[week]?.length) {
-          const weekStartDay = (week - 1) * 7
-          const weekStartDate = addDays(startDate, weekStartDay)
-          effectiveVisibleDaysByWeek[week] = [format(weekStartDate, 'yyyy-MM-dd')]
+          if (week === 1) {
+            effectiveVisibleDaysByWeek[week] = [format(startDate, 'yyyy-MM-dd')]
+          } else {
+            effectiveVisibleDaysByWeek[week] = [
+              format(getMondayOfPlanWeek(formData.startDate, week), 'yyyy-MM-dd'),
+            ]
+          }
         }
       })
 
       const existingMeals = formData.meals.filter((meal) => {
-        const mealDate = new Date(meal.date)
-        const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+        const week = getPlanWeekNumber(meal.date, formData.startDate)
         if (!visibleWeeks.includes(week)) return true
         if (effectiveVisibleDaysByWeek[week]?.includes(meal.date)) return true
         if (meal.dishId || meal.dishName) return true
@@ -508,9 +507,7 @@ export default function NewMealPlanPage() {
 
       const mealKeys = new Set<string>()
       for (const meal of existingMeals) {
-        const mealDate = new Date(meal.date)
-        const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+        const week = getPlanWeekNumber(meal.date, formData.startDate)
         if (!visibleWeeks.includes(week)) continue
         if (!effectiveVisibleDaysByWeek[week]?.includes(meal.date)) continue
         const dayMeals = existingMeals.filter((m) => m.date === meal.date)
@@ -520,11 +517,17 @@ export default function NewMealPlanPage() {
 
       const newMeals: typeof formData.meals = []
 
-      dates.forEach((date) => {
-        const dateStr = format(date, 'yyyy-MM-dd')
-        const mealDate = new Date(date)
-        const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+      const dateStrSet = new Set<string>()
+      dates.forEach((d) => dateStrSet.add(format(d, 'yyyy-MM-dd')))
+      visibleWeeks.forEach((w) => {
+        for (const key of planWeekDayStringsOnOrAfterStart(formData.startDate, w)) {
+          dateStrSet.add(key)
+        }
+      })
+      const sortedDateStrs = [...dateStrSet].sort()
+
+      sortedDateStrs.forEach((dateStr) => {
+        const week = getPlanWeekNumber(dateStr, formData.startDate)
 
         if (!visibleWeeks.includes(week)) return
         if (!effectiveVisibleDaysByWeek[week]?.includes(dateStr)) return
@@ -575,21 +578,12 @@ export default function NewMealPlanPage() {
   // Function to add a day to a week
   const addDayToWeek = (week: number) => {
     if (!formData.startDate || !formData.days) return
-    
-    const startDate = new Date(formData.startDate)
-    const days = parseInt(formData.days)
-    const weekStartDay = (week - 1) * 7
-    const weekEndDay = Math.min(weekStartDay + 6, days - 1)
-    const weekStartDate = addDays(startDate, weekStartDay)
-    const weekEndDate = addDays(startDate, weekEndDay)
-    const allWeekDates = eachDayOfInterval({ start: weekStartDate, end: weekEndDate })
-    const allWeekDateStrs = allWeekDates.map(d => format(d, 'yyyy-MM-dd'))
-    
-    // Get currently visible days for this week
+
+    const eligibleWeekDateStrs = planWeekDayStringsOnOrAfterStart(formData.startDate, week)
+
     const currentVisibleDays = visibleDaysByWeek[week] || []
-    
-    // Find the next day to add (first day that's not visible)
-    const nextDay = allWeekDateStrs.find(dateStr => !currentVisibleDays.includes(dateStr))
+
+    const nextDay = eligibleWeekDateStrs.find((dateStr) => !currentVisibleDays.includes(dateStr))
     
     if (!nextDay) {
       toast.info('All days for this week are already visible.')
@@ -665,7 +659,8 @@ export default function NewMealPlanPage() {
     
     const startDate = new Date(formData.startDate)
     const days = parseInt(formData.days)
-    const maxWeek = Math.ceil(days / 7)
+    const planEndStr = format(addDays(startDate, days - 1), 'yyyy-MM-dd')
+    const maxWeek = getPlanWeekNumber(planEndStr, formData.startDate)
     
     // Find the next week to add
     const nextWeek = Math.max(...visibleWeeks) + 1
@@ -689,19 +684,13 @@ export default function NewMealPlanPage() {
     const updatedVisibleWeeks = [...visibleWeeks, nextWeek].sort((a, b) => a - b)
     setVisibleWeeks(updatedVisibleWeeks)
     
-    // Initialize visible days for the new week - only show first day
-    const weekStartDay = (nextWeek - 1) * 7
-    const weekStartDate = addDays(startDate, weekStartDay)
-    const firstDateStr = format(weekStartDate, 'yyyy-MM-dd')
-    setVisibleDaysByWeek(prev => ({
+    const firstDateStr = format(getMondayOfPlanWeek(formData.startDate, nextWeek), 'yyyy-MM-dd')
+    setVisibleDaysByWeek((prev) => ({
       ...prev,
-      [nextWeek]: [firstDateStr]
+      [nextWeek]: [firstDateStr],
     }))
-    
-    // Generate meals for the new week immediately - only for the first day
-    const weekEndDay = Math.min(weekStartDay + 6, days - 1)
-    const weekEndDate = addDays(startDate, weekEndDay)
-    const weekDates = [weekStartDate] // Only first day initially
+
+    const weekDates = [parseISO(firstDateStr)]
     
     const timeSlots = effectiveMealPlanTimeSlots(formData.timeSlots)
     if (timeSlots.length === 0) {
@@ -826,11 +815,7 @@ export default function NewMealPlanPage() {
         }
         
         const date = meal.date
-        const mealDate = new Date(date)
-        const startDate = new Date(formData.startDate)
-        const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        // Ensure week number is always >= 1 (no Week 0)
-        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+        const week = getPlanWeekNumber(date, formData.startDate)
         
         // Skip if day is skipped
         if (formData.skippedDays.includes(date)) {
@@ -878,11 +863,7 @@ export default function NewMealPlanPage() {
       // Create skipped meal plan items for skipped days/weeks
       const skippedMeals = formData.meals.filter(meal => {
         const date = meal.date
-        const mealDate = new Date(date)
-        const startDate = new Date(formData.startDate)
-        const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        // Ensure week number is always >= 1 (no Week 0)
-        const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+        const week = getPlanWeekNumber(date, formData.startDate)
         
         if (formData.skippedDays.includes(date)) return true
         if (
@@ -1594,11 +1575,7 @@ export default function NewMealPlanPage() {
           const mealsByWeek: Record<number, Record<string, typeof formData.meals>> = {}
           if (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') {
             Object.entries(mealsByDay).forEach(([date, meals]) => {
-              const mealDate = new Date(date)
-              const startDate = new Date(formData.startDate)
-              const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-              // Ensure week number is always >= 1 (no Week 0)
-              const week = Math.max(1, Math.floor(daysDiff / 7) + 1)
+              const week = getPlanWeekNumber(date, formData.startDate)
               if (!mealsByWeek[week]) {
                 mealsByWeek[week] = {}
               }
@@ -1609,12 +1586,9 @@ export default function NewMealPlanPage() {
           // Calculate active meals count (excluding skipped)
           const stepActiveMealsCount = formData.meals.filter(meal => {
             const date = meal.date
-            const mealDate = new Date(date)
-            const startDate = formData.startDate ? new Date(formData.startDate) : null
-            if (!startDate) return true
+            if (!formData.startDate) return true
             
-            const daysDiff = Math.floor((mealDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-            const week = Math.floor(daysDiff / 7) + 1
+            const week = getPlanWeekNumber(date, formData.startDate)
             
             if (formData.skippedDays.includes(date)) return false
             if (
@@ -1629,7 +1603,13 @@ export default function NewMealPlanPage() {
           // Calculate current meals count and remaining meals
           const currentMealsCount = formData.meals.length
           const remainingMeals = totalMealsAllowed - currentMealsCount
-          const maxWeek = formData.days ? Math.ceil(parseInt(formData.days) / 7) : 0
+          const maxWeek =
+            formData.days && formData.startDate
+              ? getPlanWeekNumber(
+                  format(addDays(new Date(formData.startDate), parseInt(formData.days, 10) - 1), 'yyyy-MM-dd'),
+                  formData.startDate
+                )
+              : 0
           const canAddMoreWeeks = Math.max(...visibleWeeks) < maxWeek && currentMealsCount < totalMealsAllowed
 
           return (
@@ -2157,15 +2137,14 @@ export default function NewMealPlanPage() {
                             {/* Add Day Button */}
                             {(() => {
                               if (!formData.startDate || !formData.days) return null
-                              const startDate = new Date(formData.startDate)
-                              const weekStartDay = (week - 1) * 7
-                              const weekStartDate = addDays(startDate, weekStartDay)
-                              const weekEndDay = Math.min(weekStartDay + 6, parseInt(formData.days) - 1)
-                              const weekEndDate = addDays(startDate, weekEndDay)
-                              const allWeekDates = eachDayOfInterval({ start: weekStartDate, end: weekEndDate })
-                              const allWeekDateStrs = allWeekDates.map(d => format(d, 'yyyy-MM-dd'))
+                              const eligibleWeekDateStrs = planWeekDayStringsOnOrAfterStart(
+                                formData.startDate,
+                                week
+                              )
                               const visibleDays = visibleDaysByWeek[week] || []
-                              const hasMoreDays = allWeekDateStrs.length > visibleDays.length
+                              const hasMoreDays = eligibleWeekDateStrs.some(
+                                (d) => !visibleDays.includes(d)
+                              )
                               
                               if (hasMoreDays) {
                                 return (

@@ -4,6 +4,13 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format, addDays, eachDayOfInterval } from 'date-fns'
+import {
+  getPlanWeekNumber as getWeekNumber,
+  getMondayOfPlanWeek,
+  nextMissingDayInPlanWeek,
+  dayOffsetBetweenPlanWeeks,
+  planWeekDayStringsOnOrAfterStart,
+} from '@/lib/meal-plan-weeks'
 import { formatCategory } from '@/lib/utils'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { useNotification } from '@/components/notifications/NotificationContext'
@@ -59,6 +66,7 @@ interface MealPlan {
     deliveryLocation: string | null
     isSkipped: boolean
     isDelivered: boolean
+    wrongDelivery?: boolean
     deliveredAt: string | null
     customNote: string | null
   }>
@@ -72,18 +80,23 @@ interface MealPlan {
   }>
 }
 
-/** Non-skipped rows count toward the plan meal cap; skipped slots free capacity for new days/meals. */
-function countActiveMealSlots(items: { isSkipped: boolean }[]): number {
-  return items.filter((i) => !i.isSkipped).length
+/** Skipped and wrong-delivery rows do not count toward caps or schedule nutrition. */
+function itemCountsForPlanSchedule(item: { isSkipped: boolean; wrongDelivery?: boolean }): boolean {
+  return !item.isSkipped && !item.wrongDelivery
 }
 
-/** Days with at least one non-skipped meal count toward the plan day budget. */
+/** Rows that count toward total meal slots and per-day limits (excludes skipped + wrong delivery). */
+function countActiveMealSlots(items: { isSkipped: boolean; wrongDelivery?: boolean }[]): number {
+  return items.filter(itemCountsForPlanSchedule).length
+}
+
+/** Days with at least one counting meal toward the plan day budget. */
 function countUniqueActiveDays(
-  items: { date: string; isSkipped: boolean }[]
+  items: { date: string; isSkipped: boolean; wrongDelivery?: boolean }[]
 ): number {
   const days = new Set<string>()
   for (const item of items) {
-    if (!item.isSkipped) {
+    if (itemCountsForPlanSchedule(item)) {
       days.add(format(new Date(item.date), 'yyyy-MM-dd'))
     }
   }
@@ -137,6 +150,7 @@ export default function MealPlanViewPage() {
   const [savingDish, setSavingDish] = useState(false)
   const [skippingMeal, setSkippingMeal] = useState(false)
   const [removingDay, setRemovingDay] = useState(false)
+  const [settingWrongDelivery, setSettingWrongDelivery] = useState(false)
   const [dishDropdownOpen, setDishDropdownOpen] = useState(false)
   const [dishSearchQuery, setDishSearchQuery] = useState('')
   const [showDishDetails, setShowDishDetails] = useState(false)
@@ -208,16 +222,6 @@ export default function MealPlanViewPage() {
     } catch (error) {
       console.error('Error fetching dishes:', error)
     }
-  }
-
-  // Helper function to calculate week number from start date
-  const getWeekNumber = (date: string, startDate: string | null): number => {
-    if (!startDate) return 1
-    const mealDate = new Date(date)
-    const start = new Date(startDate)
-    const daysDiff = Math.floor((mealDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    // Ensure week number is always >= 1 (no Week 0)
-    return Math.max(1, Math.floor(daysDiff / 7) + 1)
   }
 
   const fetchMealPlan = async (id: string) => {
@@ -294,7 +298,12 @@ export default function MealPlanViewPage() {
             remainingMeals: data.remainingMeals,
             mealPlanItems: mealPlan.mealPlanItems.map(item =>
               item.id === itemId
-                ? { ...item, isDelivered: data.mealPlanItem.isDelivered, deliveredAt: data.mealPlanItem.deliveredAt }
+                ? {
+                    ...item,
+                    isDelivered: data.mealPlanItem.isDelivered,
+                    deliveredAt: data.mealPlanItem.deliveredAt,
+                    wrongDelivery: data.mealPlanItem.wrongDelivery ?? false,
+                  }
                 : item
             ),
           })
@@ -328,7 +337,15 @@ export default function MealPlanViewPage() {
         setMealPlan({
           ...mealPlan,
           mealPlanItems: mealPlan.mealPlanItems.map(item =>
-            item.id === itemId ? { ...item, isSkipped: data.isSkipped ?? isSkipped } : item
+            item.id === itemId
+              ? {
+                  ...item,
+                  isSkipped: data.isSkipped ?? isSkipped,
+                  wrongDelivery: data.wrongDelivery ?? false,
+                  isDelivered: data.isDelivered ?? item.isDelivered,
+                  deliveredAt: data.deliveredAt ?? item.deliveredAt,
+                }
+              : item
           ),
         })
         if (selectedItem && selectedItem.id === itemId) {
@@ -344,6 +361,54 @@ export default function MealPlanViewPage() {
       toast.error('Failed to update skip status')
     } finally {
       setSkippingMeal(false)
+    }
+  }
+
+  const handleWrongDelivery = async (itemId: string, wrong: boolean) => {
+    if (!mealPlan) return
+    setSettingWrongDelivery(true)
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wrongDelivery: wrong }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const remainingMeals =
+          typeof data.remainingMeals === 'number' ? data.remainingMeals : mealPlan.remainingMeals
+        setMealPlan({
+          ...mealPlan,
+          remainingMeals,
+          mealPlanItems: mealPlan.mealPlanItems.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  wrongDelivery: data.wrongDelivery ?? wrong,
+                  isDelivered: data.isDelivered ?? false,
+                  deliveredAt: data.deliveredAt ?? null,
+                }
+              : item
+          ),
+        })
+        if (selectedItem?.id === itemId) {
+          setSelectedItem({
+            ...selectedItem,
+            wrongDelivery: data.wrongDelivery ?? wrong,
+            isDelivered: data.isDelivered ?? false,
+            deliveredAt: data.deliveredAt ?? null,
+          })
+        }
+        toast.success(wrong ? 'Marked as wrong delivery — not counted toward balance' : 'Wrong delivery flag cleared')
+      } else {
+        const err = await response.json().catch(() => ({}))
+        toast.error(typeof err.error === 'string' ? err.error : 'Failed to update wrong delivery')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to update wrong delivery')
+    } finally {
+      setSettingWrongDelivery(false)
     }
   }
 
@@ -752,11 +817,9 @@ export default function MealPlanViewPage() {
         return
       }
       
-      // Calculate dates for the new week - only first day
-      const startDate = new Date(mealPlan.startDate)
-      const weekStartDay = (nextWeek - 1) * 7
-      const weekStartDate = addDays(startDate, weekStartDay)
-      const firstDate = format(weekStartDate, 'yyyy-MM-dd')
+      // New week = next calendar Mon–Sun block (Monday first)
+      const weekMonday = getMondayOfPlanWeek(mealPlan.startDate, nextWeek)
+      const firstDate = format(weekMonday, 'yyyy-MM-dd')
       
       const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
 
@@ -833,64 +896,53 @@ export default function MealPlanViewPage() {
         return
       }
       
-      const startDate = new Date(mealPlan.startDate)
-      const weekStartDay = (week - 1) * 7
-      const weekStartDate = addDays(startDate, weekStartDay)
-      
-      // Get existing visible days for this week
-      const existingDays = visibleDaysByWeek[week] || []
-      const daysInWeek = existingDays.length
-      
-      // Check if we've reached 7 days in this week
-      if (daysInWeek >= 7) {
-        toast.warning('A week can only have 7 days.')
-        setAddingDay(false)
-        return
-      }
-      
-      // Check if adding this day would exceed remaining days
-      // Get days already in this week from meal items
+      // Days already in this calendar week (Mon–Sun) from meal items
       const weekDates = new Set<string>()
       mealPlan.mealPlanItems.forEach(item => {
         const itemWeek = getWeekNumber(item.date, mealPlan.startDate)
         if (itemWeek === week) {
-          const date = format(new Date(item.date), 'yyyy-MM-dd')
-          weekDates.add(date)
+          weekDates.add(format(new Date(item.date), 'yyyy-MM-dd'))
         }
       })
       const currentDaysInWeek = weekDates.size
-      
-      // Calculate how many days we can still add to this week
-      // We can add up to (7 - currentDaysInWeek) days, but not more than remainingDays
-      const daysCanAddToWeek = Math.min(7 - currentDaysInWeek, remainingDays)
-      
-      // We can add a day if we have remaining days and haven't reached the week limit
+      const maxDaysInThisWeek = planWeekDayStringsOnOrAfterStart(mealPlan.startDate, week).length
+
+      if (currentDaysInWeek >= maxDaysInThisWeek) {
+        toast.warning('All days for this week are already added.')
+        setAddingDay(false)
+        return
+      }
+
+      const daysCanAddToWeek = Math.min(maxDaysInThisWeek - currentDaysInWeek, remainingDays)
+
       if (daysCanAddToWeek <= 0) {
         if (remainingDays <= 0) {
           toast.warning(`Cannot add more days. The meal plan is limited to ${maxDays} days.`)
         } else {
-          toast.warning(`Cannot add more days to this week. A week can only have 7 days.`)
+          toast.warning(`Cannot add more days to this week.`)
         }
         setAddingDay(false)
         return
       }
-      
+
       const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
       const mealsPerDay = mealPlan.mealsPerDay
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-      
+
       if (activeMealSlots + mealsPerDay > totalMealsAllowed) {
         toast.warning(`Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`)
         setAddingDay(false)
         return
       }
-      
-      // Calculate the next day index based on current days in week
-      const nextDayIndex = currentDaysInWeek
-      
-      // Calculate the next day date
-      const nextDayDate = addDays(weekStartDate, nextDayIndex)
-      const nextDayDateStr = format(nextDayDate, 'yyyy-MM-dd')
+
+      // Fill earliest missing calendar day in Mon–Sun on or after plan start
+      const nextDay = nextMissingDayInPlanWeek(mealPlan.startDate, week, weekDates)
+      if (!nextDay) {
+        toast.warning('No free day left in this week.')
+        setAddingDay(false)
+        return
+      }
+      const nextDayDateStr = format(nextDay, 'yyyy-MM-dd')
       
       const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
 
@@ -948,7 +1000,7 @@ export default function MealPlanViewPage() {
         format(new Date(item.date), 'yyyy-MM-dd') === date
       )
       
-      const activeMealsOnDay = existingMeals.filter((item) => !item.isSkipped).length
+      const activeMealsOnDay = existingMeals.filter((item) => itemCountsForPlanSchedule(item)).length
       if (activeMealsOnDay >= mealPlan.mealsPerDay) {
         toast.warning(`This day already has ${mealPlan.mealsPerDay} active meals.`)
         return
@@ -1040,11 +1092,7 @@ export default function MealPlanViewPage() {
         return
       }
       
-      // Calculate date offset (7 days per week)
-      const startDate = new Date(mealPlan.startDate)
-      const sourceWeekStartDay = (sourceWeek - 1) * 7
-      const targetWeekStartDay = (nextWeek - 1) * 7
-      const dayOffset = targetWeekStartDay - sourceWeekStartDay
+      const dayOffset = dayOffsetBetweenPlanWeeks(mealPlan.startDate, sourceWeek, nextWeek)
       
       // Create new items for the next week with same dishes (keep original time slots)
       const mealItemPromises = sourceItems.map(item => {
@@ -1142,11 +1190,12 @@ export default function MealPlanViewPage() {
   const dailyTotals: Record<string, { calories: number; protein: number; carbs: number; fats: number }> = {}
   Object.values(itemsByWeek).forEach(weekDates => {
     Object.entries(weekDates).forEach(([date, items]) => {
+      const forTotals = items.filter((item) => !item.wrongDelivery)
       dailyTotals[date] = {
-        calories: items.reduce((sum, item) => sum + (item.calories || 0), 0),
-        protein: items.reduce((sum, item) => sum + (item.protein || 0), 0),
-        carbs: items.reduce((sum, item) => sum + (item.carbs || 0), 0),
-        fats: items.reduce((sum, item) => sum + (item.fats || 0), 0),
+        calories: forTotals.reduce((sum, item) => sum + (item.calories || 0), 0),
+        protein: forTotals.reduce((sum, item) => sum + (item.protein || 0), 0),
+        carbs: forTotals.reduce((sum, item) => sum + (item.carbs || 0), 0),
+        fats: forTotals.reduce((sum, item) => sum + (item.fats || 0), 0),
       }
     })
   })
@@ -1163,6 +1212,7 @@ export default function MealPlanViewPage() {
     }
     Object.values(weekDates).forEach(items => {
       items.forEach(item => {
+        if (item.wrongDelivery) return
         weeklyTotals[week].calories += item.calories || 0
         weeklyTotals[week].protein += item.protein || 0
         weeklyTotals[week].carbs += item.carbs || 0
@@ -1577,7 +1627,8 @@ export default function MealPlanViewPage() {
                           const items = weekDates[date] || []
                           const dayTotal = dailyTotals[date] || { calories: 0, protein: 0, carbs: 0, fats: 0 }
                           const mealsCount = items.length
-                          const hasMissingMeals = mealsCount < mealPlan.mealsPerDay
+                          const countingMealsOnDay = items.filter((item) => itemCountsForPlanSchedule(item)).length
+                          const hasMissingMeals = countingMealsOnDay < mealPlan.mealsPerDay
                           
                           return (
                             <React.Fragment key={date}>
@@ -1627,6 +1678,10 @@ export default function MealPlanViewPage() {
                                     {item.isSkipped ? (
                                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                         Skipped
+                                      </span>
+                                    ) : item.wrongDelivery && !item.isDelivered ? (
+                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-900">
+                                        Wrong delivery
                                       </span>
                                     ) : item.isDelivered ? (
                                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -1700,8 +1755,12 @@ export default function MealPlanViewPage() {
                                   }
                                 })
                                 const currentDaysInWeek = weekDatesSet.size
-                                
-                                const canAddDayInWeek = currentDaysInWeek < 7
+                                const maxDaysInThisWeek = planWeekDayStringsOnOrAfterStart(
+                                  mealPlan.startDate,
+                                  week
+                                ).length
+
+                                const canAddDayInWeek = currentDaysInWeek < maxDaysInThisWeek
                                 const canAddDay = canAddDayInWeek && remainingDays > 0
                                 
                                 const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
@@ -1863,26 +1922,37 @@ export default function MealPlanViewPage() {
                         ? 'SKIPPED'
                         : selectedItem.isDelivered
                           ? 'DELIVERED'
-                          : (!selectedItem.dishId && !selectedItem.dishName)
-                            ? 'INACTIVE'
-                            : 'ACTIVE'
+                          : selectedItem.wrongDelivery
+                            ? 'WRONG_DELIVERY'
+                            : (!selectedItem.dishId && !selectedItem.dishName)
+                              ? 'INACTIVE'
+                              : 'ACTIVE'
                     }
                     onChange={(e) => {
-                      const v = e.target.value as 'ACTIVE' | 'INACTIVE' | 'SKIPPED' | 'DELIVERED'
+                      const v = e.target.value as
+                        | 'ACTIVE'
+                        | 'INACTIVE'
+                        | 'SKIPPED'
+                        | 'DELIVERED'
+                        | 'WRONG_DELIVERY'
                       if (v === 'SKIPPED') {
                         handleSkipMeal(selectedItem.id, true)
                       } else if (v === 'DELIVERED') {
                         handleMarkAsDelivered(selectedItem.id, true)
+                      } else if (v === 'WRONG_DELIVERY') {
+                        handleWrongDelivery(selectedItem.id, true)
                       } else {
                         if (selectedItem.isSkipped) handleSkipMeal(selectedItem.id, false)
                         if (selectedItem.isDelivered) handleMarkAsDelivered(selectedItem.id, false)
+                        if (selectedItem.wrongDelivery) handleWrongDelivery(selectedItem.id, false)
                       }
                     }}
-                    disabled={skippingMeal}
+                    disabled={skippingMeal || settingWrongDelivery}
                     className="mt-0.5 block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm font-medium text-gray-900 focus:border-nutrafi-primary focus:ring-nutrafi-primary disabled:opacity-50"
                   >
                     <option value="INACTIVE">Inactive</option>
                     <option value="ACTIVE">Active</option>
+                    <option value="WRONG_DELIVERY">Wrong delivery</option>
                     <option value="SKIPPED">Skipped</option>
                     <option value="DELIVERED">Delivered</option>
                   </select>
@@ -2325,6 +2395,19 @@ export default function MealPlanViewPage() {
                       >
                         {selectedItem.isDelivered ? 'Mark as Not Delivered' : 'Mark as Delivered'}
                       </button>
+                      {!selectedItem.isSkipped && (selectedItem.dishId || selectedItem.dishName) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActionsMenuOpen(false)
+                            handleWrongDelivery(selectedItem.id, !selectedItem.wrongDelivery)
+                          }}
+                          disabled={settingWrongDelivery}
+                          className="w-full text-left px-3 py-2 text-sm text-orange-800 hover:bg-orange-50 disabled:opacity-50"
+                        >
+                          {selectedItem.wrongDelivery ? 'Clear wrong delivery' : 'Mark wrong delivery'}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => {

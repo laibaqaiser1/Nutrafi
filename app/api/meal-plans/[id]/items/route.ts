@@ -61,7 +61,7 @@ export async function POST(
       mealPlanRow.totalMeals ?? mealPlanRow.days * mealPlanRow.mealsPerDay
     if (!creatingSkipped && totalMealsCap > 0) {
       const activeCount = await prisma.mealPlanItem.count({
-        where: { mealPlanId: id, isSkipped: false },
+        where: { mealPlanId: id, isSkipped: false, wrongDelivery: false },
       })
       if (activeCount + 1 > totalMealsCap) {
         return NextResponse.json(
@@ -80,6 +80,7 @@ export async function POST(
         where: {
           mealPlanId: id,
           isSkipped: false,
+          wrongDelivery: false,
           date: { gte: dayStart, lte: dayEnd },
         },
       })
