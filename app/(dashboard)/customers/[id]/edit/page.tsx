@@ -13,6 +13,7 @@ interface Customer {
   deliveryArea: string
   status: string
   notes: string | null
+  instructions: string | null
 }
 
 export default function EditCustomerPage() {
@@ -30,6 +31,7 @@ export default function EditCustomerPage() {
     deliveryArea: '',
     status: 'ACTIVE',
     notes: '',
+    instructions: '',
   })
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function EditCustomerPage() {
             deliveryArea: customer.deliveryArea,
             status: customer.status === 'CANCELLED' ? 'INACTIVE' : customer.status,
             notes: customer.notes || '',
+            instructions: customer.instructions || '',
           })
         } else {
           toast.error('Failed to fetch customer')
@@ -174,6 +177,19 @@ export default function EditCustomerPage() {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               rows={3}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Instructions & alerts</label>
+            <p className="text-xs text-gray-500 mb-2">
+              Allergies, dietary needs, or delivery notes — highlighted on the customer profile and on meal plans for this customer.
+            </p>
+            <textarea
+              value={formData.instructions}
+              onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+              className="w-full px-3 py-2 border border-amber-200 rounded-md bg-amber-50/40"
+              rows={3}
+              placeholder="e.g. Allergic to fish; no shellfish"
             />
           </div>
         </div>

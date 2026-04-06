@@ -1015,6 +1015,7 @@ export const CustomerScalarFieldEnum = {
   deliveryArea: 'deliveryArea',
   status: 'status',
   notes: 'notes',
+  instructions: 'instructions',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

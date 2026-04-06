@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { DeleteMealPlanButton } from '@/components/meal-plans/DeleteMealPlanButton'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
+import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
 
 interface MealPlanItem {
   id: string
@@ -36,6 +37,7 @@ interface MealPlan {
   customer: {
     id: string
     fullName: string
+    instructions?: string | null
   }
   plan: {
     id: string
@@ -425,10 +427,11 @@ export default function EditMealPlanPage() {
         <h1 className="text-lg font-bold text-gray-900">Edit Meal Plan</h1>
         <DeleteMealPlanButton mealPlanId={String(mealPlan.id)} customerName={mealPlan.customer.fullName} />
       </div>
-      <div className="bg-white shadow rounded p-3 mb-3">
+      <div className="bg-white shadow rounded p-3 mb-3 space-y-3">
         <p className="text-sm text-gray-600">
           <strong>Customer:</strong> {mealPlan.customer.fullName}
         </p>
+        <CustomerInstructionsBanner instructions={mealPlan.customer.instructions} />
       </div>
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

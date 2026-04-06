@@ -15,6 +15,7 @@ import { formatCategory } from '@/lib/utils'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { DeleteMealPlanButton } from '@/components/meal-plans/DeleteMealPlanButton'
+import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
 
 interface MealPlan {
   id: string
@@ -25,6 +26,7 @@ interface MealPlan {
     email: string | null
     deliveryArea: string
     address: string
+    instructions?: string | null
   }
   plan: {
     id: string
@@ -1264,6 +1266,7 @@ export default function MealPlanViewPage() {
       {/* Customer Info */}
       <div className="bg-white shadow rounded-lg p-3 lg:p-5 mb-3 lg:mb-6">
         <h2 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Customer Information</h2>
+        <CustomerInstructionsBanner instructions={mealPlan.customer.instructions} className="mb-4" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:p-4">
           <div>
             <label className="text-xs font-medium text-gray-500">Name</label>

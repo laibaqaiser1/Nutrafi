@@ -11,6 +11,7 @@ const customerSchema = z.object({
   deliveryArea: z.string().min(1),
   status: z.enum(['ACTIVE', 'INACTIVE', 'PAUSED', 'CANCELLED']).default('ACTIVE'),
   notes: z.string().optional(),
+  instructions: z.string().max(4000).optional(),
 })
 
 // GET - List customers with filtering
@@ -118,6 +119,7 @@ export async function POST(request: NextRequest) {
       data: {
         ...data,
         email: data.email || null,
+        instructions: data.instructions?.trim() ? data.instructions.trim() : null,
       },
     })
 

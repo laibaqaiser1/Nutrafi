@@ -53,6 +53,8 @@ model Customer {
   deliveryArea String
   status       CustomerStatus  @default(ACTIVE)
   notes        String?
+  /** Kitchen / delivery alerts (allergies, no fish, etc.) — shown prominently on customer and meal plan views */
+  instructions String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   mealPlans    MealPlan[]

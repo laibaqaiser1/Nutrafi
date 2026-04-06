@@ -16,6 +16,7 @@ export default function NewCustomerPage() {
     deliveryArea: '',
     status: 'ACTIVE',
     notes: '',
+    instructions: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,6 +122,19 @@ export default function NewCustomerPage() {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
               rows={2}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Instructions & alerts</label>
+            <p className="text-xs text-gray-500 mb-1">
+              Allergies, dietary needs, or delivery notes — shown prominently when viewing this customer and their meal plans.
+            </p>
+            <textarea
+              value={formData.instructions}
+              onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-amber-200 rounded bg-amber-50/40"
+              rows={3}
+              placeholder="e.g. Allergic to fish; no shellfish"
             />
           </div>
         </div>

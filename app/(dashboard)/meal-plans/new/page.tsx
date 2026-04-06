@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns'
 import { getPlanWeekNumber, getMondayOfPlanWeek, planWeekDayStringsOnOrAfterStart } from '@/lib/meal-plan-weeks'
 import { useNotification } from '@/components/notifications/NotificationContext'
+import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
 
 interface Customer {
   id: string
@@ -13,6 +14,7 @@ interface Customer {
   phone: string
   email: string | null
   deliveryArea: string
+  instructions?: string | null
 }
 
 interface Plan {
@@ -1043,11 +1045,14 @@ export default function NewMealPlanPage() {
               </div>
             </div>
             {selectedCustomer && (
-              <div className="bg-gray-50 p-4 rounded-md">
-                <h3 className="font-medium text-gray-900 mb-2">Customer Details</h3>
-                <p className="text-sm text-gray-600">Name: {selectedCustomer.fullName}</p>
-                <p className="text-sm text-gray-600">Phone: {selectedCustomer.phone}</p>
-                <p className="text-sm text-gray-600">Area: {selectedCustomer.deliveryArea}</p>
+              <div className="space-y-3">
+                <CustomerInstructionsBanner instructions={selectedCustomer.instructions} />
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <h3 className="font-medium text-gray-900 mb-2">Customer Details</h3>
+                  <p className="text-sm text-gray-600">Name: {selectedCustomer.fullName}</p>
+                  <p className="text-sm text-gray-600">Phone: {selectedCustomer.phone}</p>
+                  <p className="text-sm text-gray-600">Area: {selectedCustomer.deliveryArea}</p>
+                </div>
               </div>
             )}
             <div className="mt-6 flex justify-end">
@@ -1615,6 +1620,9 @@ export default function NewMealPlanPage() {
           return (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Configure Meals</h2>
+              {selectedCustomer ? (
+                <CustomerInstructionsBanner instructions={selectedCustomer.instructions} className="mb-4" />
+              ) : null}
               <div className="bg-blue-50 p-4 rounded-md mb-4">
                 <p className="text-sm font-semibold text-blue-700 mb-2">
                   Meals: {currentMealsCount} / {totalMealsAllowed} (Plan Limit)

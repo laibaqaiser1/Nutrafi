@@ -12,6 +12,7 @@ const customerSchema = z.object({
   deliveryArea: z.string().min(1).optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'PAUSED', 'CANCELLED']).optional(),
   notes: z.string().optional(),
+  instructions: z.string().max(4000).optional(),
 })
 
 // GET - Get single customer
@@ -75,6 +76,9 @@ export async function PUT(
 
     const updateData: any = { ...data }
     if (updateData.email === '') updateData.email = null
+    if (updateData.instructions !== undefined) {
+      updateData.instructions = updateData.instructions?.trim() ? updateData.instructions.trim() : null
+    }
 
     const customer = await prisma.customer.update({
       where: { id },

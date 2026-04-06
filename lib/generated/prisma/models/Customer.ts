@@ -43,6 +43,7 @@ export type CustomerMinAggregateOutputType = {
   deliveryArea: string | null
   status: $Enums.CustomerStatus | null
   notes: string | null
+  instructions: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -56,6 +57,7 @@ export type CustomerMaxAggregateOutputType = {
   deliveryArea: string | null
   status: $Enums.CustomerStatus | null
   notes: string | null
+  instructions: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -69,6 +71,7 @@ export type CustomerCountAggregateOutputType = {
   deliveryArea: number
   status: number
   notes: number
+  instructions: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -92,6 +95,7 @@ export type CustomerMinAggregateInputType = {
   deliveryArea?: true
   status?: true
   notes?: true
+  instructions?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -105,6 +109,7 @@ export type CustomerMaxAggregateInputType = {
   deliveryArea?: true
   status?: true
   notes?: true
+  instructions?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -118,6 +123,7 @@ export type CustomerCountAggregateInputType = {
   deliveryArea?: true
   status?: true
   notes?: true
+  instructions?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -218,6 +224,7 @@ export type CustomerGroupByOutputType = {
   deliveryArea: string
   status: $Enums.CustomerStatus
   notes: string | null
+  instructions: string | null
   createdAt: Date
   updatedAt: Date
   _count: CustomerCountAggregateOutputType | null
@@ -254,6 +261,7 @@ export type CustomerWhereInput = {
   deliveryArea?: Prisma.StringFilter<"Customer"> | string
   status?: Prisma.EnumCustomerStatusFilter<"Customer"> | $Enums.CustomerStatus
   notes?: Prisma.StringNullableFilter<"Customer"> | string | null
+  instructions?: Prisma.StringNullableFilter<"Customer"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
   mealPlans?: Prisma.MealPlanListRelationFilter
@@ -269,6 +277,7 @@ export type CustomerOrderByWithRelationInput = {
   deliveryArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  instructions?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   mealPlans?: Prisma.MealPlanOrderByRelationAggregateInput
@@ -287,6 +296,7 @@ export type CustomerWhereUniqueInput = Prisma.AtLeast<{
   deliveryArea?: Prisma.StringFilter<"Customer"> | string
   status?: Prisma.EnumCustomerStatusFilter<"Customer"> | $Enums.CustomerStatus
   notes?: Prisma.StringNullableFilter<"Customer"> | string | null
+  instructions?: Prisma.StringNullableFilter<"Customer"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
   mealPlans?: Prisma.MealPlanListRelationFilter
@@ -302,6 +312,7 @@ export type CustomerOrderByWithAggregationInput = {
   deliveryArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  instructions?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.CustomerCountOrderByAggregateInput
@@ -323,6 +334,7 @@ export type CustomerScalarWhereWithAggregatesInput = {
   deliveryArea?: Prisma.StringWithAggregatesFilter<"Customer"> | string
   status?: Prisma.EnumCustomerStatusWithAggregatesFilter<"Customer"> | $Enums.CustomerStatus
   notes?: Prisma.StringNullableWithAggregatesFilter<"Customer"> | string | null
+  instructions?: Prisma.StringNullableWithAggregatesFilter<"Customer"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Customer"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Customer"> | Date | string
 }
@@ -335,6 +347,7 @@ export type CustomerCreateInput = {
   deliveryArea: string
   status?: $Enums.CustomerStatus
   notes?: string | null
+  instructions?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
@@ -350,6 +363,7 @@ export type CustomerUncheckedCreateInput = {
   deliveryArea: string
   status?: $Enums.CustomerStatus
   notes?: string | null
+  instructions?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
@@ -364,6 +378,7 @@ export type CustomerUpdateInput = {
   deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
@@ -379,6 +394,7 @@ export type CustomerUncheckedUpdateInput = {
   deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
@@ -394,6 +410,7 @@ export type CustomerCreateManyInput = {
   deliveryArea: string
   status?: $Enums.CustomerStatus
   notes?: string | null
+  instructions?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -406,6 +423,7 @@ export type CustomerUpdateManyMutationInput = {
   deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -419,6 +437,7 @@ export type CustomerUncheckedUpdateManyInput = {
   deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -432,6 +451,7 @@ export type CustomerCountOrderByAggregateInput = {
   deliveryArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  instructions?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -449,6 +469,7 @@ export type CustomerMaxOrderByAggregateInput = {
   deliveryArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  instructions?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -462,6 +483,7 @@ export type CustomerMinOrderByAggregateInput = {
   deliveryArea?: Prisma.SortOrder
   status?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  instructions?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -515,6 +537,7 @@ export type CustomerCreateWithoutMealPlansInput = {
   deliveryArea: string
   status?: $Enums.CustomerStatus
   notes?: string | null
+  instructions?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
@@ -529,6 +552,7 @@ export type CustomerUncheckedCreateWithoutMealPlansInput = {
   deliveryArea: string
   status?: $Enums.CustomerStatus
   notes?: string | null
+  instructions?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
@@ -558,6 +582,7 @@ export type CustomerUpdateWithoutMealPlansInput = {
   deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
@@ -572,6 +597,7 @@ export type CustomerUncheckedUpdateWithoutMealPlansInput = {
   deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
@@ -585,6 +611,7 @@ export type CustomerCreateWithoutPaymentsInput = {
   deliveryArea: string
   status?: $Enums.CustomerStatus
   notes?: string | null
+  instructions?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
@@ -599,6 +626,7 @@ export type CustomerUncheckedCreateWithoutPaymentsInput = {
   deliveryArea: string
   status?: $Enums.CustomerStatus
   notes?: string | null
+  instructions?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
@@ -628,6 +656,7 @@ export type CustomerUpdateWithoutPaymentsInput = {
   deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
@@ -642,6 +671,7 @@ export type CustomerUncheckedUpdateWithoutPaymentsInput = {
   deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
@@ -696,6 +726,7 @@ export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   deliveryArea?: boolean
   status?: boolean
   notes?: boolean
+  instructions?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   mealPlans?: boolean | Prisma.Customer$mealPlansArgs<ExtArgs>
@@ -712,6 +743,7 @@ export type CustomerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   deliveryArea?: boolean
   status?: boolean
   notes?: boolean
+  instructions?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["customer"]>
@@ -725,6 +757,7 @@ export type CustomerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   deliveryArea?: boolean
   status?: boolean
   notes?: boolean
+  instructions?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["customer"]>
@@ -738,11 +771,12 @@ export type CustomerSelectScalar = {
   deliveryArea?: boolean
   status?: boolean
   notes?: boolean
+  instructions?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type CustomerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "fullName" | "phone" | "email" | "address" | "deliveryArea" | "status" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["customer"]>
+export type CustomerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "fullName" | "phone" | "email" | "address" | "deliveryArea" | "status" | "notes" | "instructions" | "createdAt" | "updatedAt", ExtArgs["result"]["customer"]>
 export type CustomerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   mealPlans?: boolean | Prisma.Customer$mealPlansArgs<ExtArgs>
   payments?: boolean | Prisma.Customer$paymentsArgs<ExtArgs>
@@ -766,6 +800,10 @@ export type $CustomerPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     deliveryArea: string
     status: $Enums.CustomerStatus
     notes: string | null
+    /**
+     * * Kitchen / delivery alerts (allergies, no fish, etc.) — shown prominently on customer and meal plan views
+     */
+    instructions: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["customer"]>
@@ -1201,6 +1239,7 @@ export interface CustomerFieldRefs {
   readonly deliveryArea: Prisma.FieldRef<"Customer", 'String'>
   readonly status: Prisma.FieldRef<"Customer", 'CustomerStatus'>
   readonly notes: Prisma.FieldRef<"Customer", 'String'>
+  readonly instructions: Prisma.FieldRef<"Customer", 'String'>
   readonly createdAt: Prisma.FieldRef<"Customer", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Customer", 'DateTime'>
 }

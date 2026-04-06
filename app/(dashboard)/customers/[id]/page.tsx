@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { customerStatusLabel } from '@/lib/utils'
+import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
 
 interface Customer {
   id: number
@@ -16,6 +17,7 @@ interface Customer {
   deliveryArea: string
   status: string
   notes: string | null
+  instructions?: string | null
   mealPlans?: Array<{
     id: number
     planType: string
@@ -152,6 +154,8 @@ export default function ViewCustomerPage() {
             </div>
           ) : null}
         </div>
+
+        <CustomerInstructionsBanner instructions={customer.instructions} className="mt-6" />
 
         {customer.mealPlans && customer.mealPlans.length > 0 && (
           <div className="mt-6 pt-4 border-t border-gray-200">
