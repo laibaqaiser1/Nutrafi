@@ -128,9 +128,11 @@ export default function EditPlanPage() {
               onChange={(e) => setFormData({ ...formData, mealsPerDay: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={String(n)}>
+                  {n}
+                </option>
+              ))}
             </select>
           </div>
           <div>
