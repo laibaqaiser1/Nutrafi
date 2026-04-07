@@ -252,24 +252,13 @@ export default function NewMealPlanPage() {
           ...prev,
           planType: selectedPlan.planType,
           mealsPerDay: selectedPlan.mealsPerDay.toString(),
-          paymentAmount: selectedPlan.price.toString(),
           days: selectedPlan.days.toString(),
           timeSlots: effectiveMealPlanTimeSlots(prev.timeSlots).length > 0 ? prev.timeSlots : [''],
         }))
       }
     }
   }, [formData.planId, plans])
-  
-  // Pre-fill payment amount from selected plan price when in predefined mode
-  useEffect(() => {
-    if (planMode === 'predefined' && formData.planId) {
-      const plan = plans.find(p => p.id == formData.planId)
-      if (plan != null) {
-        setFormData(prev => ({ ...prev, paymentAmount: String(plan.price) }))
-      }
-    }
-  }, [planMode, formData.planId, plans])
-  
+
   // Also handle custom plans - total meals only; time slots stay as one (or user-added)
   useEffect(() => {
     if (planMode === 'custom' && formData.days && formData.mealsPerDay) {
@@ -778,9 +767,17 @@ export default function NewMealPlanPage() {
           notes: formData.notes,
           totalMeals: totalMealsForPlan,
           // Calculate amounts
-          totalAmount: planMode === 'predefined' 
-            ? parseFloat(formData.paymentAmount)
-            : parseFloat(formData.pricePerMeal) * totalMealsForPlan,
+          totalAmount: (() => {
+            const pay = parseFloat(formData.paymentAmount)
+            if (planMode === 'predefined') {
+              return Number.isFinite(pay) ? pay : 0
+            }
+            const ppm = parseFloat(formData.pricePerMeal)
+            if (Number.isFinite(ppm) && ppm > 0) {
+              return ppm * totalMealsForPlan
+            }
+            return Number.isFinite(pay) && pay > 0 ? pay : 0
+          })(),
         }),
       })
 
@@ -918,10 +915,17 @@ export default function NewMealPlanPage() {
           skippedWeeks: formData.skippedWeeks,
         })
       : 0
-  // Total Amount: from selected plan (predefined) or calculated (custom). Payment Amount field can override what's sent.
-  const totalAmount = planMode === 'predefined' 
-    ? (selectedPlan?.price ?? 0)
-    : parseFloat(formData.pricePerMeal || '0') * totalMeals
+  const customEnteredPricePerMeal = parseFloat(formData.pricePerMeal)
+  const customUsesEnteredPricePerMeal =
+    Number.isFinite(customEnteredPricePerMeal) && customEnteredPricePerMeal > 0
+
+  // Predefined = catalog price; custom with per-meal rate = rate × meals (no auto total if rate omitted)
+  const totalAmount =
+    planMode === 'predefined'
+      ? (selectedPlan?.price ?? 0)
+      : customUsesEnteredPricePerMeal
+        ? customEnteredPricePerMeal * totalMeals
+        : 0
 
   return (
     <div className="max-w-[95%] mx-auto min-h-screen">
@@ -1295,15 +1299,19 @@ export default function NewMealPlanPage() {
                   <p className="text-xs text-gray-500 mt-1">All meals use the first time slot. Add more only if some meals have a different delivery time.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Price Per Meal (AED) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Price Per Meal (AED)</label>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Optional. If set, we show total meals × this rate on the payment step. If left blank, enter the
+                    payment amount yourself on the next step (no calculated total).
+                  </p>
                   <input
                     type="number"
-                    required
                     min="0"
                     step="0.01"
                     value={formData.pricePerMeal}
                     onChange={(e) => setFormData({ ...formData, pricePerMeal: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Optional — enter payment on next step if empty"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1330,7 +1338,7 @@ export default function NewMealPlanPage() {
                     <p className="text-xs text-gray-500 mt-1">Optional - leave empty if not set</p>
                   </div>
                 </div>
-                {totalMeals > 0 && (
+                {totalMeals > 0 && customUsesEnteredPricePerMeal && (
                   <div className="bg-blue-50 p-4 rounded-md">
                     <p className="text-sm font-semibold text-blue-700">
                       Total Meals: {totalMeals} × {formData.pricePerMeal} AED = {totalAmount.toFixed(2)} AED
@@ -1353,13 +1361,20 @@ export default function NewMealPlanPage() {
                 onClick={() => {
                   if (planMode === 'predefined' && formData.planId) {
                     setStep(3)
-                  } else if (planMode === 'custom' && formData.days && formData.startDate && formData.pricePerMeal) {
+                    return
+                  }
+                  if (
+                    planMode === 'custom' &&
+                    formData.days &&
+                    formData.startDate &&
+                    effectiveMealPlanTimeSlots(formData.timeSlots).length > 0
+                  ) {
                     setStep(3)
                   }
                 }}
                 disabled={
                   (planMode === 'predefined' && (!formData.planId || !formData.startDate || effectiveMealPlanTimeSlots(formData.timeSlots).length === 0)) ||
-                  (planMode === 'custom' && (!formData.days || !formData.startDate || !formData.pricePerMeal || effectiveMealPlanTimeSlots(formData.timeSlots).length === 0))
+                  (planMode === 'custom' && (!formData.days || !formData.startDate || effectiveMealPlanTimeSlots(formData.timeSlots).length === 0))
                 }
                 className="px-3 py-1.5 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1374,12 +1389,24 @@ export default function NewMealPlanPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h2>
             <div className="bg-[#f0f4e8] p-4 rounded-md mb-4">
-              <p className="text-lg font-semibold text-nutrafi-dark">
-                Total Amount: {totalAmount.toFixed(2)} AED
-              </p>
-              {planMode === 'custom' && (
-                <p className="text-sm text-gray-600 mt-1">
-                  ({totalMeals} meals × {formData.pricePerMeal} AED per meal)
+              {planMode === 'predefined' && (
+                <p className="text-lg font-semibold text-nutrafi-dark">
+                  Total Amount: {totalAmount.toFixed(2)} AED
+                </p>
+              )}
+              {planMode === 'custom' && customUsesEnteredPricePerMeal && (
+                <>
+                  <p className="text-lg font-semibold text-nutrafi-dark">
+                    Total Amount: {totalAmount.toFixed(2)} AED
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    ({totalMeals} meals × {formData.pricePerMeal} AED per meal)
+                  </p>
+                </>
+              )}
+              {planMode === 'custom' && !customUsesEnteredPricePerMeal && (
+                <p className="text-sm text-gray-700">
+                  No price per meal was set. Enter the payment amount below.
                 </p>
               )}
             </div>
