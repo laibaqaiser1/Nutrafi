@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -124,6 +124,9 @@ export default function EditMealPlanPage() {
   const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null)
   const [savingPaymentEdit, setSavingPaymentEdit] = useState(false)
   const [showStartDateConfirm, setShowStartDateConfirm] = useState(false)
+  const [showTimeSlotsPropagateConfirm, setShowTimeSlotsPropagateConfirm] = useState(false)
+  /** When opening the time-slot propagate dialog after start-date choice, stores align-items flag. */
+  const pendingStartDateItemAlignRef = useRef(false)
 
   useEffect(() => {
     if (params.id) {
@@ -208,7 +211,31 @@ export default function EditMealPlanPage() {
     return Number.isFinite(n) && n >= 0 ? n : undefined
   }
 
-  const submitMealPlan = async (updateItemDatesFromStartDate: boolean) => {
+  const normalizeTimeSlotsText = (text: string) =>
+    text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).join('\n')
+
+  const hasTimeSlotsScheduleChange = (): boolean => {
+    if (!mealPlan) return false
+    return (
+      normalizeTimeSlotsText(formData.timeSlotsText) !==
+      normalizeTimeSlotsText(parseMealPlanTimeSlots(mealPlan.timeSlots).join('\n'))
+    )
+  }
+
+  const finishStartDateChoice = (alignItemDates: boolean) => {
+    setShowStartDateConfirm(false)
+    pendingStartDateItemAlignRef.current = alignItemDates
+    if (hasTimeSlotsScheduleChange()) {
+      setShowTimeSlotsPropagateConfirm(true)
+    } else {
+      void submitMealPlan(alignItemDates, false)
+    }
+  }
+
+  const submitMealPlan = async (
+    updateItemDatesFromStartDate: boolean,
+    propagateTimeSlotsToFutureItems: boolean
+  ) => {
     if (!mealPlan) return
     const originalStart = mealPlan.startDate ? mealPlan.startDate.split('T')[0] : ''
     const newStart = formData.startDate || ''
@@ -232,10 +259,16 @@ export default function EditMealPlanPage() {
           remainingMeals: optionalNonNegativeInt(formData.remainingMeals),
           timeSlots: slotLines.length > 0 ? slotLines : null,
           updateItemDatesFromStartDate: startDateChanged && hasItems ? updateItemDatesFromStartDate : undefined,
+          propagateTimeSlotsToFutureItems: propagateTimeSlotsToFutureItems,
         }),
       })
 
       if (response.ok) {
+        const payload = await response.json()
+        const n = typeof payload.propagatedTimeSlotsCount === 'number' ? payload.propagatedTimeSlotsCount : 0
+        if (n > 0) {
+          toast.success(`Meal plan saved. Updated times on ${n} future meal(s) (from today).`)
+        }
         router.push(`/meal-plans/${params.id}`)
       } else {
         const error = await response.json()
@@ -263,7 +296,13 @@ export default function EditMealPlanPage() {
       return
     }
 
-    await submitMealPlan(false)
+    if (hasTimeSlotsScheduleChange()) {
+      pendingStartDateItemAlignRef.current = false
+      setShowTimeSlotsPropagateConfirm(true)
+      return
+    }
+
+    await submitMealPlan(false, false)
   }
 
   const handleAddPayment = async (e: React.FormEvent) => {
@@ -908,24 +947,64 @@ export default function EditMealPlanPage() {
             <div className="flex gap-3 justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  setShowStartDateConfirm(false)
-                  submitMealPlan(false)
-                }}
+                onClick={() => finishStartDateChoice(false)}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"
               >
                 No, keep as is
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setShowStartDateConfirm(false)
-                  submitMealPlan(true)
-                }}
+                onClick={() => finishStartDateChoice(true)}
                 className="px-4 py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark font-medium"
               >
                 Yes, update days
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTimeSlotsPropagateConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setShowTimeSlotsPropagateConfirm(false)}
+        >
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Update default times?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              You changed the default time slots. <strong>Yes</strong> will update meal time slots from today onwards
+              for all scheduled meals.
+            </p>
+            <div className="mt-1 flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setShowTimeSlotsPropagateConfirm(false)}
+                className="w-full px-4 py-2.5 text-center text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 sm:w-auto"
+              >
+                Cancel
+              </button>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-nowrap sm:justify-end sm:gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTimeSlotsPropagateConfirm(false)
+                    void submitMealPlan(pendingStartDateItemAlignRef.current, false)
+                  }}
+                  className="w-full px-4 py-2.5 text-center text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 sm:w-auto"
+                >
+                  No, defaults only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTimeSlotsPropagateConfirm(false)
+                    void submitMealPlan(pendingStartDateItemAlignRef.current, true)
+                  }}
+                  className="w-full px-4 py-2.5 text-center text-sm font-medium text-white bg-nutrafi-primary rounded-md hover:bg-nutrafi-dark sm:w-auto"
+                >
+                  Yes, update future meals
+                </button>
+              </div>
             </div>
           </div>
         </div>

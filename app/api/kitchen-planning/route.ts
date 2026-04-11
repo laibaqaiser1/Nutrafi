@@ -135,9 +135,14 @@ export async function GET(request: NextRequest) {
       deliveryAreas: Set<string>
     }> = {}
 
+    const dishLabelCustomerUnavailable = 'Customer not available'
+
     items.forEach(item => {
-      const dishName = item.dishName || item.dish?.name || 'Not Assigned'
-      const dishCategory = item.dishCategory || item.dish?.category || null
+      const paused = String((item.mealPlan as { status?: string }).status || '').toUpperCase() === 'PAUSED'
+      const dishName = paused
+        ? dishLabelCustomerUnavailable
+        : item.dishName || item.dish?.name || 'Not Assigned'
+      const dishCategory = paused ? null : item.dishCategory || item.dish?.category || null
       
       if (!dishAggregation[dishName]) {
         dishAggregation[dishName] = {

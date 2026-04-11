@@ -116,7 +116,9 @@ export async function GET(request: NextRequest) {
         deliveryTime: first.deliveryTime || '',
         customerName: first.mealPlan.customer.fullName,
         customer: first.mealPlan.customer,
-        dishNames: groupItems.map(i => i.dishName || i.dish?.name || 'Not Assigned').join(', '),
+        dishNames: isPaused
+          ? 'Customer not available'
+          : groupItems.map(i => i.dishName || i.dish?.name || 'Not Assigned').join(', '),
         items: groupItems,
         isPaused,
       })
@@ -306,7 +308,7 @@ export async function GET(request: NextRequest) {
             worksheet.spliceRows(3, worksheet.rowCount - 2)
           }
           
-          // Fill in data (one row per customer). Last column (7) = Dish Name; append "customer not available" there when paused (no extra column).
+          // Fill in data (one row per customer). Column 7 = Dish Name; when paused use only "Customer not available" (no real dish names).
           const riderLastCol = 7
           allRows.forEach((rowData, index) => {
             const row = worksheet.getRow(startRow + index)
@@ -318,8 +320,12 @@ export async function GET(request: NextRequest) {
             row.getCell(5).value = rowData.customer.address || '' // Delivery Address
             row.getCell(6).value = rowData.customer.deliveryArea || '' // Delivery Area
             const dishCell = row.getCell(7)
-            const dishText = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
-            dishCell.value = rowData.isPaused ? dishText + '\n(customer not available)' : dishText
+            const dishText = isSkippedDay
+              ? 'No meal for today'
+              : rowData.isPaused
+                ? 'Customer not available'
+                : dishNamesForCell(rowData.dishNames)
+            dishCell.value = dishText
             if (rowData.isPaused) applyPausedRowStyle(row, riderLastCol)
             else if (isSkippedDay) applySkippedDayRowStyle(row, riderLastCol)
             row.commit()
@@ -345,8 +351,12 @@ export async function GET(request: NextRequest) {
           row.getCell(5).value = rowData.customer.address || ''
           row.getCell(6).value = rowData.customer.deliveryArea || ''
           const dishCell = row.getCell(7)
-          const dishText = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
-          dishCell.value = rowData.isPaused ? dishText + '\n(customer not available)' : dishText
+          const dishText = isSkippedDay
+            ? 'No meal for today'
+            : rowData.isPaused
+              ? 'Customer not available'
+              : dishNamesForCell(rowData.dishNames)
+          dishCell.value = dishText
           if (rowData.isPaused) applyPausedRowStyle(row, riderLastCol)
           else if (isSkippedDay) applySkippedDayRowStyle(row, riderLastCol)
           row.commit()
@@ -380,10 +390,14 @@ export async function GET(request: NextRequest) {
             row.getCell(2).value = deliveryTimeForExport(rowData)  // B = Delivery Time
             row.getCell(3).value = rowData.customerName            // C = Customer Name
             const chefDishCell = row.getCell(4)
-            chefDishCell.value = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
-            row.getCell(5).value = instructions                    // E = Instructions
+            chefDishCell.value = isSkippedDay
+              ? 'No meal for today'
+              : rowData.isPaused
+                ? 'Customer not available'
+                : dishNamesForCell(rowData.dishNames)
+            row.getCell(5).value = rowData.isPaused ? '' : instructions // E = Instructions (omit when paused)
             row.getCell(6).value = contactNoForRow(rowData)        // F = Contact Number (F2 in template)
-            row.getCell(7).value = rowData.isPaused ? 'customer not available' : ''  // G = Note
+            row.getCell(7).value = '' // G = Note (paused message lives in Dish column only)
             if (rowData.isPaused) applyPausedRowStyle(row, chefLastCol)
             else if (isSkippedDay) applySkippedDayRowStyle(row, chefLastCol)
             row.commit()
@@ -407,10 +421,14 @@ export async function GET(request: NextRequest) {
           row.getCell(2).value = deliveryTimeForExport(rowData)
           row.getCell(3).value = rowData.customerName
           const dishCell = row.getCell(4)
-          dishCell.value = isSkippedDay ? 'No meal for today' : dishNamesForCell(rowData.dishNames)
-          row.getCell(5).value = instructions
+          dishCell.value = isSkippedDay
+            ? 'No meal for today'
+            : rowData.isPaused
+              ? 'Customer not available'
+              : dishNamesForCell(rowData.dishNames)
+          row.getCell(5).value = rowData.isPaused ? '' : instructions
           row.getCell(6).value = contactNoForRow(rowData)  // F = Contact Number
-          row.getCell(7).value = rowData.isPaused ? 'customer not available' : ''
+          row.getCell(7).value = ''
           if (rowData.isPaused) applyPausedRowStyle(row, chefLastCol)
           else if (isSkippedDay) applySkippedDayRowStyle(row, chefLastCol)
           row.commit()

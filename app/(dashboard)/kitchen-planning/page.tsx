@@ -41,6 +41,18 @@ interface MealPlanItem {
   } | null
 }
 
+/** Dish column when meal plan is paused — do not show real dish names. */
+const KITCHEN_DISH_CUSTOMER_UNAVAILABLE = 'Customer not available'
+
+function isKitchenMealPlanPaused(mealPlan: MealPlanItem['mealPlan']): boolean {
+  return String(mealPlan.status || '').toUpperCase() === 'PAUSED'
+}
+
+function kitchenDishLabel(item: MealPlanItem): string {
+  if (isKitchenMealPlanPaused(item.mealPlan)) return KITCHEN_DISH_CUSTOMER_UNAVAILABLE
+  return item.dishName || item.dish?.name || 'Not Assigned'
+}
+
 interface AggregatedDish {
   dishName: string
   dishCategory: string | null
@@ -585,8 +597,7 @@ export default function KitchenPlanningPage() {
                   if (row.type === 'item') {
                     const item = row.data
                     const instructions = getInstructions(item.customNote)
-                    const dishName = item.dishName || item.dish?.name || 'Not Assigned'
-                    const isPaused = String(item.mealPlan.status || '').toUpperCase() === 'PAUSED'
+                    const isPaused = isKitchenMealPlanPaused(item.mealPlan)
 
                     return (
                       <tr 
@@ -614,9 +625,9 @@ export default function KitchenPlanningPage() {
                         </td>
                         <td className="px-2 lg:px-6 py-2 lg:py-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {dishName}
+                            {kitchenDishLabel(item)}
                           </div>
-                          {instructions && (
+                          {instructions && !isPaused && (
                             <div className="text-xs text-gray-500 mt-1">
                               <span className="font-medium">Note:</span> {instructions}
                             </div>
@@ -803,6 +814,10 @@ export default function KitchenPlanningPage() {
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                         Delivered
                       </span>
+                    ) : isKitchenMealPlanPaused(selectedMeal.mealPlan) ? (
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-200 text-red-900">
+                        {KITCHEN_DISH_CUSTOMER_UNAVAILABLE}
+                      </span>
                     ) : selectedMeal.isSkipped ? (
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                         Skipped
@@ -818,53 +833,60 @@ export default function KitchenPlanningPage() {
                 {/* Dish Info */}
                 <div className="border-t pt-2">
                   <h3 className="text-xs font-medium text-gray-500 mb-1">Dish</h3>
-                  <p className="text-base font-semibold text-gray-900">
-                    {selectedMeal.dishName || selectedMeal.dish?.name || 'Not Assigned'}
-                  </p>
-                  
-                  {selectedMeal.ingredients && (
-                    <div className="mt-2">
-                      <h4 className="text-xs font-medium text-gray-500 mb-1">Ingredients</h4>
-                      <p className="text-sm text-gray-700">{selectedMeal.ingredients}</p>
-                    </div>
-                  )}
-
-                  {selectedMeal.allergens && (
-                    <div className="mt-2">
-                      <h4 className="text-xs font-medium text-gray-500 mb-1">Allergens</h4>
-                      <p className="text-sm text-gray-700">{selectedMeal.allergens}</p>
-                    </div>
-                  )}
-
-                  {/* Nutrition Info */}
-                  <div className="mt-4 grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-xs font-medium text-gray-500 mb-1">Calories</h4>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {selectedMeal.calories || selectedMeal.dish?.calories || 0} kcal
+                  {isKitchenMealPlanPaused(selectedMeal.mealPlan) ? (
+                    <p className="text-base font-semibold text-gray-900">{KITCHEN_DISH_CUSTOMER_UNAVAILABLE}</p>
+                  ) : (
+                    <>
+                      <p className="text-base font-semibold text-gray-900">
+                        {selectedMeal.dishName || selectedMeal.dish?.name || 'Not Assigned'}
                       </p>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-medium text-gray-500 mb-1">Macros</h4>
-                      <div className="text-xs text-gray-700">
-                        <div>Protein: {(selectedMeal.protein || selectedMeal.dish?.protein || 0).toFixed(1)}g</div>
-                        <div>Carbs: {(selectedMeal.carbs || selectedMeal.dish?.carbs || 0).toFixed(1)}g</div>
-                        <div>Fats: {(selectedMeal.fats || selectedMeal.dish?.fats || 0).toFixed(1)}g</div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {getInstructions(selectedMeal.customNote) && (
-                    <div className="mt-4">
-                      <h4 className="text-xs font-medium text-gray-500 mb-1">Special Instructions</h4>
-                      <p className="text-sm text-gray-700">{getInstructions(selectedMeal.customNote)}</p>
-                    </div>
+                      {selectedMeal.ingredients && (
+                        <div className="mt-2">
+                          <h4 className="text-xs font-medium text-gray-500 mb-1">Ingredients</h4>
+                          <p className="text-sm text-gray-700">{selectedMeal.ingredients}</p>
+                        </div>
+                      )}
+
+                      {selectedMeal.allergens && (
+                        <div className="mt-2">
+                          <h4 className="text-xs font-medium text-gray-500 mb-1">Allergens</h4>
+                          <p className="text-sm text-gray-700">{selectedMeal.allergens}</p>
+                        </div>
+                      )}
+
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="text-xs font-medium text-gray-500 mb-1">Calories</h4>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {selectedMeal.calories || selectedMeal.dish?.calories || 0} kcal
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-medium text-gray-500 mb-1">Macros</h4>
+                          <div className="text-xs text-gray-700">
+                            <div>Protein: {(selectedMeal.protein || selectedMeal.dish?.protein || 0).toFixed(1)}g</div>
+                            <div>Carbs: {(selectedMeal.carbs || selectedMeal.dish?.carbs || 0).toFixed(1)}g</div>
+                            <div>Fats: {(selectedMeal.fats || selectedMeal.dish?.fats || 0).toFixed(1)}g</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {getInstructions(selectedMeal.customNote) && (
+                        <div className="mt-4">
+                          <h4 className="text-xs font-medium text-gray-500 mb-1">Special Instructions</h4>
+                          <p className="text-sm text-gray-700">{getInstructions(selectedMeal.customNote)}</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
                 {/* Actions */}
                 <div className="border-t pt-2 flex gap-2">
-                  {!selectedMeal.isDelivered && !selectedMeal.isSkipped && (
+                  {!selectedMeal.isDelivered &&
+                    !selectedMeal.isSkipped &&
+                    !isKitchenMealPlanPaused(selectedMeal.mealPlan) && (
                     <button
                       onClick={() => handleMarkAsDelivered(selectedMeal)}
                       disabled={markingDelivered}
@@ -980,7 +1002,7 @@ export default function KitchenPlanningPage() {
                     ? batchDeliverItems.filter(
                         (i) =>
                           (i.mealPlan.customer.fullName || '').toLowerCase().includes(q) ||
-                          (i.dishName || i.dish?.name || '').toLowerCase().includes(q)
+                          kitchenDishLabel(i).toLowerCase().includes(q)
                       )
                     : batchDeliverItems
                   batchDeliverFilteredLengthRef.current = filtered.length
@@ -1011,7 +1033,7 @@ export default function KitchenPlanningPage() {
                               <label htmlFor={`batch-${idStr}`} className="flex-1 cursor-pointer text-sm min-w-0">
                                 <span className="font-medium text-gray-900">{item.mealPlan.customer.fullName}</span>
                                 <span className="text-gray-400 mx-1.5">·</span>
-                                <span className="text-gray-700">{item.dishName || item.dish?.name || 'Not Assigned'}</span>
+                                <span className="text-gray-700">{kitchenDishLabel(item)}</span>
                                 <span className="text-gray-400 text-xs ml-1.5 whitespace-nowrap">
                                   {formatTime12h(item.timeSlot) || item.timeSlot}
                                 </span>

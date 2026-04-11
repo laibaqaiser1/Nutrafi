@@ -21,6 +21,8 @@
     "db:migrate-custom-note": "tsx scripts/migrate-custom-note-to-columns.ts",
     "db:add-dua-meals": "tsx scripts/add-dua-meal-items.ts",
     "db:add-garry-meals": "tsx scripts/add-garry-meal-items.ts",
+    "db:fix-dish-xlsx": "tsx scripts/fix-dish-columns-from-xlsx.ts",
+    "db:sync-items-from-dishes": "tsx scripts/sync-meal-plan-items-from-dishes.ts",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio"

@@ -3,6 +3,8 @@ import { getServerSession } from '@/lib/auth-helpers'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/lib/generated/prisma/client'
+import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
+import { applyMealPlanTimeSlotsToFutureItems } from '@/lib/meal-plan-propagate-times'
 import { z } from 'zod'
 
 /** Never cache: UI must show DB `remainingMeals` as stored (not a stale or recomputed value). */
@@ -32,6 +34,8 @@ const mealPlanUpdateSchema = z.object({
   ),
   /** Default delivery times for new items; null or [] clears */
   timeSlots: z.array(z.string()).optional().nullable(),
+  /** When true (with changed non-empty timeSlots), reassign future non-delivered item times from today */
+  propagateTimeSlotsToFutureItems: z.boolean().optional(),
   updateItemDatesFromStartDate: z.boolean().optional(),
 })
 
@@ -156,13 +160,43 @@ export async function PUT(
       updateData.totalMeals = data.totalMeals
     }
 
-    const mealPlan = await prisma.mealPlan.update({
-      where: { id },
-      data: updateData,
-      include: {
-        customer: true,
-        plan: true,
-      },
+    const normalizedNewSlots: string[] | null =
+      data.timeSlots === undefined
+        ? null
+        : data.timeSlots === null ||
+            (Array.isArray(data.timeSlots) && data.timeSlots.length === 0)
+          ? []
+          : (data.timeSlots as string[]).map((s) => String(s).trim()).filter(Boolean)
+
+    const oldSlots = parseMealPlanTimeSlots(currentMealPlan.timeSlots)
+    const timeSlotsScheduleChanged =
+      normalizedNewSlots !== null &&
+      JSON.stringify(oldSlots) !== JSON.stringify(normalizedNewSlots)
+
+    const shouldPropagateFutureTimes =
+      data.propagateTimeSlotsToFutureItems === true &&
+      normalizedNewSlots !== null &&
+      normalizedNewSlots.length > 0 &&
+      timeSlotsScheduleChanged
+
+    let propagatedTimeSlotsCount = 0
+    const mealPlan = await prisma.$transaction(async (tx) => {
+      const m = await tx.mealPlan.update({
+        where: { id },
+        data: updateData,
+        include: {
+          customer: true,
+          plan: true,
+        },
+      })
+      if (shouldPropagateFutureTimes) {
+        propagatedTimeSlotsCount = await applyMealPlanTimeSlotsToFutureItems(
+          tx,
+          id,
+          normalizedNewSlots
+        )
+      }
+      return m
     })
 
     // If start date was changed and client asked to align item dates: shift each item by day offset from old start to new start
@@ -186,7 +220,10 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json(mealPlan)
+    return NextResponse.json({
+      ...mealPlan,
+      propagatedTimeSlotsCount,
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
