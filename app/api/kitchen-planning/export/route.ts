@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { getKitchenUnscheduledRows } from '@/lib/kitchen-unscheduled-rows'
 import { prisma } from '@/lib/prisma'
 import ExcelJS from 'exceljs'
 import path from 'path'
@@ -433,6 +434,33 @@ export async function GET(request: NextRequest) {
           else if (isSkippedDay) applySkippedDayRowStyle(row, chefLastCol)
           row.commit()
         })
+      }
+
+      const unscheduledRows = await getKitchenUnscheduledRows(date)
+      const uws = workbook.addWorksheet('Unscheduled meals')
+      uws.getCell('A1').value = `Unscheduled meals — ${formatDateExport(new Date(date))}`
+      uws.mergeCells(1, 1, 1, 4)
+      uws.getRow(2).values = ['Customer', 'Contact', 'Time slot', 'Meals for day']
+      ;[26, 14, 22, 22].forEach((w, i) => {
+        uws.getColumn(i + 1).width = w
+      })
+      let unscheduledRowNum = 3
+      if (unscheduledRows.length === 0) {
+        uws.getRow(unscheduledRowNum).getCell(1).value = 'No customers missing meals for this date.'
+      } else {
+        for (const ur of unscheduledRows) {
+          const slotLabel =
+            ur.defaultTimeSlots.length > 0
+              ? ur.defaultTimeSlots.map((s) => formatTime12h(s) || s).join(', ')
+              : '—'
+          uws.getRow(unscheduledRowNum).values = [
+            ur.customerName,
+            ur.phone ?? '',
+            slotLabel,
+            `${ur.scheduledWithDishCount} / ${ur.mealsPerDay} with dish`,
+          ]
+          unscheduledRowNum++
+        }
       }
     }
 

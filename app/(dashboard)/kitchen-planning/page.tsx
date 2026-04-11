@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
 
@@ -79,6 +80,16 @@ interface KitchenPlanningData {
   }>
 }
 
+interface UnscheduledKitchenRow {
+  customerId: string
+  customerName: string
+  phone: string | null
+  defaultTimeSlots: string[]
+  mealPlanId: number
+  mealsPerDay: number
+  scheduledWithDishCount: number
+}
+
 export default function KitchenPlanningPage() {
   const toast = useNotification()
   const [data, setData] = useState<KitchenPlanningData | null>(null)
@@ -105,9 +116,50 @@ export default function KitchenPlanningPage() {
   const batchDeliverListRef = useRef<HTMLDivElement>(null)
   const batchDeliverFilteredLengthRef = useRef(0)
 
+  const [kitchenTab, setKitchenTab] = useState<'scheduled' | 'needs'>('scheduled')
+  const [needsRows, setNeedsRows] = useState<UnscheduledKitchenRow[]>([])
+  const [needsLoading, setNeedsLoading] = useState(false)
+
   useEffect(() => {
     fetchKitchenPlanningData()
   }, [filters.date, filters.startTime, filters.endTime, filters.status])
+
+  const fetchUnscheduledRows = useCallback(async () => {
+    if (!filters.date) return
+    setNeedsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('date', filters.date)
+      const res = await fetch(`/api/kitchen-planning/unscheduled?${params}`)
+      if (res.ok) {
+        const json = await res.json()
+        const raw = Array.isArray(json.rows) ? json.rows : []
+        setNeedsRows(
+          raw.map((r: UnscheduledKitchenRow & { deliveryArea?: string }) => ({
+            customerId: r.customerId,
+            customerName: r.customerName,
+            phone: r.phone,
+            defaultTimeSlots: Array.isArray(r.defaultTimeSlots) ? r.defaultTimeSlots : [],
+            mealPlanId: r.mealPlanId,
+            mealsPerDay: r.mealsPerDay,
+            scheduledWithDishCount: r.scheduledWithDishCount,
+          }))
+        )
+      } else {
+        setNeedsRows([])
+      }
+    } catch {
+      setNeedsRows([])
+    } finally {
+      setNeedsLoading(false)
+    }
+  }, [filters.date])
+
+  useEffect(() => {
+    if (kitchenTab === 'needs') {
+      void fetchUnscheduledRows()
+    }
+  }, [kitchenTab, fetchUnscheduledRows])
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -372,6 +424,8 @@ export default function KitchenPlanningPage() {
           </p>
         </div>
         <div className="flex gap-2 lg:gap-3">
+          {kitchenTab === 'scheduled' && (
+            <>
           <button
             onClick={() => handleExport('chef')}
             disabled={loading || !data || (data.items.length === 0 && (!data.skippedDayRows || data.skippedDayRows.length === 0))}
@@ -422,6 +476,8 @@ export default function KitchenPlanningPage() {
             </svg>
             Mark all as delivered
           </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -488,8 +544,8 @@ export default function KitchenPlanningPage() {
         )}
       </div>
 
-      {/* Summary */}
-      {data && (
+      {/* Summary (above tabs) */}
+      {kitchenTab === 'scheduled' && data && (
         <div className="bg-white p-2 lg:p-4 rounded shadow lg:rounded-lg mb-3 lg:mb-6">
           <h2 className="text-base lg:text-lg font-semibold mb-1 lg:mb-2">Summary</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-4 text-sm">
@@ -498,14 +554,52 @@ export default function KitchenPlanningPage() {
           </div>
         </div>
       )}
+      {kitchenTab === 'needs' && (
+        <div className="bg-white p-2 lg:p-4 rounded shadow lg:rounded-lg mb-3 lg:mb-6">
+          <h2 className="text-base lg:text-lg font-semibold mb-1 lg:mb-2">Summary</h2>
+          {needsLoading ? (
+            <p className="text-sm text-gray-500">Loading…</p>
+          ) : (
+            <p className="text-sm text-gray-700">
+              <strong>{needsRows.length}</strong> customer{needsRows.length === 1 ? '' : 's'} with an active meal plan on{' '}
+              <strong>{format(new Date(filters.date), 'MMM dd, yyyy')}</strong> still need meals added (or more dishes assigned) for this day.
+            </p>
+          )}
+        </div>
+      )}
 
-      {/* Results */}
-      {loading ? (
+      <div className="flex gap-1 mb-3 lg:mb-4 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => setKitchenTab('scheduled')}
+          className={`px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+            kitchenTab === 'scheduled'
+              ? 'border-nutrafi-primary bg-[#f0f4e8] text-nutrafi-dark'
+              : 'border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+          }`}
+        >
+          Scheduled meals
+        </button>
+        <button
+          type="button"
+          onClick={() => setKitchenTab('needs')}
+          className={`px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px transition-colors ${
+            kitchenTab === 'needs'
+              ? 'border-nutrafi-primary bg-[#f0f4e8] text-nutrafi-dark'
+              : 'border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+          }`}
+        >
+          Unscheduled meals
+        </button>
+      </div>
+
+      {/* Results — scheduled */}
+      {kitchenTab === 'scheduled' && loading ? (
         <div className="bg-white rounded shadow p-6 text-center">
           <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-nutrafi-primary"></div>
           <p className="mt-2 text-sm text-gray-600">Loading kitchen planning data...</p>
         </div>
-      ) : data && (data.items.length > 0 || (data.skippedDayRows && data.skippedDayRows.length > 0)) ? (
+      ) : kitchenTab === 'scheduled' && data && (data.items.length > 0 || (data.skippedDayRows && data.skippedDayRows.length > 0)) ? (
         (() => {
           type SkippedDayRowItem = {
             customerId: string
@@ -731,7 +825,7 @@ export default function KitchenPlanningPage() {
         </div>
           )
         })()
-      ) : (
+      ) : kitchenTab === 'scheduled' ? (
         <div className="bg-white rounded shadow p-6 text-center">
           <svg
             className="mx-auto h-8 w-8 text-gray-400"
@@ -754,6 +848,79 @@ export default function KitchenPlanningPage() {
             {filters.startTime || filters.endTime
               ? ` in the selected time range`
               : ''}
+          </p>
+        </div>
+      ) : null}
+
+      {/* Unscheduled meals — active plans missing same-day meals (one row per customer) */}
+      {kitchenTab === 'needs' && needsLoading && (
+        <div className="bg-white rounded shadow lg:rounded-lg p-6 text-center">
+          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-nutrafi-primary" />
+          <p className="mt-2 text-sm text-gray-600">Loading…</p>
+        </div>
+      )}
+      {kitchenTab === 'needs' && !needsLoading && needsRows.length > 0 && (
+        <div className="bg-white rounded shadow lg:rounded-lg overflow-hidden">
+          <div className="px-2 lg:px-6 py-3 border-b border-gray-200">
+            <h2 className="text-base lg:text-lg font-semibold text-gray-900">Add meals for this date</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Open the meal plan view to assign or adjust dishes for {format(new Date(filters.date), 'EEEE, MMMM dd, yyyy')}.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-nutrafi-primary">
+                <tr>
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    Contact
+                  </th>
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    Time slot
+                  </th>
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    Meals for this day
+                  </th>
+                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {needsRows.map((row) => (
+                  <tr key={row.customerId} className="hover:bg-gray-50">
+                    <td className="px-2 lg:px-6 py-3 text-sm font-medium text-gray-900">{row.customerName}</td>
+                    <td className="px-2 lg:px-6 py-3 text-sm text-gray-600">{row.phone || '—'}</td>
+                    <td className="px-2 lg:px-6 py-3 text-sm text-gray-700">
+                      {row.defaultTimeSlots.length > 0
+                        ? row.defaultTimeSlots.map((s) => formatTime12h(s) || s).join(', ')
+                        : '—'}
+                    </td>
+                    <td className="px-2 lg:px-6 py-3 text-sm text-gray-700">
+                      {row.scheduledWithDishCount} / {row.mealsPerDay} with dish
+                    </td>
+                    <td className="px-2 lg:px-6 py-3 whitespace-nowrap">
+                      <Link
+                        href={`/meal-plans/${row.mealPlanId}`}
+                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-nutrafi-primary rounded-md hover:bg-nutrafi-dark"
+                      >
+                        View meal plan
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {kitchenTab === 'needs' && !needsLoading && needsRows.length === 0 && (
+        <div className="bg-white rounded shadow lg:rounded-lg p-6 text-center">
+          <h3 className="text-sm font-medium text-gray-900">Everyone is covered</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            No active customers on this date are missing scheduled meals (or they are fully skipped for the day).
           </p>
         </div>
       )}
