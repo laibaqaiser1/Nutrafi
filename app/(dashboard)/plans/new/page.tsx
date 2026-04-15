@@ -103,6 +103,23 @@ export default function NewPlanPage() {
               ))}
             </select>
           </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Total meals</label>
+            <input
+              type="text"
+              readOnly
+              tabIndex={-1}
+              value={(() => {
+                const d = parseInt(formData.days, 10)
+                const m = parseInt(formData.mealsPerDay, 10)
+                if (!Number.isFinite(d) || d < 1 || !Number.isFinite(m) || m < 1) return '—'
+                return String(d * m)
+              })()}
+              className="w-full max-w-xs px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-900 cursor-default"
+              aria-readonly="true"
+            />
+            <p className="mt-1 text-xs text-gray-500">Days × meals per day. Saved automatically when you create the plan.</p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Price (AED) *</label>
             <input
