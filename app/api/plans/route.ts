@@ -52,7 +52,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = planSchema.parse(body)
 
-    const plan = await prisma.plan.create({ data })
+    const totalMeals = data.days * data.mealsPerDay
+    const plan = await prisma.plan.create({
+      data: {
+        ...data,
+        totalMeals,
+      },
+    })
 
     return NextResponse.json(plan, { status: 201 })
   } catch (error) {

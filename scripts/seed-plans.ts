@@ -104,7 +104,10 @@ async function seedPlans() {
 
       // Create the plan
       const plan = await prisma.plan.create({
-        data: planData,
+        data: {
+          ...planData,
+          totalMeals: planData.days * planData.mealsPerDay,
+        },
       })
 
       console.log(`✓ Created: ${plan.name}`)

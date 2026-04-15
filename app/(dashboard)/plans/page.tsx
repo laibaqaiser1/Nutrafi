@@ -10,6 +10,7 @@ interface Plan {
   planType: string
   days: number
   mealsPerDay: number
+  totalMeals: number
   price: number
   description: string | null
   isActive: boolean
@@ -78,6 +79,7 @@ export default function PlansPage() {
                 <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Type</th>
                 <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Days</th>
                 <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Meals/Day</th>
+                <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Total meals</th>
                 <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Price (AED)</th>
                 <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
                 <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Actions</th>
@@ -90,6 +92,9 @@ export default function PlansPage() {
                   <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{plan.planType}</td>
                   <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{plan.days}</td>
                   <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{plan.mealsPerDay}</td>
+                  <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500 font-medium">
+                    {plan.totalMeals ?? plan.days * plan.mealsPerDay}
+                  </td>
                   <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">AED {plan.price}</td>
                   <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
                     <span className={`px-1.5 inline-flex text-xs leading-4 font-semibold rounded ${

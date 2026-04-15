@@ -72,6 +72,8 @@ model Plan {
   planType    PlanType
   days        Int
   mealsPerDay Int
+  /// Contract slots for the template: days × mealsPerDay (kept in sync on create/update)
+  totalMeals  Int        @default(0)
   price       Float
   description String?
   isActive    Boolean    @default(true)

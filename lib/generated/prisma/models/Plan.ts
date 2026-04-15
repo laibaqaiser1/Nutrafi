@@ -30,6 +30,7 @@ export type PlanAvgAggregateOutputType = {
   id: number | null
   days: number | null
   mealsPerDay: number | null
+  totalMeals: number | null
   price: number | null
 }
 
@@ -37,6 +38,7 @@ export type PlanSumAggregateOutputType = {
   id: number | null
   days: number | null
   mealsPerDay: number | null
+  totalMeals: number | null
   price: number | null
 }
 
@@ -46,6 +48,7 @@ export type PlanMinAggregateOutputType = {
   planType: $Enums.PlanType | null
   days: number | null
   mealsPerDay: number | null
+  totalMeals: number | null
   price: number | null
   description: string | null
   isActive: boolean | null
@@ -59,6 +62,7 @@ export type PlanMaxAggregateOutputType = {
   planType: $Enums.PlanType | null
   days: number | null
   mealsPerDay: number | null
+  totalMeals: number | null
   price: number | null
   description: string | null
   isActive: boolean | null
@@ -72,6 +76,7 @@ export type PlanCountAggregateOutputType = {
   planType: number
   days: number
   mealsPerDay: number
+  totalMeals: number
   price: number
   description: number
   isActive: number
@@ -85,6 +90,7 @@ export type PlanAvgAggregateInputType = {
   id?: true
   days?: true
   mealsPerDay?: true
+  totalMeals?: true
   price?: true
 }
 
@@ -92,6 +98,7 @@ export type PlanSumAggregateInputType = {
   id?: true
   days?: true
   mealsPerDay?: true
+  totalMeals?: true
   price?: true
 }
 
@@ -101,6 +108,7 @@ export type PlanMinAggregateInputType = {
   planType?: true
   days?: true
   mealsPerDay?: true
+  totalMeals?: true
   price?: true
   description?: true
   isActive?: true
@@ -114,6 +122,7 @@ export type PlanMaxAggregateInputType = {
   planType?: true
   days?: true
   mealsPerDay?: true
+  totalMeals?: true
   price?: true
   description?: true
   isActive?: true
@@ -127,6 +136,7 @@ export type PlanCountAggregateInputType = {
   planType?: true
   days?: true
   mealsPerDay?: true
+  totalMeals?: true
   price?: true
   description?: true
   isActive?: true
@@ -227,6 +237,7 @@ export type PlanGroupByOutputType = {
   planType: $Enums.PlanType
   days: number
   mealsPerDay: number
+  totalMeals: number
   price: number
   description: string | null
   isActive: boolean
@@ -263,6 +274,7 @@ export type PlanWhereInput = {
   planType?: Prisma.EnumPlanTypeFilter<"Plan"> | $Enums.PlanType
   days?: Prisma.IntFilter<"Plan"> | number
   mealsPerDay?: Prisma.IntFilter<"Plan"> | number
+  totalMeals?: Prisma.IntFilter<"Plan"> | number
   price?: Prisma.FloatFilter<"Plan"> | number
   description?: Prisma.StringNullableFilter<"Plan"> | string | null
   isActive?: Prisma.BoolFilter<"Plan"> | boolean
@@ -278,6 +290,7 @@ export type PlanOrderByWithRelationInput = {
   planType?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
   price?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   isActive?: Prisma.SortOrder
@@ -296,6 +309,7 @@ export type PlanWhereUniqueInput = Prisma.AtLeast<{
   planType?: Prisma.EnumPlanTypeFilter<"Plan"> | $Enums.PlanType
   days?: Prisma.IntFilter<"Plan"> | number
   mealsPerDay?: Prisma.IntFilter<"Plan"> | number
+  totalMeals?: Prisma.IntFilter<"Plan"> | number
   price?: Prisma.FloatFilter<"Plan"> | number
   description?: Prisma.StringNullableFilter<"Plan"> | string | null
   isActive?: Prisma.BoolFilter<"Plan"> | boolean
@@ -311,6 +325,7 @@ export type PlanOrderByWithAggregationInput = {
   planType?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
   price?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   isActive?: Prisma.SortOrder
@@ -332,6 +347,7 @@ export type PlanScalarWhereWithAggregatesInput = {
   planType?: Prisma.EnumPlanTypeWithAggregatesFilter<"Plan"> | $Enums.PlanType
   days?: Prisma.IntWithAggregatesFilter<"Plan"> | number
   mealsPerDay?: Prisma.IntWithAggregatesFilter<"Plan"> | number
+  totalMeals?: Prisma.IntWithAggregatesFilter<"Plan"> | number
   price?: Prisma.FloatWithAggregatesFilter<"Plan"> | number
   description?: Prisma.StringNullableWithAggregatesFilter<"Plan"> | string | null
   isActive?: Prisma.BoolWithAggregatesFilter<"Plan"> | boolean
@@ -344,6 +360,7 @@ export type PlanCreateInput = {
   planType: $Enums.PlanType
   days: number
   mealsPerDay: number
+  totalMeals?: number
   price: number
   description?: string | null
   isActive?: boolean
@@ -359,6 +376,7 @@ export type PlanUncheckedCreateInput = {
   planType: $Enums.PlanType
   days: number
   mealsPerDay: number
+  totalMeals?: number
   price: number
   description?: string | null
   isActive?: boolean
@@ -373,6 +391,7 @@ export type PlanUpdateInput = {
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMeals?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -388,6 +407,7 @@ export type PlanUncheckedUpdateInput = {
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMeals?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -403,6 +423,7 @@ export type PlanCreateManyInput = {
   planType: $Enums.PlanType
   days: number
   mealsPerDay: number
+  totalMeals?: number
   price: number
   description?: string | null
   isActive?: boolean
@@ -415,6 +436,7 @@ export type PlanUpdateManyMutationInput = {
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMeals?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -428,6 +450,7 @@ export type PlanUncheckedUpdateManyInput = {
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMeals?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -441,6 +464,7 @@ export type PlanCountOrderByAggregateInput = {
   planType?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
   price?: Prisma.SortOrder
   description?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
@@ -452,6 +476,7 @@ export type PlanAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
   price?: Prisma.SortOrder
 }
 
@@ -461,6 +486,7 @@ export type PlanMaxOrderByAggregateInput = {
   planType?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
   price?: Prisma.SortOrder
   description?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
@@ -474,6 +500,7 @@ export type PlanMinOrderByAggregateInput = {
   planType?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
   price?: Prisma.SortOrder
   description?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
@@ -485,6 +512,7 @@ export type PlanSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   days?: Prisma.SortOrder
   mealsPerDay?: Prisma.SortOrder
+  totalMeals?: Prisma.SortOrder
   price?: Prisma.SortOrder
 }
 
@@ -538,6 +566,7 @@ export type PlanCreateWithoutMealPlansInput = {
   planType: $Enums.PlanType
   days: number
   mealsPerDay: number
+  totalMeals?: number
   price: number
   description?: string | null
   isActive?: boolean
@@ -552,6 +581,7 @@ export type PlanUncheckedCreateWithoutMealPlansInput = {
   planType: $Enums.PlanType
   days: number
   mealsPerDay: number
+  totalMeals?: number
   price: number
   description?: string | null
   isActive?: boolean
@@ -581,6 +611,7 @@ export type PlanUpdateWithoutMealPlansInput = {
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMeals?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -595,6 +626,7 @@ export type PlanUncheckedUpdateWithoutMealPlansInput = {
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMeals?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -608,6 +640,7 @@ export type PlanCreateWithoutPaymentsInput = {
   planType: $Enums.PlanType
   days: number
   mealsPerDay: number
+  totalMeals?: number
   price: number
   description?: string | null
   isActive?: boolean
@@ -622,6 +655,7 @@ export type PlanUncheckedCreateWithoutPaymentsInput = {
   planType: $Enums.PlanType
   days: number
   mealsPerDay: number
+  totalMeals?: number
   price: number
   description?: string | null
   isActive?: boolean
@@ -651,6 +685,7 @@ export type PlanUpdateWithoutPaymentsInput = {
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMeals?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -665,6 +700,7 @@ export type PlanUncheckedUpdateWithoutPaymentsInput = {
   planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
   days?: Prisma.IntFieldUpdateOperationsInput | number
   mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMeals?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -719,6 +755,7 @@ export type PlanSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   planType?: boolean
   days?: boolean
   mealsPerDay?: boolean
+  totalMeals?: boolean
   price?: boolean
   description?: boolean
   isActive?: boolean
@@ -735,6 +772,7 @@ export type PlanSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   planType?: boolean
   days?: boolean
   mealsPerDay?: boolean
+  totalMeals?: boolean
   price?: boolean
   description?: boolean
   isActive?: boolean
@@ -748,6 +786,7 @@ export type PlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   planType?: boolean
   days?: boolean
   mealsPerDay?: boolean
+  totalMeals?: boolean
   price?: boolean
   description?: boolean
   isActive?: boolean
@@ -761,6 +800,7 @@ export type PlanSelectScalar = {
   planType?: boolean
   days?: boolean
   mealsPerDay?: boolean
+  totalMeals?: boolean
   price?: boolean
   description?: boolean
   isActive?: boolean
@@ -768,7 +808,7 @@ export type PlanSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "planType" | "days" | "mealsPerDay" | "price" | "description" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["plan"]>
+export type PlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "planType" | "days" | "mealsPerDay" | "totalMeals" | "price" | "description" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["plan"]>
 export type PlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   mealPlans?: boolean | Prisma.Plan$mealPlansArgs<ExtArgs>
   payments?: boolean | Prisma.Plan$paymentsArgs<ExtArgs>
@@ -789,6 +829,10 @@ export type $PlanPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     planType: $Enums.PlanType
     days: number
     mealsPerDay: number
+    /**
+     * Contract slots for the template: days × mealsPerDay (kept in sync on create/update)
+     */
+    totalMeals: number
     price: number
     description: string | null
     isActive: boolean
@@ -1224,6 +1268,7 @@ export interface PlanFieldRefs {
   readonly planType: Prisma.FieldRef<"Plan", 'PlanType'>
   readonly days: Prisma.FieldRef<"Plan", 'Int'>
   readonly mealsPerDay: Prisma.FieldRef<"Plan", 'Int'>
+  readonly totalMeals: Prisma.FieldRef<"Plan", 'Int'>
   readonly price: Prisma.FieldRef<"Plan", 'Float'>
   readonly description: Prisma.FieldRef<"Plan", 'String'>
   readonly isActive: Prisma.FieldRef<"Plan", 'Boolean'>

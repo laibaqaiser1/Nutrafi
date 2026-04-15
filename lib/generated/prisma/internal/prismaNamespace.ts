@@ -1029,6 +1029,7 @@ export const PlanScalarFieldEnum = {
   planType: 'planType',
   days: 'days',
   mealsPerDay: 'mealsPerDay',
+  totalMeals: 'totalMeals',
   price: 'price',
   description: 'description',
   isActive: 'isActive',

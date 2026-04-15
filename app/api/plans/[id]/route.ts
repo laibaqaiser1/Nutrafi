@@ -63,9 +63,21 @@ export async function PUT(
     const body = await request.json()
     const data = planSchema.parse(body)
 
+    const existing = await prisma.plan.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
+    }
+
+    const days = data.days ?? existing.days
+    const mealsPerDay = data.mealsPerDay ?? existing.mealsPerDay
+    const totalMeals = days * mealsPerDay
+
     const plan = await prisma.plan.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        totalMeals,
+      },
     })
 
     return NextResponse.json(plan)

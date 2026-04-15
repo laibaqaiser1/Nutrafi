@@ -560,7 +560,8 @@ export default function NewMealPlanPage() {
 
       setVisibleDaysByWeek(effectiveVisibleDaysByWeek)
       
-      setFormData(prev => ({ ...prev, meals: allMeals, endDate: format(endDate, 'yyyy-MM-dd') }))
+      // Do not set endDate here — only persist end date if the user enters it on the form.
+      setFormData((prev) => ({ ...prev, meals: allMeals }))
     } catch (error) {
       console.error('Error generating meals:', error)
     }
@@ -759,7 +760,7 @@ export default function NewMealPlanPage() {
           planId: planMode === 'predefined' ? formData.planId : undefined,
           planType: formData.planType,
           startDate: formData.startDate,
-          endDate: formData.endDate,
+          ...(formData.endDate.trim() ? { endDate: formData.endDate } : {}),
           days: daysNum,
           mealsPerDay: mpd,
           ...(planTimeSlots.length > 0 ? { timeSlots: planTimeSlots } : {}),

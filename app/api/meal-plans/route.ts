@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { eachDayOfInterval, format } from 'date-fns'
-
 export const dynamic = 'force-dynamic'
 
 const mealPlanSchema = z.object({
@@ -27,6 +25,7 @@ const mealPlanSchema = z.object({
   status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED', 'COMPLETED']).default('ACTIVE'),
   notes: z.string().optional(),
   totalAmount: z.number().optional(),
+  /** Contract meal count (e.g. after skipped days). On create, `remainingMeals` is always set equal to this — not read from the client. */
   totalMeals: z.number().int().optional(),
 })
 
@@ -113,19 +112,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const data = mealPlanSchema.parse(body)
 
-    // Generate dates only if both start and end dates are provided
-    let dates: Date[] = []
-    if (data.startDate && data.endDate) {
-      dates = eachDayOfInterval({
-        start: data.startDate,
-        end: data.endDate,
-      })
-    }
+    const validDate = (d: Date | null | undefined): d is Date =>
+      d instanceof Date && !Number.isNaN(d.getTime())
+    const startDate = validDate(data.startDate) ? data.startDate : null
+    const endDate = validDate(data.endDate) ? data.endDate : null
 
     // Calculate days if not provided
     let days = data.days
-    if (!days && data.startDate && data.endDate) {
-      days = Math.ceil((data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    if (!days && startDate && endDate) {
+      days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
     } else if (!days) {
       days = 0 // Default if no dates provided
     }
@@ -142,16 +137,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Prefer client total (includes skipped days/weeks); fallback = full grid only when omitted
-    const gridTotal = days > 0 ? days * data.mealsPerDay : 0
-    const totalMeals =
+    // One contract total for a new plan: prefer client count (skipped days/weeks); else full grid.
+    const gridTotalMeals = days > 0 ? days * data.mealsPerDay : 0
+    const clientTotal =
       typeof data.totalMeals === 'number' && Number.isFinite(data.totalMeals) && data.totalMeals >= 0
         ? data.totalMeals
-        : gridTotal
+        : null
+    const initialContractMeals = Math.max(0, Math.floor(clientTotal ?? gridTotalMeals))
 
-    // Calculate remaining meals (initially equals total meals since none are delivered yet)
-    const remainingMeals = totalMeals
-
+    // Always persist the same value for both — never take remainingMeals from the request body.
     const mealPlan = await prisma.mealPlan.create({
       data: {
         planType,
@@ -159,10 +153,10 @@ export async function POST(request: NextRequest) {
         mealsPerDay: data.mealsPerDay,
         status: data.status,
         notes: data.notes ?? undefined,
-        totalMeals,
-        remainingMeals,
-        ...(data.startDate ? { startDate: data.startDate } : {}),
-        ...(data.endDate ? { endDate: data.endDate } : {}),
+        totalMeals: initialContractMeals,
+        remainingMeals: initialContractMeals,
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
         ...(data.timeSlots && data.timeSlots.length > 0 ? { timeSlots: data.timeSlots } : {}),
         customer: { connect: { id: data.customerId } },
         ...(data.planId != null ? { plan: { connect: { id: data.planId } } } : {}),

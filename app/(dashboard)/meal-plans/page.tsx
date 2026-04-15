@@ -5,11 +5,18 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 
+function formatListDate(value: string | null | undefined): string {
+  if (value == null || String(value).trim() === '') return '-'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '-'
+  return format(d, 'MMM dd, yyyy')
+}
+
 interface MealPlan {
   id: string
   customerId: string
-  startDate: string
-  endDate: string
+  startDate: string | null
+  endDate: string | null
   days: number | null
   mealsPerDay: number
   status: string
@@ -158,8 +165,8 @@ export default function MealPlansPage() {
                       className="cursor-pointer hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap font-medium text-gray-900">{plan.customer.fullName}</td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{format(new Date(plan.startDate), 'MMM dd, yyyy')}</td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{format(new Date(plan.endDate), 'MMM dd, yyyy')}</td>
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{formatListDate(plan.startDate)}</td>
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{formatListDate(plan.endDate)}</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{plan.mealsPerDay}</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500 font-medium">
                         {plan.totalMeals !== null ? plan.totalMeals : (plan.days && plan.mealsPerDay ? plan.days * plan.mealsPerDay : '-')}
