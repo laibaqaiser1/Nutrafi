@@ -100,7 +100,9 @@ export async function GET(request: NextRequest) {
         return true
       })
     }
-    const customerIdsWithNonSkipped = new Set(items.map(i => String(i.mealPlan.customerId)))
+    const customerIdsWithNonSkippedMealToday = new Set(
+      allItemsForDate.filter((i) => !i.isSkipped).map((i) => String(i.mealPlan.customerId))
+    )
     const byCustomer = new Map<string, typeof allFiltered>()
     for (const item of allFiltered) {
       const cid = String(item.mealPlan.customerId)
@@ -109,7 +111,7 @@ export async function GET(request: NextRequest) {
     }
     const skippedDayRows: Array<{ customerId: string; customerName: string; phone: string | null; deliveryArea: string | null; address: string | null; timeSlot: string; deliveryTime: string | null }> = []
     byCustomer.forEach((group, customerId) => {
-      if (customerIdsWithNonSkipped.has(customerId)) return
+      if (customerIdsWithNonSkippedMealToday.has(customerId)) return
       const allSkipped = group.every(i => i.isSkipped)
       if (allSkipped && group.length > 0) {
         const first = group[0]
