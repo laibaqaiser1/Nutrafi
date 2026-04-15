@@ -70,6 +70,15 @@ export default function ReportsPage() {
     window.open(`/api/reports/export${query ? `?${query}` : ''}`, '_blank')
   }, [startDate, endDate])
 
+  const handleDownloadCustomerReport = useCallback(() => {
+    if (!startDate || !endDate) return
+    const params = new URLSearchParams()
+    params.set('customerOnly', '1')
+    params.set('from', format(startDate, 'yyyy-MM-dd'))
+    params.set('to', format(endDate, 'yyyy-MM-dd'))
+    window.open(`/api/reports/export?${params.toString()}`, '_blank')
+  }, [startDate, endDate])
+
   if (loading && !summary) {
     return <div className="text-center py-4 text-sm">Loading...</div>
   }
@@ -101,6 +110,18 @@ export default function ReportsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Export to Excel
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadCustomerReport}
+            disabled={loading || !startDate || !endDate}
+            title={!startDate || !endDate ? 'Select start and end dates to download the customer report' : undefined}
+            className="px-4 py-2 h-10 rounded-lg border-2 border-nutrafi-primary text-nutrafi-dark hover:bg-[#f0f4e8] font-medium text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Customer report
           </button>
         </div>
       </div>

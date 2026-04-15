@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { formatCategory } from '@/lib/utils'
+import { getCustomerActivityReport } from '@/lib/reports-customer-activity'
 import ExcelJS from 'exceljs'
+import { format } from 'date-fns'
 
 function getDateRange(searchParams: URLSearchParams): { from: Date; to: Date } | null {
   const fromStr = searchParams.get('from')
@@ -16,6 +18,48 @@ function getDateRange(searchParams: URLSearchParams): { from: Date; to: Date } |
   return from <= to ? { from, to } : null
 }
 
+async function workbookCustomerActivityOnly(dateRange: { from: Date; to: Date }) {
+  const customerRows = await getCustomerActivityReport(dateRange.from, dateRange.to)
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = 'Nutrafi Kitchen'
+  const custSheet = workbook.addWorksheet('Customer activity', { views: [{ state: 'frozen', ySplit: 2 }] })
+  const rangeLabel = `${format(dateRange.from, 'd MMM yyyy')} – ${format(dateRange.to, 'd MMM yyyy')}`
+  custSheet.getCell('A1').value = `Customer activity — ${rangeLabel}`
+  custSheet.mergeCells(1, 1, 1, 10)
+  custSheet.getRow(1).font = { bold: true, size: 12 }
+  const widths = [26, 16, 24, 12, 18, 32, 28, 14, 16, 18]
+  widths.forEach((w, i) => {
+    custSheet.getColumn(i + 1).width = w
+  })
+  custSheet.getRow(2).values = [
+    'Customer name',
+    'Phone',
+    'Meal plan start',
+    'Meal plans',
+    'Total payment (AED)',
+    'Payment completed (AED)',
+    'Payment pending (AED)',
+    'Payment status',
+    'Total meals',
+    'Meals delivered',
+  ]
+  custSheet.getRow(2).font = { bold: true }
+  customerRows.forEach((r, i) => {
+    const row = custSheet.getRow(3 + i)
+    row.getCell(1).value = r.fullName
+    row.getCell(2).value = r.phone
+    row.getCell(3).value = r.mealPlanStartDateDisplay ?? '—'
+    row.getCell(4).value = r.mealPlanCount
+    row.getCell(5).value = r.paymentTotalDisplay
+    row.getCell(6).value = r.paymentCompletedDisplay
+    row.getCell(7).value = r.paymentPendingDisplay
+    row.getCell(8).value = r.paymentStatusSummary
+    row.getCell(9).value = r.totalMeals
+    row.getCell(10).value = r.mealsDelivered
+  })
+  return workbook
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession()
@@ -25,6 +69,26 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const dateRange = getDateRange(searchParams)
+
+    if (searchParams.get('customerOnly') === '1') {
+      if (!dateRange) {
+        return NextResponse.json(
+          { error: 'Query params from and to (YYYY-MM-DD) are required for the customer report.' },
+          { status: 400 }
+        )
+      }
+      const workbook = await workbookCustomerActivityOnly(dateRange)
+      const buffer = await workbook.xlsx.writeBuffer()
+      const fromStr = dateRange.from.toISOString().slice(0, 10)
+      const toStr = dateRange.to.toISOString().slice(0, 10)
+      const filename = `customer-activity-${fromStr}-to-${toStr}.xlsx`
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      })
+    }
 
     const paymentWhere = dateRange
       ? { status: 'COMPLETED' as const, paymentDate: { gte: dateRange.from, lte: dateRange.to } }
