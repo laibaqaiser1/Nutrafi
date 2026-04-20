@@ -808,21 +808,23 @@ export default function MealPlanViewPage() {
       }
       
       const nextWeek = Math.max(...visibleWeeks, 0) + 1
-      
+
       const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
       const mealsPerDay = mealPlan.mealsPerDay
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-      
+
       if (activeMealSlots + mealsPerDay > totalMealsAllowed) {
-        toast.warning(`Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`)
+        toast.warning(
+          `Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`
+        )
         setAddingWeek(false)
         return
       }
-      
+
       // New week = next calendar Mon–Sun block (Monday first)
       const weekMonday = getMondayOfPlanWeek(mealPlan.startDate, nextWeek)
       const firstDate = format(weekMonday, 'yyyy-MM-dd')
-      
+
       const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
 
       // Create meal items for only the first day
@@ -927,12 +929,13 @@ export default function MealPlanViewPage() {
         return
       }
 
-      const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
-      const mealsPerDay = mealPlan.mealsPerDay
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
+      const remainingSlots = Math.max(0, totalMealsAllowed - countActiveMealSlots(mealPlan.mealPlanItems))
 
-      if (activeMealSlots + mealsPerDay > totalMealsAllowed) {
-        toast.warning(`Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`)
+      if (remainingSlots <= 0) {
+        toast.warning(
+          `Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`
+        )
         setAddingDay(false)
         return
       }
@@ -945,11 +948,12 @@ export default function MealPlanViewPage() {
         return
       }
       const nextDayDateStr = format(nextDay, 'yyyy-MM-dd')
-      
-      const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
 
-      // Create meal items for the new day
-      const mealItemPromises = defaultTimeSlots.map((timeSlot) => {
+      const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
+      const timeSlotsForDay = defaultTimeSlots.slice(0, Math.min(defaultTimeSlots.length, remainingSlots))
+
+      // Create meal items for the new day (capped so total active meals never exceed the plan)
+      const mealItemPromises = timeSlotsForDay.map((timeSlot) => {
         const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
         let deliveryTime = ''
         if (timeMatch) {
@@ -1479,10 +1483,10 @@ export default function MealPlanViewPage() {
             const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
             const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
             const mealsPerDay = mealPlan.mealsPerDay
-            
+
             const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
             const maxDays = mealPlan.days || 22
-            
+
             const canAddMoreWeeks = totalDays < maxDays && activeMealSlots + mealsPerDay <= totalMealsAllowed
             
             return canAddMoreWeeks ? (
@@ -1767,10 +1771,9 @@ export default function MealPlanViewPage() {
                                 const canAddDay = canAddDayInWeek && remainingDays > 0
                                 
                                 const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
-                                const mealsPerDay = mealPlan.mealsPerDay
                                 const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-                                const canAddMoreMeals = activeMealSlots + mealsPerDay <= totalMealsAllowed
-                                
+                                const canAddMoreMeals = activeMealSlots < totalMealsAllowed
+
                                 return canAddDay && canAddMoreMeals ? (
                                   <tr>
                                     <td colSpan={6} className="px-2 py-2 lg:px-6 lg:py-4 text-center">
@@ -1806,10 +1809,9 @@ export default function MealPlanViewPage() {
                                   const remainingDays = maxDays - totalDays
                                   
                                   const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
-                                  const mealsPerDay = mealPlan.mealsPerDay
                                   const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-                                  const canAddMoreMeals = activeMealSlots + mealsPerDay <= totalMealsAllowed
-                                  
+                                  const canAddMoreMeals = activeMealSlots < totalMealsAllowed
+
                                   return remainingDays > 0 && canAddMoreMeals ? (
                                     <button
                                       onClick={() => addDayToWeek(week)}
