@@ -21,8 +21,11 @@ export type KitchenUnscheduledRow = {
 }
 
 /**
- * ACTIVE meal plans covering `date`, one row per customer when they still need
+ * ACTIVE meal plans for `date`, one row per customer when they still need
  * non-skipped meals with dishes (same rules as kitchen unscheduled tab).
+ *
+ * Plan must have: a **start date** on or before this day, and **remaining meals > 0**
+ * (contract still open). `endDate` is not used here.
  */
 export async function getKitchenUnscheduledRows(date: string): Promise<KitchenUnscheduledRow[]> {
   const dayStart = new Date(new Date(date).setHours(0, 0, 0, 0))
@@ -32,10 +35,8 @@ export async function getKitchenUnscheduledRows(date: string): Promise<KitchenUn
     prisma.mealPlan.findMany({
       where: {
         status: 'ACTIVE',
-        AND: [
-          { OR: [{ startDate: null }, { startDate: { lte: dayEnd } }] },
-          { OR: [{ endDate: null }, { endDate: { gte: dayStart } }] },
-        ],
+        startDate: { not: null, lte: dayEnd },
+        remainingMeals: { gt: 0 },
       },
       include: { customer: true },
       orderBy: [{ customerId: 'asc' }, { id: 'asc' }],
