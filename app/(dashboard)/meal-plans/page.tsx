@@ -16,7 +16,6 @@ interface MealPlan {
   id: string
   customerId: string
   startDate: string | null
-  endDate: string | null
   days: number | null
   mealsPerDay: number
   status: string
@@ -148,7 +147,6 @@ export default function MealPlansPage() {
                   <tr>
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Customer</th>
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Start Date</th>
-                    <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">End Date</th>
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Meals/Day</th>
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Total Meals</th>
                     <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Remaining Meals</th>
@@ -166,7 +164,6 @@ export default function MealPlansPage() {
                     >
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap font-medium text-gray-900">{plan.customer.fullName}</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{formatListDate(plan.startDate)}</td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{formatListDate(plan.endDate)}</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500">{plan.mealsPerDay}</td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-gray-500 font-medium">
                         {plan.totalMeals !== null ? plan.totalMeals : (plan.days && plan.mealsPerDay ? plan.days * plan.mealsPerDay : '-')}
