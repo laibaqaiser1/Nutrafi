@@ -38,6 +38,7 @@ export type MealPlanAvgAggregateOutputType = {
   totalAmount: number | null
   totalMeals: number | null
   vatAmount: number | null
+  weeklySkipDays: number | null
 }
 
 export type MealPlanSumAggregateOutputType = {
@@ -52,6 +53,7 @@ export type MealPlanSumAggregateOutputType = {
   totalAmount: number | null
   totalMeals: number | null
   vatAmount: number | null
+  weeklySkipDays: number[]
 }
 
 export type MealPlanMinAggregateOutputType = {
@@ -73,6 +75,7 @@ export type MealPlanMinAggregateOutputType = {
   totalAmount: number | null
   totalMeals: number | null
   vatAmount: number | null
+  weeklySkipDaysSameEveryWeek: boolean | null
 }
 
 export type MealPlanMaxAggregateOutputType = {
@@ -94,6 +97,7 @@ export type MealPlanMaxAggregateOutputType = {
   totalAmount: number | null
   totalMeals: number | null
   vatAmount: number | null
+  weeklySkipDaysSameEveryWeek: boolean | null
 }
 
 export type MealPlanCountAggregateOutputType = {
@@ -116,6 +120,9 @@ export type MealPlanCountAggregateOutputType = {
   totalMeals: number
   vatAmount: number
   timeSlots: number
+  weeklySkipDays: number
+  weeklySkipDaysSameEveryWeek: number
+  weeklySkipDaysByWeek: number
   _all: number
 }
 
@@ -132,6 +139,7 @@ export type MealPlanAvgAggregateInputType = {
   totalAmount?: true
   totalMeals?: true
   vatAmount?: true
+  weeklySkipDays?: true
 }
 
 export type MealPlanSumAggregateInputType = {
@@ -146,6 +154,7 @@ export type MealPlanSumAggregateInputType = {
   totalAmount?: true
   totalMeals?: true
   vatAmount?: true
+  weeklySkipDays?: true
 }
 
 export type MealPlanMinAggregateInputType = {
@@ -167,6 +176,7 @@ export type MealPlanMinAggregateInputType = {
   totalAmount?: true
   totalMeals?: true
   vatAmount?: true
+  weeklySkipDaysSameEveryWeek?: true
 }
 
 export type MealPlanMaxAggregateInputType = {
@@ -188,6 +198,7 @@ export type MealPlanMaxAggregateInputType = {
   totalAmount?: true
   totalMeals?: true
   vatAmount?: true
+  weeklySkipDaysSameEveryWeek?: true
 }
 
 export type MealPlanCountAggregateInputType = {
@@ -210,6 +221,9 @@ export type MealPlanCountAggregateInputType = {
   totalMeals?: true
   vatAmount?: true
   timeSlots?: true
+  weeklySkipDays?: true
+  weeklySkipDaysSameEveryWeek?: true
+  weeklySkipDaysByWeek?: true
   _all?: true
 }
 
@@ -319,6 +333,9 @@ export type MealPlanGroupByOutputType = {
   totalMeals: number | null
   vatAmount: number | null
   timeSlots: runtime.JsonValue | null
+  weeklySkipDays: number[]
+  weeklySkipDaysSameEveryWeek: boolean
+  weeklySkipDaysByWeek: runtime.JsonValue | null
   _count: MealPlanCountAggregateOutputType | null
   _avg: MealPlanAvgAggregateOutputType | null
   _sum: MealPlanSumAggregateOutputType | null
@@ -364,6 +381,9 @@ export type MealPlanWhereInput = {
   totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   timeSlots?: Prisma.JsonNullableFilter<"MealPlan">
+  weeklySkipDays?: Prisma.IntNullableListFilter<"MealPlan">
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFilter<"MealPlan"> | boolean
+  weeklySkipDaysByWeek?: Prisma.JsonNullableFilter<"MealPlan">
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   plan?: Prisma.XOR<Prisma.PlanNullableScalarRelationFilter, Prisma.PlanWhereInput> | null
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
@@ -390,6 +410,9 @@ export type MealPlanOrderByWithRelationInput = {
   totalMeals?: Prisma.SortOrderInput | Prisma.SortOrder
   vatAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   timeSlots?: Prisma.SortOrderInput | Prisma.SortOrder
+  weeklySkipDays?: Prisma.SortOrder
+  weeklySkipDaysSameEveryWeek?: Prisma.SortOrder
+  weeklySkipDaysByWeek?: Prisma.SortOrderInput | Prisma.SortOrder
   customer?: Prisma.CustomerOrderByWithRelationInput
   plan?: Prisma.PlanOrderByWithRelationInput
   mealPlanItems?: Prisma.MealPlanItemOrderByRelationAggregateInput
@@ -419,6 +442,9 @@ export type MealPlanWhereUniqueInput = Prisma.AtLeast<{
   totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   timeSlots?: Prisma.JsonNullableFilter<"MealPlan">
+  weeklySkipDays?: Prisma.IntNullableListFilter<"MealPlan">
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFilter<"MealPlan"> | boolean
+  weeklySkipDaysByWeek?: Prisma.JsonNullableFilter<"MealPlan">
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
   plan?: Prisma.XOR<Prisma.PlanNullableScalarRelationFilter, Prisma.PlanWhereInput> | null
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
@@ -445,6 +471,9 @@ export type MealPlanOrderByWithAggregationInput = {
   totalMeals?: Prisma.SortOrderInput | Prisma.SortOrder
   vatAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   timeSlots?: Prisma.SortOrderInput | Prisma.SortOrder
+  weeklySkipDays?: Prisma.SortOrder
+  weeklySkipDaysSameEveryWeek?: Prisma.SortOrder
+  weeklySkipDaysByWeek?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.MealPlanCountOrderByAggregateInput
   _avg?: Prisma.MealPlanAvgOrderByAggregateInput
   _max?: Prisma.MealPlanMaxOrderByAggregateInput
@@ -475,6 +504,9 @@ export type MealPlanScalarWhereWithAggregatesInput = {
   totalMeals?: Prisma.IntNullableWithAggregatesFilter<"MealPlan"> | number | null
   vatAmount?: Prisma.FloatNullableWithAggregatesFilter<"MealPlan"> | number | null
   timeSlots?: Prisma.JsonNullableWithAggregatesFilter<"MealPlan">
+  weeklySkipDays?: Prisma.IntNullableListFilter<"MealPlan">
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolWithAggregatesFilter<"MealPlan"> | boolean
+  weeklySkipDaysByWeek?: Prisma.JsonNullableWithAggregatesFilter<"MealPlan">
 }
 
 export type MealPlanCreateInput = {
@@ -494,6 +526,9 @@ export type MealPlanCreateInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
@@ -520,6 +555,9 @@ export type MealPlanUncheckedCreateInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
@@ -541,6 +579,9 @@ export type MealPlanUpdateInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
@@ -567,6 +608,9 @@ export type MealPlanUncheckedUpdateInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -591,6 +635,9 @@ export type MealPlanCreateManyInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanUpdateManyMutationInput = {
@@ -610,6 +657,9 @@ export type MealPlanUpdateManyMutationInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanUncheckedUpdateManyInput = {
@@ -632,6 +682,9 @@ export type MealPlanUncheckedUpdateManyInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanListRelationFilter = {
@@ -642,6 +695,14 @@ export type MealPlanListRelationFilter = {
 
 export type MealPlanOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
+}
+
+export type IntNullableListFilter<$PrismaModel = never> = {
+  equals?: number[] | Prisma.ListIntFieldRefInput<$PrismaModel> | null
+  has?: number | Prisma.IntFieldRefInput<$PrismaModel> | null
+  hasEvery?: number[] | Prisma.ListIntFieldRefInput<$PrismaModel>
+  hasSome?: number[] | Prisma.ListIntFieldRefInput<$PrismaModel>
+  isEmpty?: boolean
 }
 
 export type MealPlanCountOrderByAggregateInput = {
@@ -664,6 +725,9 @@ export type MealPlanCountOrderByAggregateInput = {
   totalMeals?: Prisma.SortOrder
   vatAmount?: Prisma.SortOrder
   timeSlots?: Prisma.SortOrder
+  weeklySkipDays?: Prisma.SortOrder
+  weeklySkipDaysSameEveryWeek?: Prisma.SortOrder
+  weeklySkipDaysByWeek?: Prisma.SortOrder
 }
 
 export type MealPlanAvgOrderByAggregateInput = {
@@ -678,6 +742,7 @@ export type MealPlanAvgOrderByAggregateInput = {
   totalAmount?: Prisma.SortOrder
   totalMeals?: Prisma.SortOrder
   vatAmount?: Prisma.SortOrder
+  weeklySkipDays?: Prisma.SortOrder
 }
 
 export type MealPlanMaxOrderByAggregateInput = {
@@ -699,6 +764,7 @@ export type MealPlanMaxOrderByAggregateInput = {
   totalAmount?: Prisma.SortOrder
   totalMeals?: Prisma.SortOrder
   vatAmount?: Prisma.SortOrder
+  weeklySkipDaysSameEveryWeek?: Prisma.SortOrder
 }
 
 export type MealPlanMinOrderByAggregateInput = {
@@ -720,6 +786,7 @@ export type MealPlanMinOrderByAggregateInput = {
   totalAmount?: Prisma.SortOrder
   totalMeals?: Prisma.SortOrder
   vatAmount?: Prisma.SortOrder
+  weeklySkipDaysSameEveryWeek?: Prisma.SortOrder
 }
 
 export type MealPlanSumOrderByAggregateInput = {
@@ -734,6 +801,7 @@ export type MealPlanSumOrderByAggregateInput = {
   totalAmount?: Prisma.SortOrder
   totalMeals?: Prisma.SortOrder
   vatAmount?: Prisma.SortOrder
+  weeklySkipDays?: Prisma.SortOrder
 }
 
 export type MealPlanScalarRelationFilter = {
@@ -830,6 +898,10 @@ export type MealPlanUncheckedUpdateManyWithoutPlanNestedInput = {
   deleteMany?: Prisma.MealPlanScalarWhereInput | Prisma.MealPlanScalarWhereInput[]
 }
 
+export type MealPlanCreateweeklySkipDaysInput = {
+  set: number[]
+}
+
 export type NullableDateTimeFieldUpdateOperationsInput = {
   set?: Date | string | null
 }
@@ -840,6 +912,11 @@ export type NullableIntFieldUpdateOperationsInput = {
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type MealPlanUpdateweeklySkipDaysInput = {
+  set?: number[]
+  push?: number | number[]
 }
 
 export type MealPlanCreateNestedOneWithoutMealPlanItemsInput = {
@@ -889,6 +966,9 @@ export type MealPlanCreateWithoutCustomerInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -913,6 +993,9 @@ export type MealPlanUncheckedCreateWithoutCustomerInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
@@ -966,6 +1049,9 @@ export type MealPlanScalarWhereInput = {
   totalMeals?: Prisma.IntNullableFilter<"MealPlan"> | number | null
   vatAmount?: Prisma.FloatNullableFilter<"MealPlan"> | number | null
   timeSlots?: Prisma.JsonNullableFilter<"MealPlan">
+  weeklySkipDays?: Prisma.IntNullableListFilter<"MealPlan">
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFilter<"MealPlan"> | boolean
+  weeklySkipDaysByWeek?: Prisma.JsonNullableFilter<"MealPlan">
 }
 
 export type MealPlanCreateWithoutPlanInput = {
@@ -985,6 +1071,9 @@ export type MealPlanCreateWithoutPlanInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -1009,6 +1098,9 @@ export type MealPlanUncheckedCreateWithoutPlanInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
@@ -1056,6 +1148,9 @@ export type MealPlanCreateWithoutMealPlanItemsInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
@@ -1081,6 +1176,9 @@ export type MealPlanUncheckedCreateWithoutMealPlanItemsInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
@@ -1117,6 +1215,9 @@ export type MealPlanUpdateWithoutMealPlanItemsInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1142,6 +1243,9 @@ export type MealPlanUncheckedUpdateWithoutMealPlanItemsInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
@@ -1162,6 +1266,9 @@ export type MealPlanCreateWithoutPaymentsInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
@@ -1187,6 +1294,9 @@ export type MealPlanUncheckedCreateWithoutPaymentsInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
@@ -1223,6 +1333,9 @@ export type MealPlanUpdateWithoutPaymentsInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
@@ -1248,6 +1361,9 @@ export type MealPlanUncheckedUpdateWithoutPaymentsInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
@@ -1270,6 +1386,9 @@ export type MealPlanCreateManyCustomerInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanUpdateWithoutCustomerInput = {
@@ -1289,6 +1408,9 @@ export type MealPlanUpdateWithoutCustomerInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1313,6 +1435,9 @@ export type MealPlanUncheckedUpdateWithoutCustomerInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -1336,6 +1461,9 @@ export type MealPlanUncheckedUpdateManyWithoutCustomerInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanCreateManyPlanInput = {
@@ -1357,6 +1485,9 @@ export type MealPlanCreateManyPlanInput = {
   totalMeals?: number | null
   vatAmount?: number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type MealPlanUpdateWithoutPlanInput = {
@@ -1376,6 +1507,9 @@ export type MealPlanUpdateWithoutPlanInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
@@ -1400,6 +1534,9 @@ export type MealPlanUncheckedUpdateWithoutPlanInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
 }
@@ -1423,6 +1560,9 @@ export type MealPlanUncheckedUpdateManyWithoutPlanInput = {
   totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysSameEveryWeek?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 
@@ -1485,6 +1625,9 @@ export type MealPlanSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   totalMeals?: boolean
   vatAmount?: boolean
   timeSlots?: boolean
+  weeklySkipDays?: boolean
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
   mealPlanItems?: boolean | Prisma.MealPlan$mealPlanItemsArgs<ExtArgs>
@@ -1512,6 +1655,9 @@ export type MealPlanSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   totalMeals?: boolean
   vatAmount?: boolean
   timeSlots?: boolean
+  weeklySkipDays?: boolean
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlan"]>
@@ -1536,6 +1682,9 @@ export type MealPlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   totalMeals?: boolean
   vatAmount?: boolean
   timeSlots?: boolean
+  weeklySkipDays?: boolean
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlan"]>
@@ -1560,9 +1709,12 @@ export type MealPlanSelectScalar = {
   totalMeals?: boolean
   vatAmount?: boolean
   timeSlots?: boolean
+  weeklySkipDays?: boolean
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: boolean
 }
 
-export type MealPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "customerId" | "planId" | "startDate" | "endDate" | "mealsPerDay" | "status" | "notes" | "createdAt" | "updatedAt" | "averageMealRate" | "baseAmount" | "days" | "planType" | "remainingMeals" | "totalAmount" | "totalMeals" | "vatAmount" | "timeSlots", ExtArgs["result"]["mealPlan"]>
+export type MealPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "customerId" | "planId" | "startDate" | "endDate" | "mealsPerDay" | "status" | "notes" | "createdAt" | "updatedAt" | "averageMealRate" | "baseAmount" | "days" | "planType" | "remainingMeals" | "totalAmount" | "totalMeals" | "vatAmount" | "timeSlots" | "weeklySkipDays" | "weeklySkipDaysSameEveryWeek" | "weeklySkipDaysByWeek", ExtArgs["result"]["mealPlan"]>
 export type MealPlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
@@ -1610,6 +1762,18 @@ export type $MealPlanPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
      * Delivery time labels per day, e.g. ["08:00","13:00","19:00"] — copied to each new MealPlanItem unless overridden
      */
     timeSlots: runtime.JsonValue | null
+    /**
+     * JS weekday numbers 0=Sun … 6=Sat; default pattern when “same every week” or fallback per plan week
+     */
+    weeklySkipDays: number[]
+    /**
+     * When true, `weeklySkipDays` applies to every plan week; when false, use `weeklySkipDaysByWeek` per week (fallback global)
+     */
+    weeklySkipDaysSameEveryWeek: boolean
+    /**
+     * JSON map plan week number (string) → weekday list e.g. {"1":[6,0],"2":[0]} — used when `weeklySkipDaysSameEveryWeek` is false
+     */
+    weeklySkipDaysByWeek: runtime.JsonValue | null
   }, ExtArgs["result"]["mealPlan"]>
   composites: {}
 }
@@ -2056,6 +2220,9 @@ export interface MealPlanFieldRefs {
   readonly totalMeals: Prisma.FieldRef<"MealPlan", 'Int'>
   readonly vatAmount: Prisma.FieldRef<"MealPlan", 'Float'>
   readonly timeSlots: Prisma.FieldRef<"MealPlan", 'Json'>
+  readonly weeklySkipDays: Prisma.FieldRef<"MealPlan", 'Int[]'>
+  readonly weeklySkipDaysSameEveryWeek: Prisma.FieldRef<"MealPlan", 'Boolean'>
+  readonly weeklySkipDaysByWeek: Prisma.FieldRef<"MealPlan", 'Json'>
 }
     
 

@@ -1059,7 +1059,10 @@ export const MealPlanScalarFieldEnum = {
   totalAmount: 'totalAmount',
   totalMeals: 'totalMeals',
   vatAmount: 'vatAmount',
-  timeSlots: 'timeSlots'
+  timeSlots: 'timeSlots',
+  weeklySkipDays: 'weeklySkipDays',
+  weeklySkipDaysSameEveryWeek: 'weeklySkipDaysSameEveryWeek',
+  weeklySkipDaysByWeek: 'weeklySkipDaysByWeek'
 } as const
 
 export type MealPlanScalarFieldEnum = (typeof MealPlanScalarFieldEnum)[keyof typeof MealPlanScalarFieldEnum]

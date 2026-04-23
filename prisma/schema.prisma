@@ -106,7 +106,13 @@ model MealPlan {
   vatAmount       Float?
   /// Delivery time labels per day, e.g. ["08:00","13:00","19:00"] — copied to each new MealPlanItem unless overridden
   timeSlots       Json?
-  customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /// JS weekday numbers 0=Sun … 6=Sat; default pattern when “same every week” or fallback per plan week
+  weeklySkipDays               Int[]   @default([])
+  /// When true, `weeklySkipDays` applies to every plan week; when false, use `weeklySkipDaysByWeek` per week (fallback global)
+  weeklySkipDaysSameEveryWeek  Boolean @default(true)
+  /// JSON map plan week number (string) → weekday list e.g. {"1":[6,0],"2":[0]} — used when `weeklySkipDaysSameEveryWeek` is false
+  weeklySkipDaysByWeek         Json?
+  customer                     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   plan            Plan?          @relation(fields: [planId], references: [id])
   mealPlanItems   MealPlanItem[]
   payments        Payment[]

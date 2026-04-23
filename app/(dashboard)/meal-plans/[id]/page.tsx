@@ -13,6 +13,13 @@ import {
 } from '@/lib/meal-plan-weeks'
 import { formatCategory } from '@/lib/utils'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
+import {
+  normalizeWeeklySkipDays,
+  parseWeeklySkipDaysByWeekJson,
+  serializeWeeklySkipDaysByWeek,
+  shouldSkipCalendarDay,
+  WEEKDAY_SKIP_TOGGLES,
+} from '@/lib/meal-plan-skip-days'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { DeleteMealPlanButton } from '@/components/meal-plans/DeleteMealPlanButton'
 import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
@@ -40,6 +47,10 @@ interface MealPlan {
   mealsPerDay: number
   /** Plan-level default times (JSON array), applied to new items */
   timeSlots?: unknown
+  /** JS 0=Sun … 6=Sat; default / global skip weekdays */
+  weeklySkipDays?: number[]
+  weeklySkipDaysSameEveryWeek?: boolean
+  weeklySkipDaysByWeek?: unknown
   status: string
   notes: string | null
   baseAmount: number | null
@@ -166,6 +177,22 @@ export default function MealPlanViewPage() {
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
   const [itemDateEdit, setItemDateEdit] = useState('')
   const [savingDate, setSavingDate] = useState(false)
+  const [weeklySkipDraft, setWeeklySkipDraft] = useState<number[]>([])
+  const [weeklySkipDaysSameEveryWeek, setWeeklySkipDaysSameEveryWeek] = useState(true)
+  const [weeklySkipByWeekDraft, setWeeklySkipByWeekDraft] = useState<Record<number, number[]>>({})
+  const [applyWeeklySkipsToExisting, setApplyWeeklySkipsToExisting] = useState(false)
+  const [savingWeeklySkips, setSavingWeeklySkips] = useState(false)
+
+  const sortedPlanWeekNumbers = React.useMemo(
+    () => [...visibleWeeks].filter((w) => w > 0).sort((a, b) => a - b),
+    [visibleWeeks]
+  )
+  const anchorWeekForGlobalSkips = sortedPlanWeekNumbers[0] ?? 1
+
+  const getSkipDaysForPlanWeek = (planWeek: number) =>
+    weeklySkipDaysSameEveryWeek
+      ? normalizeWeeklySkipDays(weeklySkipDraft)
+      : normalizeWeeklySkipDays(weeklySkipByWeekDraft[planWeek] ?? weeklySkipDraft)
 
   useEffect(() => {
     if (params.id) {
@@ -232,6 +259,13 @@ export default function MealPlanViewPage() {
       if (response.ok) {
         const data = await response.json()
         setMealPlan(data)
+        setWeeklySkipDraft(normalizeWeeklySkipDays(data.weeklySkipDays))
+        setWeeklySkipDaysSameEveryWeek(data.weeklySkipDaysSameEveryWeek !== false)
+        const byWeek: Record<number, number[]> = {}
+        for (const [k, v] of Object.entries(parseWeeklySkipDaysByWeekJson(data.weeklySkipDaysByWeek))) {
+          byWeek[parseInt(k, 10)] = v
+        }
+        setWeeklySkipByWeekDraft(byWeek)
 
         // Initialize visible weeks and days based on existing meal items
         if (data.mealPlanItems && data.mealPlanItems.length > 0) {
@@ -279,6 +313,71 @@ export default function MealPlanViewPage() {
       toast.error('Failed to fetch meal plan')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const toggleWeeklySkipDay = (value: number) => {
+    setWeeklySkipDraft((prev) => {
+      const next = new Set(prev)
+      if (next.has(value)) next.delete(value)
+      else next.add(value)
+      return Array.from(next).sort((a, b) => a - b)
+    })
+  }
+
+  const toggleWeeklySkipDayForWeek = (planWeek: number, value: number) => {
+    setWeeklySkipByWeekDraft((prev) => {
+      const cur = normalizeWeeklySkipDays(prev[planWeek] ?? weeklySkipDraft)
+      const nextSet = new Set(cur)
+      if (nextSet.has(value)) nextSet.delete(value)
+      else nextSet.add(value)
+      const nextArr = Array.from(nextSet).sort((a, b) => a - b)
+      return { ...prev, [planWeek]: nextArr }
+    })
+  }
+
+  const saveWeeklySkipSettings = async () => {
+    if (!mealPlan) return
+    setSavingWeeklySkips(true)
+    try {
+      const res = await fetch(`/api/meal-plans/${mealPlan.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weeklySkipDays: weeklySkipDraft,
+          weeklySkipDaysSameEveryWeek,
+          weeklySkipDaysByWeek: weeklySkipDaysSameEveryWeek
+            ? {}
+            : serializeWeeklySkipDaysByWeek(weeklySkipByWeekDraft),
+          applyWeeklySkipsToExistingItems: applyWeeklySkipsToExisting,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        const msg =
+          typeof err.error === 'string'
+            ? err.error
+            : Array.isArray(err.error)
+              ? err.error.map((e: { message?: string }) => e.message).filter(Boolean).join(', ')
+              : 'Failed to save skip days'
+        toast.error(msg)
+        return
+      }
+      const json = (await res.json()) as { appliedWeeklySkipsCount?: number }
+      setApplyWeeklySkipsToExisting(false)
+      await fetchMealPlan(mealPlan.id)
+      if (json.appliedWeeklySkipsCount && json.appliedWeeklySkipsCount > 0) {
+        toast.success(
+          `Saved. Marked ${json.appliedWeeklySkipsCount} existing meal(s) as skipped on the selected weekdays.`
+        )
+      } else {
+        toast.success('Weekly skip days saved. New days and weeks will use this pattern.')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save skip days')
+    } finally {
+      setSavingWeeklySkips(false)
     }
   }
 
@@ -848,7 +947,7 @@ export default function MealPlanViewPage() {
             deliveryType: 'delivery',
             deliveryTime: deliveryTime,
             location: mealPlan.customer.deliveryArea || '',
-            isSkipped: false,
+            isSkipped: shouldSkipCalendarDay(firstDate, getSkipDaysForPlanWeek(nextWeek)),
           }),
         })
       })
@@ -973,7 +1072,7 @@ export default function MealPlanViewPage() {
             deliveryType: 'delivery',
             deliveryTime: deliveryTime,
             location: mealPlan.customer.deliveryArea || '',
-            isSkipped: false,
+            isSkipped: shouldSkipCalendarDay(nextDayDateStr, getSkipDaysForPlanWeek(week)),
           }),
         })
       })
@@ -1043,7 +1142,7 @@ export default function MealPlanViewPage() {
           deliveryType: 'delivery',
           deliveryTime: deliveryTime,
           location: mealPlan.customer.deliveryArea || '',
-          isSkipped: false,
+          isSkipped: shouldSkipCalendarDay(date, getSkipDaysForPlanWeek(week)),
         }),
       })
       
@@ -1129,7 +1228,9 @@ export default function MealPlanViewPage() {
             deliveryTime: item.deliveryTime || undefined,
             deliveryType: itemAny.deliveryType ?? parsedLegacy?.deliveryType ?? 'delivery',
             location: itemAny.deliveryLocation ?? parsedLegacy?.location ?? parsedLegacy?.deliveryLocation ?? mealPlan.customer.deliveryArea ?? '',
-            isSkipped: item.isSkipped,
+            isSkipped:
+              item.isSkipped ||
+              shouldSkipCalendarDay(targetDateStr, getSkipDaysForPlanWeek(nextWeek)),
             customNote: noteText?.trim() || undefined,
           }),
         })
@@ -1476,7 +1577,7 @@ export default function MealPlanViewPage() {
 
       {/* Meal Plan Items */}
       <div className="bg-white shadow rounded-lg p-3 lg:p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-base lg:text-lg font-semibold text-gray-900">Meal Schedule</h2>
           {(() => {
             if (!mealPlan) return null
@@ -1505,6 +1606,52 @@ export default function MealPlanViewPage() {
             ) : null
           })()}
         </div>
+        {mealPlan && (
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gray-100 pb-3 text-xs text-gray-600">
+            <label className="inline-flex cursor-pointer select-none items-center gap-2">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 text-nutrafi-primary focus:ring-nutrafi-primary"
+                checked={weeklySkipDaysSameEveryWeek}
+                onChange={(e) => {
+                  const on = e.target.checked
+                  setWeeklySkipDaysSameEveryWeek(on)
+                  if (on) {
+                    setWeeklySkipByWeekDraft({})
+                  } else {
+                    const weeks = [...visibleWeeks].filter((w) => w > 0).sort((a, b) => a - b)
+                    const seed = normalizeWeeklySkipDays(weeklySkipDraft)
+                    setWeeklySkipByWeekDraft((prev) => {
+                      const next = { ...prev }
+                      for (const w of weeks) {
+                        if (next[w] === undefined) next[w] = [...seed]
+                      }
+                      return next
+                    })
+                  }
+                }}
+              />
+              Same skip pattern every week
+            </label>
+            <label className="inline-flex cursor-pointer select-none items-center gap-2">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 text-nutrafi-primary focus:ring-nutrafi-primary"
+                checked={applyWeeklySkipsToExisting}
+                onChange={(e) => setApplyWeeklySkipsToExisting(e.target.checked)}
+              />
+              On save, apply to all <strong className="font-semibold">non-delivered</strong> meals (one-time)
+            </label>
+            <button
+              type="button"
+              onClick={saveWeeklySkipSettings}
+              disabled={savingWeeklySkips}
+              className="rounded-md bg-nutrafi-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-nutrafi-dark disabled:opacity-50"
+            >
+              {savingWeeklySkips ? 'Saving…' : 'Save skip settings'}
+            </button>
+          </div>
+        )}
         <div className="space-y-6">
           {visibleWeeks.length > 0 ? (
             visibleWeeks
@@ -1608,6 +1755,60 @@ export default function MealPlanViewPage() {
                     </div>
                     </div>
                   </div>
+                  {mealPlan && (
+                    <div
+                      className="mt-1 flex flex-wrap items-center gap-x-0.5 gap-y-0.5 border-t border-white/25 pt-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="mr-0.5 shrink-0 text-[9px] font-semibold uppercase tracking-wide text-white/80">
+                        Skip
+                      </span>
+                      {weeklySkipDaysSameEveryWeek && week !== anchorWeekForGlobalSkips ? (
+                        <span className="text-[10px] text-white/90">
+                          {(() => {
+                            const p = getSkipDaysForPlanWeek(week)
+                            if (p.length === 0) return <>Off · same for all weeks</>
+                            return (
+                              <>
+                                {p
+                                  .map(
+                                    (d) =>
+                                      WEEKDAY_SKIP_TOGGLES.find((t) => t.value === d)?.label ?? String(d)
+                                  )
+                                  .join(', ')}
+                                <span className="text-white/70"> · all weeks</span>
+                              </>
+                            )
+                          })()}
+                        </span>
+                      ) : (
+                        WEEKDAY_SKIP_TOGGLES.map(({ label, value }) => {
+                          const list = getSkipDaysForPlanWeek(week)
+                          const on = list.includes(value)
+                          return (
+                            <label
+                              key={`${week}-${value}`}
+                              className={`inline-flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-[10px] text-white ${
+                                on ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="h-2.5 w-2.5 shrink-0 rounded border-white/50 bg-white/20 text-nutrafi-primary"
+                                checked={on}
+                                onChange={() =>
+                                  weeklySkipDaysSameEveryWeek
+                                    ? toggleWeeklySkipDay(value)
+                                    : toggleWeeklySkipDayForWeek(week, value)
+                                }
+                              />
+                              {label}
+                            </label>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Week Content */}

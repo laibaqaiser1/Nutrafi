@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/lib/generated/prisma/client'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { applyMealPlanTimeSlotsToFutureItems } from '@/lib/meal-plan-propagate-times'
+import { markUndeliveredItemsSkippedByPlanWeekPatterns } from '@/lib/meal-plan-apply-weekly-skips'
+import { normalizeWeeklySkipDays, parseWeeklySkipDaysByWeekJson } from '@/lib/meal-plan-skip-days'
 import { z } from 'zod'
 
 /** Never cache: UI must show DB `remainingMeals` as stored (not a stale or recomputed value). */
@@ -37,6 +39,28 @@ const mealPlanUpdateSchema = z.object({
   /** When true (with changed non-empty timeSlots), reassign future non-delivered item times from today */
   propagateTimeSlotsToFutureItems: z.boolean().optional(),
   updateItemDatesFromStartDate: z.boolean().optional(),
+  /** JS weekday 0=Sun … 6=Sat; recurring skip pattern for new schedule rows */
+  weeklySkipDays: z
+    .array(z.number().int().min(0).max(6))
+    .transform((arr) => normalizeWeeklySkipDays(arr))
+    .optional(),
+  /** When true with `weeklySkipDays`, mark matching weekdays skipped on all non-delivered items */
+  applyWeeklySkipsToExistingItems: z.boolean().optional(),
+  /** When true, `weeklySkipDays` applies to every plan week; otherwise use `weeklySkipDaysByWeek` */
+  weeklySkipDaysSameEveryWeek: z.boolean().optional(),
+  /** Plan week index (string) → JS weekdays 0–6 to skip for that week */
+  weeklySkipDaysByWeek: z
+    .record(z.string(), z.array(z.number().int().min(0).max(6)))
+    .optional()
+    .transform((rec) => {
+      if (rec === undefined) return undefined
+      const out: Record<string, number[]> = {}
+      for (const [k, arr] of Object.entries(rec)) {
+        if (!/^\d+$/.test(k)) continue
+        out[k] = normalizeWeeklySkipDays(arr)
+      }
+      return out
+    }),
 })
 
 // GET - Get meal plan with items
@@ -160,6 +184,16 @@ export async function PUT(
       updateData.totalMeals = data.totalMeals
     }
 
+    if (data.weeklySkipDays !== undefined) {
+      updateData.weeklySkipDays = data.weeklySkipDays
+    }
+    if (data.weeklySkipDaysSameEveryWeek !== undefined) {
+      updateData.weeklySkipDaysSameEveryWeek = data.weeklySkipDaysSameEveryWeek
+    }
+    if (data.weeklySkipDaysByWeek !== undefined) {
+      updateData.weeklySkipDaysByWeek = data.weeklySkipDaysByWeek as Prisma.InputJsonValue
+    }
+
     const normalizedNewSlots: string[] | null =
       data.timeSlots === undefined
         ? null
@@ -180,6 +214,7 @@ export async function PUT(
       timeSlotsScheduleChanged
 
     let propagatedTimeSlotsCount = 0
+    let appliedWeeklySkipsCount = 0
     const mealPlan = await prisma.$transaction(async (tx) => {
       const m = await tx.mealPlan.update({
         where: { id },
@@ -195,6 +230,27 @@ export async function PUT(
           id,
           normalizedNewSlots
         )
+      }
+      if (data.applyWeeklySkipsToExistingItems === true) {
+        const same = m.weeklySkipDaysSameEveryWeek !== false
+        const global = normalizeWeeklySkipDays((m.weeklySkipDays as number[]) ?? [])
+        const hasPattern =
+          same
+            ? global.length > 0
+            : global.length > 0 ||
+              Object.values(parseWeeklySkipDaysByWeekJson(m.weeklySkipDaysByWeek)).some(
+                (a) => a.length > 0
+              )
+        if (hasPattern) {
+          appliedWeeklySkipsCount = await markUndeliveredItemsSkippedByPlanWeekPatterns(
+            tx,
+            id,
+            m.startDate,
+            same,
+            global,
+            m.weeklySkipDaysByWeek
+          )
+        }
       }
       return m
     })
@@ -223,6 +279,7 @@ export async function PUT(
     return NextResponse.json({
       ...mealPlan,
       propagatedTimeSlotsCount,
+      appliedWeeklySkipsCount,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
