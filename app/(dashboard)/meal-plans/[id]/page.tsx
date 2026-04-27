@@ -889,12 +889,27 @@ export default function MealPlanViewPage() {
     
     setAddingDay(true)
     try {
+      console.log('[addDayToWeek] start', { planId: mealPlan.id, week })
       // Check total days across all weeks - limit to plan days
       const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
       const maxDays = mealPlan.days || 22
       const remainingDays = maxDays - totalDays
-      
-      if (remainingDays <= 0) {
+      const totalMealsAllowedEarly = mealPlan.totalMeals || mealPlan.days * mealPlan.mealsPerDay
+      const activeEarly = countActiveMealSlots(mealPlan.mealPlanItems)
+      const allowExtraDayDespiteDayCount =
+        mealPlan.remainingMeals != null &&
+        mealPlan.remainingMeals > 0 &&
+        activeEarly < totalMealsAllowedEarly
+      console.log('[addDayToWeek] day budget', {
+        totalDays,
+        maxDays,
+        remainingDays,
+        allowExtraDayDespiteDayCount,
+        pass: remainingDays > 0 || allowExtraDayDespiteDayCount,
+      })
+
+      if (remainingDays <= 0 && !allowExtraDayDespiteDayCount) {
+        console.log('[addDayToWeek] FAIL remainingDays<=0 and no meal room bypass')
         toast.warning(`Cannot add another day. The meal plan is limited to ${maxDays} active days.`)
         setAddingDay(false)
         return
@@ -910,16 +925,25 @@ export default function MealPlanViewPage() {
       })
       const currentDaysInWeek = weekDates.size
       const maxDaysInThisWeek = planWeekDayStringsOnOrAfterStart(mealPlan.startDate, week).length
+      console.log('[addDayToWeek] week calendar', {
+        currentDaysInWeek,
+        maxDaysInThisWeek,
+        passInWeek: currentDaysInWeek < maxDaysInThisWeek,
+      })
 
       if (currentDaysInWeek >= maxDaysInThisWeek) {
+        console.log('[addDayToWeek] FAIL currentDaysInWeek>=maxDaysInThisWeek')
         toast.warning('All days for this week are already added.')
         setAddingDay(false)
         return
       }
 
-      const daysCanAddToWeek = Math.min(maxDaysInThisWeek - currentDaysInWeek, remainingDays)
+      const dayBudgetForWeek = remainingDays > 0 ? remainingDays : allowExtraDayDespiteDayCount ? 1 : 0
+      const daysCanAddToWeek = Math.min(maxDaysInThisWeek - currentDaysInWeek, dayBudgetForWeek)
+      console.log('[addDayToWeek] daysCanAddToWeek', { dayBudgetForWeek, daysCanAddToWeek, pass: daysCanAddToWeek > 0 })
 
       if (daysCanAddToWeek <= 0) {
+        console.log('[addDayToWeek] FAIL daysCanAddToWeek<=0', { remainingDays })
         if (remainingDays <= 0) {
           toast.warning(`Cannot add more days. The meal plan is limited to ${maxDays} days.`)
         } else {
@@ -930,9 +954,25 @@ export default function MealPlanViewPage() {
       }
 
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-      const remainingSlots = Math.max(0, totalMealsAllowed - countActiveMealSlots(mealPlan.mealPlanItems))
+      const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
+      let remainingSlots = Math.max(0, totalMealsAllowed - countActiveMealSlots(mealPlan.mealPlanItems))
+      console.log('[addDayToWeek] meal slots (before remainingMeals boost)', {
+        totalMealsAllowed,
+        activeMealSlots: countActiveMealSlots(mealPlan.mealPlanItems),
+        remainingSlots,
+        remainingMeals: mealPlan.remainingMeals,
+      })
+      if (
+        remainingSlots <= 0 &&
+        mealPlan.remainingMeals != null &&
+        mealPlan.remainingMeals > 0
+      ) {
+        remainingSlots = Math.min(mealPlan.remainingMeals, defaultTimeSlots.length)
+        console.log('[addDayToWeek] boosted remainingSlots from remainingMeals', { remainingSlots })
+      }
 
       if (remainingSlots <= 0) {
+        console.log('[addDayToWeek] FAIL remainingSlots<=0')
         toast.warning(
           `Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`
         )
@@ -942,15 +982,20 @@ export default function MealPlanViewPage() {
 
       // Fill earliest missing calendar day in Mon–Sun on or after plan start
       const nextDay = nextMissingDayInPlanWeek(mealPlan.startDate, week, weekDates)
+      console.log('[addDayToWeek] nextMissingDayInPlanWeek', { nextDay: nextDay ? format(nextDay, 'yyyy-MM-dd') : null })
       if (!nextDay) {
+        console.log('[addDayToWeek] FAIL no nextDay')
         toast.warning('No free day left in this week.')
         setAddingDay(false)
         return
       }
       const nextDayDateStr = format(nextDay, 'yyyy-MM-dd')
 
-      const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
       const timeSlotsForDay = defaultTimeSlots.slice(0, Math.min(defaultTimeSlots.length, remainingSlots))
+      console.log('[addDayToWeek] creating items', {
+        nextDayDateStr: format(nextDay, 'yyyy-MM-dd'),
+        slotsToCreate: timeSlotsForDay.length,
+      })
 
       // Create meal items for the new day (capped so total active meals never exceed the plan)
       const mealItemPromises = timeSlotsForDay.map((timeSlot) => {
@@ -1745,13 +1790,20 @@ export default function MealPlanViewPage() {
                                 // Check if this is the last day in the sorted list
                                 const sortedDates = Object.keys(weekDates).sort()
                                 const isLastDay = date === sortedDates[sortedDates.length - 1]
-                                
+                                console.log('[Add Next Day UI]', {
+                                  planId: mealPlan.id,
+                                  week,
+                                  date,
+                                  sortedDates,
+                                  isLastDay,
+                                })
                                 if (!isLastDay) return null
                                 
                                 // Check total days across all weeks - limit to plan days
                                 const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
                                 const maxDays = mealPlan.days || 22
                                 const remainingDays = maxDays - totalDays
+                                console.log('[Add Next Day UI] day budget', { totalDays, maxDays, remainingDays })
                                 
                                 const weekDatesSet = new Set<string>()
                                 mealPlan.mealPlanItems.forEach(item => {
@@ -1768,13 +1820,39 @@ export default function MealPlanViewPage() {
                                 ).length
 
                                 const canAddDayInWeek = currentDaysInWeek < maxDaysInThisWeek
-                                const canAddDay = canAddDayInWeek && remainingDays > 0
-                                
                                 const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
                                 const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-                                const canAddMoreMeals = activeMealSlots < totalMealsAllowed
+                                const dayBudgetAllows =
+                                  remainingDays > 0 ||
+                                  (mealPlan.remainingMeals != null &&
+                                    mealPlan.remainingMeals > 0 &&
+                                    activeMealSlots < totalMealsAllowed)
+                                const canAddDay = canAddDayInWeek && dayBudgetAllows
+                                console.log('[Add Next Day UI] week slot', {
+                                  currentDaysInWeek,
+                                  maxDaysInThisWeek,
+                                  canAddDayInWeek,
+                                  remainingDays,
+                                  dayBudgetAllows,
+                                  canAddDay,
+                                })
+                                
+                                const capOk = activeMealSlots < totalMealsAllowed
+                                const remainingOk =
+                                  mealPlan.remainingMeals != null && mealPlan.remainingMeals > 0
+                                const canAddMoreMeals = capOk || remainingOk
+                                console.log('[Add Next Day UI] meal cap', {
+                                  activeMealSlots,
+                                  totalMealsAllowed,
+                                  capOk,
+                                  remainingMeals: mealPlan.remainingMeals,
+                                  remainingOk,
+                                  canAddMoreMeals,
+                                })
+                                const show = canAddDay && canAddMoreMeals
+                                console.log('[Add Next Day UI] SHOW_BUTTON', show)
 
-                                return canAddDay && canAddMoreMeals ? (
+                                return show ? (
                                   <tr>
                                     <td colSpan={6} className="px-2 py-2 lg:px-6 lg:py-4 text-center">
                                       <button
@@ -1807,12 +1885,39 @@ export default function MealPlanViewPage() {
                                   const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
                                   const maxDays = mealPlan.days || 22
                                   const remainingDays = maxDays - totalDays
+                                  console.log('[Add Day empty week UI]', {
+                                    planId: mealPlan.id,
+                                    week,
+                                    totalDays,
+                                    maxDays,
+                                    remainingDays,
+                                    passRemainingDays: remainingDays > 0,
+                                  })
                                   
                                   const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
                                   const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-                                  const canAddMoreMeals = activeMealSlots < totalMealsAllowed
+                                  const capOk = activeMealSlots < totalMealsAllowed
+                                  const remainingOk =
+                                    mealPlan.remainingMeals != null && mealPlan.remainingMeals > 0
+                                  const canAddMoreMeals = capOk || remainingOk
+                                  const dayBudgetAllows =
+                                    remainingDays > 0 ||
+                                    (mealPlan.remainingMeals != null &&
+                                      mealPlan.remainingMeals > 0 &&
+                                      activeMealSlots < totalMealsAllowed)
+                                  console.log('[Add Day empty week UI] meal cap', {
+                                    activeMealSlots,
+                                    totalMealsAllowed,
+                                    capOk,
+                                    remainingMeals: mealPlan.remainingMeals,
+                                    remainingOk,
+                                    canAddMoreMeals,
+                                    dayBudgetAllows,
+                                  })
+                                  const show = dayBudgetAllows && canAddMoreMeals
+                                  console.log('[Add Day empty week UI] SHOW_BUTTON', show)
 
-                                  return remainingDays > 0 && canAddMoreMeals ? (
+                                  return show ? (
                                     <button
                                       onClick={() => addDayToWeek(week)}
                                       disabled={addingDay}
