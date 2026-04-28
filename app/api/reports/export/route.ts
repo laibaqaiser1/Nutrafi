@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { formatCategory } from '@/lib/utils'
 import { getCustomerActivityReport } from '@/lib/reports-customer-activity'
 import ExcelJS from 'exceljs'
-import { format } from 'date-fns'
+import { eachDayOfInterval, format, startOfDay } from 'date-fns'
 
 function getDateRange(searchParams: URLSearchParams): { from: Date; to: Date } | null {
   const fromStr = searchParams.get('from')
@@ -22,16 +22,22 @@ async function workbookCustomerActivityOnly(dateRange: { from: Date; to: Date })
   const customerRows = await getCustomerActivityReport(dateRange.from, dateRange.to)
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'Nutrafi Kitchen'
-  const custSheet = workbook.addWorksheet('Customer activity', { views: [{ state: 'frozen', ySplit: 2 }] })
+  const custSheet = workbook.addWorksheet('Customer activity', { views: [{ state: 'frozen', ySplit: 3 }] })
   const rangeLabel = `${format(dateRange.from, 'd MMM yyyy')} – ${format(dateRange.to, 'd MMM yyyy')}`
   custSheet.getCell('A1').value = `Customer activity — ${rangeLabel}`
   custSheet.mergeCells(1, 1, 1, 10)
   custSheet.getRow(1).font = { bold: true, size: 12 }
+  custSheet.getCell('A2').value =
+    'Who is included: meal plans overlapping these dates where the plan start falls in the range OR there is at least one non-skipped meal scheduled in the range. Meal plan start: earliest start among those plans. Total meals: sum of each plan’s contracted total (totalMeals), or—if that is empty—the count of non-skipped slots scheduled in this range only. Meals delivered: all-time total for that customer (every delivered meal on any of their meal plans, excluding skipped and wrong delivery), not limited to the selected dates.'
+  custSheet.mergeCells(2, 1, 2, 10)
+  custSheet.getRow(2).font = { size: 10, italic: true }
+  custSheet.getRow(2).alignment = { wrapText: true, vertical: 'top' }
+  custSheet.getRow(2).height = 52
   const widths = [26, 16, 24, 12, 18, 32, 28, 14, 16, 18]
   widths.forEach((w, i) => {
     custSheet.getColumn(i + 1).width = w
   })
-  custSheet.getRow(2).values = [
+  custSheet.getRow(3).values = [
     'Customer name',
     'Phone',
     'Meal plan start',
@@ -43,9 +49,9 @@ async function workbookCustomerActivityOnly(dateRange: { from: Date; to: Date })
     'Total meals',
     'Meals delivered',
   ]
-  custSheet.getRow(2).font = { bold: true }
+  custSheet.getRow(3).font = { bold: true }
   customerRows.forEach((r, i) => {
-    const row = custSheet.getRow(3 + i)
+    const row = custSheet.getRow(4 + i)
     row.getCell(1).value = r.fullName
     row.getCell(2).value = r.phone
     row.getCell(3).value = r.mealPlanStartDateDisplay ?? '—'
@@ -57,7 +63,67 @@ async function workbookCustomerActivityOnly(dateRange: { from: Date; to: Date })
     row.getCell(9).value = r.totalMeals
     row.getCell(10).value = r.mealsDelivered
   })
+  await appendDeliveredByScheduledDaySheet(workbook, dateRange)
   return workbook
+}
+
+/** Counts items scheduled on each calendar day in the range that are marked delivered (by `date`, not `deliveredAt`). */
+async function appendDeliveredByScheduledDaySheet(
+  workbook: ExcelJS.Workbook,
+  dateRange: { from: Date; to: Date },
+) {
+  const rows = await prisma.$queryRaw<Array<{ day: Date; count: bigint }>>`
+    SELECT DATE("date") AS day, COUNT(*)::bigint AS count
+    FROM "MealPlanItem"
+    WHERE "isDelivered" = true
+      AND COALESCE("wrongDelivery", false) = false
+      AND "isSkipped" = false
+      AND "date" >= ${dateRange.from}
+      AND "date" <= ${dateRange.to}
+    GROUP BY DATE("date")
+    ORDER BY 1 ASC
+  `
+
+  const countByYmd = new Map<string, number>()
+  for (const r of rows) {
+    const key = format(new Date(r.day), 'yyyy-MM-dd')
+    countByYmd.set(key, Number(r.count))
+  }
+
+  const days = eachDayOfInterval({
+    start: startOfDay(dateRange.from),
+    end: startOfDay(dateRange.to),
+  }).map((d) => {
+    const ymd = format(d, 'yyyy-MM-dd')
+    return { date: ymd, count: countByYmd.get(ymd) ?? 0 }
+  })
+  const total = days.reduce((sum, d) => sum + d.count, 0)
+
+  const sheet = workbook.addWorksheet('Delivered by schedule date', {
+    views: [{ state: 'frozen', ySplit: 3 }],
+  })
+  const rangeLabel = `${format(dateRange.from, 'd MMM yyyy')} – ${format(dateRange.to, 'd MMM yyyy')}`
+  sheet.getCell('A1').value = `Meals marked delivered (by scheduled day) — ${rangeLabel}`
+  sheet.mergeCells(1, 1, 1, 2)
+  sheet.getRow(1).font = { bold: true, size: 12 }
+  sheet.getCell('A2').value =
+    'For each calendar day: count of meals scheduled that day that are marked delivered. Skipped and wrong-delivery items are excluded.'
+  sheet.mergeCells(2, 1, 2, 2)
+  sheet.getRow(2).font = { size: 10, italic: true }
+  sheet.getRow(2).alignment = { wrapText: true, vertical: 'top' }
+  sheet.getColumn(1).width = 26
+  sheet.getColumn(2).width = 18
+  sheet.getRow(3).values = ['Scheduled date', 'Meals marked delivered']
+  sheet.getRow(3).font = { bold: true }
+  days.forEach((row, i) => {
+    const r = sheet.getRow(4 + i)
+    r.getCell(1).value = format(new Date(row.date + 'T12:00:00'), 'EEE, d MMM yyyy')
+    r.getCell(2).value = row.count
+  })
+  const totalRow = sheet.getRow(4 + days.length)
+  totalRow.getCell(1).value = 'Total (scheduled days in range)'
+  totalRow.getCell(2).value = total
+  totalRow.font = { bold: true }
 }
 
 export async function GET(request: NextRequest) {
@@ -163,6 +229,10 @@ export async function GET(request: NextRequest) {
       row.getCell(2).value = item.dish?.category ? formatCategory(item.dish.category) : 'N/A'
       row.getCell(3).value = item.count
     })
+
+    if (dateRange) {
+      await appendDeliveredByScheduledDaySheet(workbook, dateRange)
+    }
 
     const buffer = await workbook.xlsx.writeBuffer()
     const fromStr = dateRange ? dateRange.from.toISOString().slice(0, 10) : 'all'

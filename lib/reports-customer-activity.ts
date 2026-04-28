@@ -5,11 +5,11 @@ export type CustomerActivityReportRow = {
   customerId: number
   fullName: string
   phone: string
-  /** Earliest `startDate` among meal plans that qualify (all lie in the report range), ISO date */
+  /** Earliest `startDate` among meal plans that overlap the report range, ISO date */
   mealPlanStartDate: string | null
   /** Same, formatted e.g. `8 April 2026` */
   mealPlanStartDateDisplay: string | null
-  /** Meal plans whose `startDate` is in the report range */
+  /** Meal plans counted for this row: overlap the range and (start in range OR have a non-skipped meal scheduled in range) */
   mealPlanCount: number
   /** Sum of completed meal-plan payments for those plans (any payment date) */
   paymentAmountCompleted: number
@@ -27,7 +27,7 @@ export type CustomerActivityReportRow = {
   paymentTotalDisplay: string
   /** Sum of `totalMeals` for qualifying plans; falls back to in-window slots if null */
   totalMeals: number
-  /** Delivered non-skipped meals with `date` in range, on qualifying plans only */
+  /** All-time count of delivered meals for this customer (all meal plans, any scheduled date) */
   mealsDelivered: number
 }
 
@@ -37,7 +37,6 @@ type Acc = {
   pendingSum: number
   /** All linked payment amounts regardless of status */
   paymentTotalSum: number
-  mealsDelivered: number
 }
 
 function emptyAcc(): Acc {
@@ -46,7 +45,6 @@ function emptyAcc(): Acc {
     completedSum: 0,
     pendingSum: 0,
     paymentTotalSum: 0,
-    mealsDelivered: 0,
   }
 }
 
@@ -67,10 +65,24 @@ function aggregatePaymentStatus(completed: number, pending: number): string {
   return '—'
 }
 
+function planStartDateWithinReport(
+  startDate: Date | null,
+  reportRangeStart: Date,
+  reportRangeEnd: Date,
+): boolean {
+  if (!startDate) return false
+  const s = startOfDay(new Date(startDate))
+  return s.getTime() >= reportRangeStart.getTime() && s.getTime() <= reportRangeEnd.getTime()
+}
+
 /**
- * Customers who have at least one meal plan whose **startDate** lies in [from, to] (calendar days).
- * Payments: all meal-plan-linked rows for those plans (**paymentDate** ignored).
- * Delivered / slot fallback: meal items whose **date** is in that same range, on those plans only.
+ * Customers who have at least one meal plan that **overlaps** [from, to] and meets **activity** rules:
+ * - **Start in range:** plan `startDate` falls on a day in [from, to], or
+ * - **Meals in range:** at least one non-skipped `MealPlanItem` with `date` in [from, to].
+ * If the plan starts **outside** the range, it only counts when it has a scheduled meal in the range
+ * (so overlap-only plans with no slots in the window are excluded).
+ * Payments: all meal-plan-linked rows for those qualifying plans (**paymentDate** ignored).
+ * Meals delivered: all-time total per customer — every delivered, non-skipped, non-wrong-delivery item on **any** of their meal plans (ignores the report date range).
  */
 export async function getCustomerActivityReport(from: Date, to: Date): Promise<CustomerActivityReportRow[]> {
   const fromDay = new Date(from)
@@ -80,15 +92,40 @@ export async function getCustomerActivityReport(from: Date, to: Date): Promise<C
   const reportRangeStart = startOfDay(fromDay)
   const reportRangeEnd = endOfDay(toDay)
 
-  const qualifyingPlans = await prisma.mealPlan.findMany({
+  const overlappingPlans = await prisma.mealPlan.findMany({
     where: {
-      startDate: {
-        gte: reportRangeStart,
-        lte: reportRangeEnd,
-      },
+      AND: [
+        { startDate: { not: null } },
+        { startDate: { lte: reportRangeEnd } },
+        {
+          OR: [{ endDate: null }, { endDate: { gte: reportRangeStart } }],
+        },
+      ],
     },
     select: { id: true, customerId: true, startDate: true, totalMeals: true },
   })
+
+  if (overlappingPlans.length === 0) return []
+
+  const overlappingIds = overlappingPlans.map((p) => p.id)
+
+  const plansWithMealInRange = await prisma.mealPlanItem.groupBy({
+    by: ['mealPlanId'],
+    where: {
+      mealPlanId: { in: overlappingIds },
+      isSkipped: false,
+      date: { gte: reportRangeStart, lte: reportRangeEnd },
+    },
+  })
+  const planIdsWithScheduledMealInRange = new Set(
+    plansWithMealInRange.map((g) => g.mealPlanId).filter((id): id is number => id != null),
+  )
+
+  const qualifyingPlans = overlappingPlans.filter(
+    (p) =>
+      planStartDateWithinReport(p.startDate, reportRangeStart, reportRangeEnd) ||
+      planIdsWithScheduledMealInRange.has(p.id),
+  )
 
   if (qualifyingPlans.length === 0) return []
 
@@ -138,23 +175,32 @@ export async function getCustomerActivityReport(from: Date, to: Date): Promise<C
   const items = await prisma.mealPlanItem.findMany({
     where: {
       mealPlanId: { in: planIdsQualifying },
-      date: { gte: fromDay, lte: toDay },
+      date: { gte: reportRangeStart, lte: reportRangeEnd },
     },
     select: {
       isSkipped: true,
-      isDelivered: true,
       mealPlanId: true,
       mealPlan: { select: { customerId: true } },
     },
   })
 
-  for (const it of items) {
-    const a = ensure(it.mealPlan.customerId)
-    if (!it.isSkipped && it.isDelivered) a.mealsDelivered += 1
-  }
-
   const ids = [...byCustomer.keys()]
   if (ids.length === 0) return []
+
+  const lifetimeDeliveredRows = await prisma.mealPlanItem.findMany({
+    where: {
+      mealPlan: { customerId: { in: ids } },
+      isDelivered: true,
+      isSkipped: false,
+      wrongDelivery: false,
+    },
+    select: { mealPlan: { select: { customerId: true } } },
+  })
+  const lifetimeMealsDeliveredByCustomer = new Map<number, number>()
+  for (const row of lifetimeDeliveredRows) {
+    const cid = row.mealPlan.customerId
+    lifetimeMealsDeliveredByCustomer.set(cid, (lifetimeMealsDeliveredByCustomer.get(cid) ?? 0) + 1)
+  }
 
   const slotsInPeriodForPlan = (mealPlanId: number, customerId: number) =>
     items.filter(
@@ -206,7 +252,7 @@ export async function getCustomerActivityReport(from: Date, to: Date): Promise<C
       paymentTotalAmount: totalPay,
       paymentTotalDisplay: fmtAed(totalPay),
       totalMeals: totalContractMeals,
-      mealsDelivered: a.mealsDelivered,
+      mealsDelivered: lifetimeMealsDeliveredByCustomer.get(c.id) ?? 0,
     }
   })
 }
