@@ -27,7 +27,7 @@ export type CustomerActivityReportRow = {
   paymentTotalDisplay: string
   /** Sum of `totalMeals` for qualifying plans; falls back to in-window slots if null */
   totalMeals: number
-  /** All-time count of delivered meals for this customer (all meal plans, any scheduled date) */
+  /** Delivered non-skipped meals with scheduled `date` in the report range, on overlapping plans only */
   mealsDelivered: number
 }
 
@@ -37,6 +37,7 @@ type Acc = {
   pendingSum: number
   /** All linked payment amounts regardless of status */
   paymentTotalSum: number
+  mealsDelivered: number
 }
 
 function emptyAcc(): Acc {
@@ -45,6 +46,7 @@ function emptyAcc(): Acc {
     completedSum: 0,
     pendingSum: 0,
     paymentTotalSum: 0,
+    mealsDelivered: 0,
   }
 }
 
@@ -82,7 +84,7 @@ function planStartDateWithinReport(
  * If the plan starts **outside** the range, it only counts when it has a scheduled meal in the range
  * (so overlap-only plans with no slots in the window are excluded).
  * Payments: all meal-plan-linked rows for those qualifying plans (**paymentDate** ignored).
- * Meals delivered: all-time total per customer — every delivered, non-skipped, non-wrong-delivery item on **any** of their meal plans (ignores the report date range).
+ * Delivered: non-skipped, delivered items whose **date** is in range on those plans only.
  */
 export async function getCustomerActivityReport(from: Date, to: Date): Promise<CustomerActivityReportRow[]> {
   const fromDay = new Date(from)
@@ -179,28 +181,19 @@ export async function getCustomerActivityReport(from: Date, to: Date): Promise<C
     },
     select: {
       isSkipped: true,
+      isDelivered: true,
       mealPlanId: true,
       mealPlan: { select: { customerId: true } },
     },
   })
 
+  for (const it of items) {
+    const a = ensure(it.mealPlan.customerId)
+    if (!it.isSkipped && it.isDelivered) a.mealsDelivered += 1
+  }
+
   const ids = [...byCustomer.keys()]
   if (ids.length === 0) return []
-
-  const lifetimeDeliveredRows = await prisma.mealPlanItem.findMany({
-    where: {
-      mealPlan: { customerId: { in: ids } },
-      isDelivered: true,
-      isSkipped: false,
-      wrongDelivery: false,
-    },
-    select: { mealPlan: { select: { customerId: true } } },
-  })
-  const lifetimeMealsDeliveredByCustomer = new Map<number, number>()
-  for (const row of lifetimeDeliveredRows) {
-    const cid = row.mealPlan.customerId
-    lifetimeMealsDeliveredByCustomer.set(cid, (lifetimeMealsDeliveredByCustomer.get(cid) ?? 0) + 1)
-  }
 
   const slotsInPeriodForPlan = (mealPlanId: number, customerId: number) =>
     items.filter(
@@ -252,7 +245,7 @@ export async function getCustomerActivityReport(from: Date, to: Date): Promise<C
       paymentTotalAmount: totalPay,
       paymentTotalDisplay: fmtAed(totalPay),
       totalMeals: totalContractMeals,
-      mealsDelivered: lifetimeMealsDeliveredByCustomer.get(c.id) ?? 0,
+      mealsDelivered: a.mealsDelivered,
     }
   })
 }

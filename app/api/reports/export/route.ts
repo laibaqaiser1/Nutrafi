@@ -22,22 +22,31 @@ async function workbookCustomerActivityOnly(dateRange: { from: Date; to: Date })
   const customerRows = await getCustomerActivityReport(dateRange.from, dateRange.to)
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'Nutrafi Kitchen'
-  const custSheet = workbook.addWorksheet('Customer activity', { views: [{ state: 'frozen', ySplit: 3 }] })
+  /*
+   * Customer activity sheet — documentation (not exported on the sheet):
+   *
+   * Who is included
+   * • The customer has at least one meal plan that overlaps the report dates, and that plan also satisfies either:
+   *   (a) its start date falls on a day within the report range, or
+   *   (b) it has at least one non-skipped meal scheduled on a day within the report range.
+   * • If a plan only overlaps the range but has neither (a) nor (b), it is not used for this report.
+   *
+   * What each column means
+   * • Meal plan start — earliest start date among the meal plans counted for that customer.
+   * • Total meals — sum of totalMeals on counted plans; when totalMeals is missing for a plan, that plan uses the count of non-skipped slots scheduled in this range only.
+   * • Meals delivered (from - to in column header, e.g. 21 Apr - 28 Apr) — all-time count of meals marked delivered for that customer (every plan, any scheduled date); skipped items and wrong-delivery lines are excluded.
+   */
+  const custSheet = workbook.addWorksheet('Customer activity', { views: [{ state: 'frozen', ySplit: 2 }] })
   const rangeLabel = `${format(dateRange.from, 'd MMM yyyy')} – ${format(dateRange.to, 'd MMM yyyy')}`
+  const mealsDeliveredHeader = `Meals delivered (${format(dateRange.from, 'd MMM')} - ${format(dateRange.to, 'd MMM')})`
   custSheet.getCell('A1').value = `Customer activity — ${rangeLabel}`
   custSheet.mergeCells(1, 1, 1, 10)
   custSheet.getRow(1).font = { bold: true, size: 12 }
-  custSheet.getCell('A2').value =
-    'Who is included: meal plans overlapping these dates where the plan start falls in the range OR there is at least one non-skipped meal scheduled in the range. Meal plan start: earliest start among those plans. Total meals: sum of each plan’s contracted total (totalMeals), or—if that is empty—the count of non-skipped slots scheduled in this range only. Meals delivered: all-time total for that customer (every delivered meal on any of their meal plans, excluding skipped and wrong delivery), not limited to the selected dates.'
-  custSheet.mergeCells(2, 1, 2, 10)
-  custSheet.getRow(2).font = { size: 10, italic: true }
-  custSheet.getRow(2).alignment = { wrapText: true, vertical: 'top' }
-  custSheet.getRow(2).height = 52
-  const widths = [26, 16, 24, 12, 18, 32, 28, 14, 16, 18]
+  const widths = [26, 16, 24, 12, 18, 32, 28, 14, 16, 34]
   widths.forEach((w, i) => {
     custSheet.getColumn(i + 1).width = w
   })
-  custSheet.getRow(3).values = [
+  custSheet.getRow(2).values = [
     'Customer name',
     'Phone',
     'Meal plan start',
@@ -47,11 +56,11 @@ async function workbookCustomerActivityOnly(dateRange: { from: Date; to: Date })
     'Payment pending (AED)',
     'Payment status',
     'Total meals',
-    'Meals delivered',
+    mealsDeliveredHeader,
   ]
-  custSheet.getRow(3).font = { bold: true }
+  custSheet.getRow(2).font = { bold: true }
   customerRows.forEach((r, i) => {
-    const row = custSheet.getRow(4 + i)
+    const row = custSheet.getRow(3 + i)
     row.getCell(1).value = r.fullName
     row.getCell(2).value = r.phone
     row.getCell(3).value = r.mealPlanStartDateDisplay ?? '—'
