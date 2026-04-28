@@ -181,37 +181,50 @@ export async function GET(request: NextRequest) {
     ])
     const revenue = revenueResult._sum.amount || 0
 
-    const itemWhere: { dishId: { not: null }; isSkipped: false; date?: { gte: Date; lte: Date } } = {
-      dishId: { not: null },
-      isSkipped: false,
-    }
-    if (dateRange) {
-      itemWhere.date = { gte: dateRange.from, lte: dateRange.to }
-    }
+    // Dishes delivered in range: filter by MealPlanItem.date (scheduled meal day) in [from, to] and isDelivered — never deliveredAt
+    const deliveredDishWhere = dateRange
+      ? {
+          dishId: { not: null },
+          isSkipped: false,
+          isDelivered: true,
+          wrongDelivery: false,
+          date: { gte: dateRange.from, lte: dateRange.to },
+        }
+      : null
 
-    const popularDishesGroup = await prisma.mealPlanItem.groupBy({
-      by: ['dishId'],
-      where: itemWhere,
-      _count: { dishId: true },
-      orderBy: { _count: { dishId: 'desc' } },
-      take: 50,
-    })
-    const dishIds = popularDishesGroup.map(d => d.dishId).filter((id): id is number => id != null)
+    const dishesDeliveredGroup = deliveredDishWhere
+      ? await prisma.mealPlanItem.groupBy({
+          by: ['dishId'],
+          where: deliveredDishWhere,
+          _count: { dishId: true },
+          orderBy: { _count: { dishId: 'desc' } },
+          take: 50,
+        })
+      : []
+
+    const dishIds = dishesDeliveredGroup.map(d => d.dishId).filter((id): id is number => id != null)
     const dishes = await prisma.dish.findMany({ where: { id: { in: dishIds } } })
-    const popularDishes = popularDishesGroup.map(pd => ({
-      dish: dishes.find(d => d.id === pd.dishId),
-      count: pd._count.dishId,
-    })).filter(r => r.dish)
+    const dishesDeliveredRows = dishesDeliveredGroup
+      .map(pd => ({
+        dish: dishes.find(d => d.id === pd.dishId),
+        count: pd._count.dishId,
+      }))
+      .filter(r => r.dish)
 
     const workbook = new ExcelJS.Workbook()
     workbook.creator = 'Nutrafi Kitchen'
 
-    const summarySheet = workbook.addWorksheet('Summary', { views: [{ state: 'frozen', ySplit: 1 }] })
-    summarySheet.columns = [
-      { header: 'Metric', width: 22 },
-      { header: 'Value', width: 16 },
-    ]
-    summarySheet.getRow(1).font = { bold: true }
+    const summarySheet = workbook.addWorksheet('Summary', { views: [{ state: 'frozen', ySplit: 2 }] })
+    const summaryHeading = dateRange
+      ? `Report summary — ${format(dateRange.from, 'd MMM yyyy')} – ${format(dateRange.to, 'd MMM yyyy')}`
+      : 'Report summary'
+    summarySheet.getCell('A1').value = summaryHeading
+    summarySheet.mergeCells(1, 1, 1, 2)
+    summarySheet.getRow(1).font = { bold: true, size: 12 }
+    summarySheet.getColumn(1).width = 22
+    summarySheet.getColumn(2).width = 16
+    summarySheet.getRow(2).values = ['Metric', 'Value']
+    summarySheet.getRow(2).font = { bold: true }
     const summaryData = [
       ['Active Customers', activeCustomers],
       ['Total Dishes', totalDishes],
@@ -220,24 +233,44 @@ export async function GET(request: NextRequest) {
       ['Total Revenue (AED)', revenue.toFixed(2)],
     ]
     summaryData.forEach(([metric, value], i) => {
-      const row = summarySheet.getRow(i + 2)
+      const row = summarySheet.getRow(3 + i)
       row.getCell(1).value = metric
       row.getCell(2).value = value
     })
 
-    const dishesSheet = workbook.addWorksheet('Most Ordered Dishes', { views: [{ state: 'frozen', ySplit: 1 }] })
-    dishesSheet.columns = [
-      { header: 'Dish Name', width: 28 },
-      { header: 'Category', width: 18 },
-      { header: 'Total Orders', width: 14 },
-    ]
-    dishesSheet.getRow(1).font = { bold: true }
-    popularDishes.forEach((item, i) => {
-      const row = dishesSheet.getRow(i + 2)
-      row.getCell(1).value = item.dish?.name ?? 'N/A'
-      row.getCell(2).value = item.dish?.category ? formatCategory(item.dish.category) : 'N/A'
-      row.getCell(3).value = item.count
-    })
+    const dishesSheet = workbook.addWorksheet('Dishes delivered', { views: [{ state: 'frozen', ySplit: 2 }] })
+    const dishesHeading = dateRange
+      ? `Dishes delivered — ${format(dateRange.from, 'd MMM yyyy')} – ${format(dateRange.to, 'd MMM yyyy')}`
+      : 'Dishes delivered'
+    dishesSheet.getCell('A1').value = dishesHeading
+    dishesSheet.mergeCells(1, 1, 1, 3)
+    dishesSheet.getRow(1).font = { bold: true, size: 12 }
+    dishesSheet.getColumn(1).width = 28
+    dishesSheet.getColumn(2).width = 18
+    dishesSheet.getColumn(3).width = 18
+    dishesSheet.getRow(2).values = ['Dish name', 'Category', 'Times delivered']
+    dishesSheet.getRow(2).font = { bold: true }
+    if (!dateRange) {
+      const note = dishesSheet.getRow(3)
+      note.getCell(1).value =
+        'Select start and end dates on Reports before exporting. Counts use each meal’s scheduled date (not when it was marked delivered).'
+      dishesSheet.mergeCells(3, 1, 3, 3)
+      note.font = { italic: true, size: 10 }
+    } else {
+      dishesDeliveredRows.forEach((item, i) => {
+        const row = dishesSheet.getRow(3 + i)
+        row.getCell(1).value = item.dish?.name ?? 'N/A'
+        row.getCell(2).value = item.dish?.category ? formatCategory(item.dish.category) : 'N/A'
+        row.getCell(3).value = item.count
+      })
+      if (dishesDeliveredRows.length === 0) {
+        const emptyRow = dishesSheet.getRow(3)
+        emptyRow.getCell(1).value =
+          'No rows: no meals with a dish, scheduled day in this range, and marked delivered (skipped / wrong-delivery excluded). Uses scheduled date only, not deliveredAt.'
+        dishesSheet.mergeCells(3, 1, 3, 3)
+        emptyRow.font = { italic: true, size: 10 }
+      }
+    }
 
     if (dateRange) {
       await appendDeliveredByScheduledDaySheet(workbook, dateRange)
