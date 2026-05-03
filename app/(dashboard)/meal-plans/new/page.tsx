@@ -5,6 +5,11 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns'
 import { getPlanWeekNumber, getMondayOfPlanWeek, planWeekDayStringsOnOrAfterStart } from '@/lib/meal-plan-weeks'
+import {
+  normalizeWeeklySkipDays,
+  shouldSkipCalendarDay,
+  WEEKDAY_SKIP_TOGGLES,
+} from '@/lib/meal-plan-skip-days'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
 
@@ -52,6 +57,26 @@ function effectiveMealPlanTimeSlots(slots: string[] | undefined): string[] {
  * The schedule grid often only has rows for days the user opened; skipped weeks/days must still
  * reduce the contract from the full `days × mealsPerDay` range using the same rules as submit.
  */
+/** True when this calendar date has no contract meals (skipped week/day, explicit skip, or default weekly skip). */
+function isCreateWizardDateSkipped(
+  dateStr: string,
+  startDateStr: string,
+  planType: string,
+  skippedDays: string[],
+  skippedWeeks: number[],
+  weeklySkipDays: number[],
+  defaultSkipExceptionDates: string[]
+): boolean {
+  if (!startDateStr) return false
+  const week = getPlanWeekNumber(dateStr, startDateStr)
+  if ((planType === 'MONTHLY' || planType === 'WEEKLY') && skippedWeeks.includes(week)) return true
+  if (skippedDays.includes(dateStr)) return true
+  const norm = normalizeWeeklySkipDays(weeklySkipDays)
+  if (norm.length === 0) return false
+  if (defaultSkipExceptionDates.includes(dateStr)) return false
+  return shouldSkipCalendarDay(dateStr, norm)
+}
+
 function countContractMealSlots(input: {
   startDateStr: string
   days: number
@@ -59,8 +84,19 @@ function countContractMealSlots(input: {
   planType: string
   skippedDays: string[]
   skippedWeeks: number[]
+  weeklySkipDays: number[]
+  defaultSkipExceptionDates: string[]
 }): number {
-  const { startDateStr, days, mealsPerDay, planType, skippedDays, skippedWeeks } = input
+  const {
+    startDateStr,
+    days,
+    mealsPerDay,
+    planType,
+    skippedDays,
+    skippedWeeks,
+    weeklySkipDays,
+    defaultSkipExceptionDates,
+  } = input
   if (!startDateStr || !Number.isFinite(days) || days < 1 || !Number.isFinite(mealsPerDay) || mealsPerDay < 1) {
     return 0
   }
@@ -68,16 +104,103 @@ function countContractMealSlots(input: {
   if (Number.isNaN(startDate.getTime())) return 0
   const endDate = addDays(startDate, days - 1)
   const dateRange = eachDayOfInterval({ start: startDate, end: endDate })
-  const useWeekSkips = planType === 'MONTHLY' || planType === 'WEEKLY'
   let slots = 0
   for (const d of dateRange) {
     const dateStr = format(d, 'yyyy-MM-dd')
-    if (skippedDays.includes(dateStr)) continue
-    const week = getPlanWeekNumber(dateStr, startDateStr)
-    if (useWeekSkips && skippedWeeks.includes(week)) continue
+    if (
+      isCreateWizardDateSkipped(
+        dateStr,
+        startDateStr,
+        planType,
+        skippedDays,
+        skippedWeeks,
+        weeklySkipDays,
+        defaultSkipExceptionDates
+      )
+    ) {
+      continue
+    }
     slots += mealsPerDay
   }
   return slots
+}
+
+function formatDefaultSkipDaysSummary(days: number[]): string {
+  const norm = normalizeWeeklySkipDays(days)
+  if (norm.length === 0) return 'No skip days'
+  const byVal = new Map(WEEKDAY_SKIP_TOGGLES.map((t) => [t.value, t.label]))
+  return norm.map((v) => byVal.get(v) ?? String(v)).join(', ')
+}
+
+function DefaultSkipDaysMultiSelect({
+  value,
+  onChange,
+}: {
+  value: number[]
+  onChange: (next: number[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  const summary = formatDefaultSkipDaysSummary(value)
+
+  return (
+    <div ref={ref} className="mb-6 w-full relative">
+      <label className="block text-sm font-medium text-gray-700 mb-2">Default skip days</label>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-left text-sm text-gray-900 hover:bg-gray-50"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className="truncate">{summary}</span>
+        <span className="text-gray-500 shrink-0 text-xs" aria-hidden>
+          ▼
+        </span>
+      </button>
+      {open && (
+        <div
+          className="absolute z-30 mt-1 w-full rounded-md border border-gray-200 bg-white py-1 shadow-lg max-h-60 overflow-y-auto"
+          role="listbox"
+        >
+          {WEEKDAY_SKIP_TOGGLES.map(({ label, value: dayValue }) => {
+            const on = value.includes(dayValue)
+            return (
+              <label
+                key={dayValue}
+                className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-gray-800 hover:bg-gray-50"
+              >
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-nutrafi-primary focus:ring-nutrafi-primary shrink-0"
+                  checked={on}
+                  onChange={() => {
+                    const s = new Set(value)
+                    if (s.has(dayValue)) s.delete(dayValue)
+                    else s.add(dayValue)
+                    onChange(Array.from(s).sort((a, b) => a - b))
+                  }}
+                />
+                {label}
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // Day colors: different colour per day – pink, blue, green, red, teal, orange, violet (solid header + gradient day background)
@@ -116,7 +239,7 @@ export default function NewMealPlanPage() {
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
   const [customerSearchQuery, setCustomerSearchQuery] = useState('')
   const customerDropdownRef = useRef<HTMLDivElement>(null)
-  
+
   const [formData, setFormData] = useState({
     customerId: '',
     planId: '',
@@ -159,6 +282,10 @@ export default function NewMealPlanPage() {
     }>,
     skippedWeeks: [] as number[], // Array of week numbers to skip
     skippedDays: [] as string[], // Array of dates to skip
+    /** Plan default skip weekdays (Mon=1 … Sun=7), same as meal plan `weeklySkipDays` */
+    weeklySkipDays: [] as number[],
+    /** Dates that would match `weeklySkipDays` but the user chose to keep meals (step 4) */
+    defaultSkipExceptionDates: [] as string[],
     /** Customer already had a plan off-portal — only this many meals are left on the contract */
     legacyMidPlan: false,
     legacyMealsRemaining: '',
@@ -281,6 +408,8 @@ export default function NewMealPlanPage() {
       planType: formData.planType,
       skippedDays: formData.skippedDays,
       skippedWeeks: formData.skippedWeeks,
+      weeklySkipDays: formData.weeklySkipDays,
+      defaultSkipExceptionDates: formData.defaultSkipExceptionDates,
     })
     if (n > 0) setTotalMealsAllowed(n)
   }, [
@@ -291,6 +420,8 @@ export default function NewMealPlanPage() {
     formData.planType,
     formData.skippedDays,
     formData.skippedWeeks,
+    formData.weeklySkipDays,
+    formData.defaultSkipExceptionDates,
   ])
 
   useEffect(() => {
@@ -299,7 +430,19 @@ export default function NewMealPlanPage() {
     if (step >= 4 && formData.startDate && formData.days && formData.mealsPerDay && effectiveMealPlanTimeSlots(formData.timeSlots).length > 0) {
       generateMeals()
     }
-  }, [step, formData.startDate, formData.days, formData.mealsPerDay, formData.timeSlots, formData.deliveryType, formData.customerId])
+  }, [
+    step,
+    formData.startDate,
+    formData.days,
+    formData.mealsPerDay,
+    formData.timeSlots,
+    formData.deliveryType,
+    formData.customerId,
+    formData.skippedDays,
+    formData.skippedWeeks,
+    formData.weeklySkipDays,
+    formData.defaultSkipExceptionDates,
+  ])
   
   // Create stable string representation of visibleWeeks for dependency array
   const visibleWeeksKey = visibleWeeks.join(',')
@@ -474,6 +617,17 @@ export default function NewMealPlanPage() {
       const selectedCustomer = customers.find(c => c.id == formData.customerId)
       const mealsPerDay = parseInt(formData.mealsPerDay)
 
+      const dateSkippedOnPlan = (dateStr: string) =>
+        isCreateWizardDateSkipped(
+          dateStr,
+          formData.startDate,
+          formData.planType,
+          formData.skippedDays,
+          formData.skippedWeeks,
+          formData.weeklySkipDays,
+          formData.defaultSkipExceptionDates
+        )
+
       // Only create rows for days the user has opened ("Add Day"), not the whole week — keeps capacity in sync with the UI.
       const effectiveVisibleDaysByWeek: Record<number, string[]> = { ...visibleDaysByWeek }
       visibleWeeks.forEach((week) => {
@@ -549,7 +703,7 @@ export default function NewMealPlanPage() {
             deliveryType: formData.deliveryType as 'delivery' | 'pickup',
             deliveryTime: deliveryTime,
             location: selectedCustomer?.deliveryArea || '',
-            isSkipped: false,
+            isSkipped: dateSkippedOnPlan(dateStr),
             showDishFields: false,
             customNote: '',
           })
@@ -617,7 +771,15 @@ export default function NewMealPlanPage() {
         deliveryType: formData.deliveryType as 'delivery' | 'pickup',
         deliveryTime: deliveryTime,
         location: selectedCustomer?.deliveryArea || '',
-        isSkipped: false,
+        isSkipped: isCreateWizardDateSkipped(
+          nextDay,
+          formData.startDate,
+          formData.planType,
+          formData.skippedDays,
+          formData.skippedWeeks,
+          formData.weeklySkipDays,
+          formData.defaultSkipExceptionDates
+        ),
         showDishFields: false,
         customNote: '',
       })
@@ -641,6 +803,7 @@ export default function NewMealPlanPage() {
       ...prev,
       meals: prev.meals.filter(m => m.date !== date),
       skippedDays: prev.skippedDays.filter(d => d !== date),
+      defaultSkipExceptionDates: prev.defaultSkipExceptionDates.filter((d) => d !== date),
     }))
     toast.success('Day removed.')
   }
@@ -716,7 +879,15 @@ export default function NewMealPlanPage() {
           deliveryType: formData.deliveryType as 'delivery' | 'pickup',
           deliveryTime: deliveryTime,
           location: selectedCustomer?.deliveryArea || '',
-          isSkipped: false,
+          isSkipped: isCreateWizardDateSkipped(
+            dateStr,
+            formData.startDate,
+            formData.planType,
+            formData.skippedDays,
+            formData.skippedWeeks,
+            formData.weeklySkipDays,
+            formData.defaultSkipExceptionDates
+          ),
           showDishFields: false,
           customNote: '',
         })
@@ -741,6 +912,8 @@ export default function NewMealPlanPage() {
         planType: formData.planType,
         skippedDays: formData.skippedDays,
         skippedWeeks: formData.skippedWeeks,
+        weeklySkipDays: formData.weeklySkipDays,
+        defaultSkipExceptionDates: formData.defaultSkipExceptionDates,
       })
 
       if (totalMealsForPlan < 1) {
@@ -767,6 +940,7 @@ export default function NewMealPlanPage() {
           status: formData.status,
           notes: formData.notes,
           totalMeals: totalMealsForPlan,
+          weeklySkipDays: normalizeWeeklySkipDays(formData.weeklySkipDays),
           // Calculate amounts
           totalAmount: (() => {
             const pay = parseFloat(formData.paymentAmount)
@@ -808,27 +982,23 @@ export default function NewMealPlanPage() {
       // Update meal plan items with dishes and delivery info
       // Only create meal items when a dish is actually assigned (dishId or dishName)
       // Filter out skipped days and weeks, and meals without dishes
-      const activeMeals = formData.meals.filter(meal => {
-        // Only create meal items if a dish is assigned
+      const activeMeals = formData.meals.filter((meal) => {
         if (!meal.dishId && !meal.dishName) {
           return false
         }
-        
-        const date = meal.date
-        const week = getPlanWeekNumber(date, formData.startDate)
-        
-        // Skip if day is skipped
-        if (formData.skippedDays.includes(date)) {
-          return false
-        }
-        
         if (
-          (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
-          formData.skippedWeeks.includes(week)
+          isCreateWizardDateSkipped(
+            meal.date,
+            formData.startDate,
+            formData.planType,
+            formData.skippedDays,
+            formData.skippedWeeks,
+            formData.weeklySkipDays,
+            formData.defaultSkipExceptionDates
+          )
         ) {
           return false
         }
-        
         return true
       })
 
@@ -861,19 +1031,17 @@ export default function NewMealPlanPage() {
       await Promise.all(updatePromises)
       
       // Create skipped meal plan items for skipped days/weeks
-      const skippedMeals = formData.meals.filter(meal => {
-        const date = meal.date
-        const week = getPlanWeekNumber(date, formData.startDate)
-        
-        if (formData.skippedDays.includes(date)) return true
-        if (
-          (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
-          formData.skippedWeeks.includes(week)
-        ) {
-          return true
-        }
-        return false
-      })
+      const skippedMeals = formData.meals.filter((meal) =>
+        isCreateWizardDateSkipped(
+          meal.date,
+          formData.startDate,
+          formData.planType,
+          formData.skippedDays,
+          formData.skippedWeeks,
+          formData.weeklySkipDays,
+          formData.defaultSkipExceptionDates
+        )
+      )
       
       const skippedPromises = skippedMeals.map(meal => {
         return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
@@ -914,6 +1082,8 @@ export default function NewMealPlanPage() {
           planType: formData.planType,
           skippedDays: formData.skippedDays,
           skippedWeeks: formData.skippedWeeks,
+          weeklySkipDays: formData.weeklySkipDays,
+          defaultSkipExceptionDates: formData.defaultSkipExceptionDates,
         })
       : 0
   const customEnteredPricePerMeal = parseFloat(formData.pricePerMeal)
@@ -1131,7 +1301,13 @@ export default function NewMealPlanPage() {
                   </div>
                 )}
                 {selectedPlan && (
-                  <div>
+                  <DefaultSkipDaysMultiSelect
+                    value={formData.weeklySkipDays}
+                    onChange={(weeklySkipDays) => setFormData((prev) => ({ ...prev, weeklySkipDays }))}
+                  />
+                )}
+                {selectedPlan && (
+                  <div className="w-full">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Delivery time (all meals) *</label>
                     <div className="space-y-2">
                       {(formData.timeSlots?.length ? formData.timeSlots : ['']).map((slot, index) => (
@@ -1244,7 +1420,13 @@ export default function NewMealPlanPage() {
                     </select>
                   </div>
                 </div>
-                <div>
+                {Number.parseInt(formData.days, 10) >= 1 && (
+                  <DefaultSkipDaysMultiSelect
+                    value={formData.weeklySkipDays}
+                    onChange={(weeklySkipDays) => setFormData((prev) => ({ ...prev, weeklySkipDays }))}
+                  />
+                )}
+                <div className="w-full">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Delivery time (all meals) *</label>
                   <div className="space-y-2">
                     {(formData.timeSlots?.length ? formData.timeSlots : ['']).map((slot, index) => (
@@ -1564,10 +1746,42 @@ export default function NewMealPlanPage() {
           }
 
           const toggleSkipDay = (date: string) => {
-            const newSkippedDays = formData.skippedDays.includes(date)
-              ? formData.skippedDays.filter(d => d !== date)
-              : [...formData.skippedDays, date]
-            setFormData({ ...formData, skippedDays: newSkippedDays })
+            const norm = normalizeWeeklySkipDays(formData.weeklySkipDays)
+            const cur = isCreateWizardDateSkipped(
+              date,
+              formData.startDate,
+              formData.planType,
+              formData.skippedDays,
+              formData.skippedWeeks,
+              formData.weeklySkipDays,
+              formData.defaultSkipExceptionDates
+            )
+            if (!cur) {
+              if (formData.defaultSkipExceptionDates.includes(date)) {
+                setFormData({
+                  ...formData,
+                  defaultSkipExceptionDates: formData.defaultSkipExceptionDates.filter((d) => d !== date),
+                })
+              } else {
+                setFormData({ ...formData, skippedDays: [...formData.skippedDays, date] })
+              }
+            } else if (formData.skippedDays.includes(date)) {
+              const nextSkipped = formData.skippedDays.filter((d) => d !== date)
+              const nextExc = [...formData.defaultSkipExceptionDates]
+              if (norm.length > 0 && shouldSkipCalendarDay(date, norm) && !nextExc.includes(date)) {
+                nextExc.push(date)
+              }
+              setFormData({
+                ...formData,
+                skippedDays: nextSkipped,
+                defaultSkipExceptionDates: nextExc,
+              })
+            } else {
+              setFormData({
+                ...formData,
+                defaultSkipExceptionDates: [...formData.defaultSkipExceptionDates, date],
+              })
+            }
           }
 
           const toggleSkipWeek = (week: number) => {
@@ -1620,20 +1834,17 @@ export default function NewMealPlanPage() {
           }
 
           // Calculate active meals count (excluding skipped)
-          const stepActiveMealsCount = formData.meals.filter(meal => {
-            const date = meal.date
+          const stepActiveMealsCount = formData.meals.filter((meal) => {
             if (!formData.startDate) return true
-            
-            const week = getPlanWeekNumber(date, formData.startDate)
-            
-            if (formData.skippedDays.includes(date)) return false
-            if (
-              (formData.planType === 'MONTHLY' || formData.planType === 'WEEKLY') &&
-              formData.skippedWeeks.includes(week)
-            ) {
-              return false
-            }
-            return true
+            return !isCreateWizardDateSkipped(
+              meal.date,
+              formData.startDate,
+              formData.planType,
+              formData.skippedDays,
+              formData.skippedWeeks,
+              formData.weeklySkipDays,
+              formData.defaultSkipExceptionDates
+            )
           }).length
 
           // Calculate current meals count and remaining meals
@@ -1734,7 +1945,15 @@ export default function NewMealPlanPage() {
                               const filteredDates = weekDates.filter(date => visibleDays.includes(date))
                               return filteredDates.length > 0 ? filteredDates.map((date) => {
                                 const meals = weekMeals[date] || []
-                                const isDaySkipped = formData.skippedDays.includes(date)
+                                const isDaySkipped = isCreateWizardDateSkipped(
+                                  date,
+                                  formData.startDate,
+                                  formData.planType,
+                                  formData.skippedDays,
+                                  formData.skippedWeeks,
+                                  formData.weeklySkipDays,
+                                  formData.defaultSkipExceptionDates
+                                )
                               
                     return (
                       <div
@@ -2233,7 +2452,15 @@ export default function NewMealPlanPage() {
                 // Weekly or Custom: Show days (fallback for non-weekly/monthly plans)
                 <div className="space-y-4 pr-2">
                   {Object.entries(mealsByDay).sort().map(([date, meals]) => {
-                    const isDaySkipped = formData.skippedDays.includes(date)
+                    const isDaySkipped = isCreateWizardDateSkipped(
+                      date,
+                      formData.startDate,
+                      formData.planType,
+                      formData.skippedDays,
+                      formData.skippedWeeks,
+                      formData.weeklySkipDays,
+                      formData.defaultSkipExceptionDates
+                    )
                     
                     return (
                       <div

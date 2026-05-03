@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format, addDays, eachDayOfInterval } from 'date-fns'
@@ -13,6 +13,14 @@ import {
 } from '@/lib/meal-plan-weeks'
 import { formatCategory } from '@/lib/utils'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
+import {
+  jsWeekdayFromYmd,
+  jsWeekdayToMon1Sun7,
+  normalizeWeeklySkipDays,
+  parseWeeklySkipDaysByWeekJson,
+  shouldSkipCalendarDay,
+  WEEKDAY_SKIP_TOGGLES,
+} from '@/lib/meal-plan-skip-days'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { DeleteMealPlanButton } from '@/components/meal-plans/DeleteMealPlanButton'
 import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
@@ -40,6 +48,9 @@ interface MealPlan {
   mealsPerDay: number
   /** Plan-level default times (JSON array), applied to new items */
   timeSlots?: unknown
+  /** Plan default skip weekdays (1=Mon … 7=Sun); weeks may override in `weeklySkipDaysByWeek` */
+  weeklySkipDays?: number[]
+  weeklySkipDaysByWeek?: unknown
   status: string
   notes: string | null
   baseAmount: number | null
@@ -105,6 +116,81 @@ function countUniqueActiveDays(
   return days.size
 }
 
+/** Effective skip weekdays: explicit per-week draft, else plan default (`weeklySkipDays`). */
+function getSkipDaysForWeekFromDraft(
+  planWeek: number,
+  byWeekDraft: Record<number, number[]>,
+  planDefaultSkipDays: number[]
+): number[] {
+  const def = normalizeWeeklySkipDays(planDefaultSkipDays)
+  if (byWeekDraft[planWeek] !== undefined) {
+    return normalizeWeeklySkipDays(byWeekDraft[planWeek]!)
+  }
+  return [...def]
+}
+
+function formatPlanDefaultSkipDayLabels(days: number[] | null | undefined): string {
+  const norm = normalizeWeeklySkipDays(days)
+  if (norm.length === 0) return 'None'
+  const labelByVal = new Map(WEEKDAY_SKIP_TOGGLES.map((t) => [t.value, t.label]))
+  return norm.map((d) => labelByVal.get(d) ?? String(d)).join(', ')
+}
+
+/** Stable JSON for comparing skip settings (avoids duplicate PUTs). */
+function skipSettingsPayloadJson(
+  visibleWeeksList: number[],
+  weeklySkipByWeekDraft: Record<number, number[]>,
+  planDefaultSkipDays: number[]
+): string {
+  const planNorm = normalizeWeeklySkipDays(planDefaultSkipDays)
+  const sortedWeeks = [...visibleWeeksList].filter((w) => w > 0).sort((a, b) => a - b)
+  const persistByWeek: Record<string, number[]> = {}
+  for (const w of sortedWeeks) {
+    persistByWeek[String(w)] = normalizeWeeklySkipDays(weeklySkipByWeekDraft[w] ?? planNorm)
+  }
+  return JSON.stringify({
+    weeklySkipDaysByWeek: persistByWeek,
+  })
+}
+
+function itemDateMatchesDraftSkipPattern(
+  dateStr: string,
+  planStartDate: string,
+  byWeekDraft: Record<number, number[]>,
+  planDefaultSkipDays: number[]
+): boolean {
+  const ymd = format(new Date(dateStr), 'yyyy-MM-dd')
+  const mon = jsWeekdayToMon1Sun7(jsWeekdayFromYmd(ymd))
+  const wk = getWeekNumber(dateStr, planStartDate)
+  const pattern = getSkipDaysForWeekFromDraft(wk, byWeekDraft, planDefaultSkipDays)
+  const set = new Set(pattern)
+  return set.size > 0 && set.has(mon)
+}
+
+function countDeliveredItemsMatchingDraftSkipPattern(
+  mp: MealPlan,
+  d: {
+    weeklySkipByWeekDraft: Record<number, number[]>
+    planDefaultSkipDays: number[]
+  }
+): number {
+  let n = 0
+  for (const item of mp.mealPlanItems) {
+    if (!item.isDelivered || item.isSkipped) continue
+    if (
+      itemDateMatchesDraftSkipPattern(
+        item.date,
+        mp.startDate,
+        d.weeklySkipByWeekDraft,
+        d.planDefaultSkipDays
+      )
+    ) {
+      n += 1
+    }
+  }
+  return n
+}
+
 interface Dish {
   id: string
   name: string
@@ -166,6 +252,34 @@ export default function MealPlanViewPage() {
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
   const [itemDateEdit, setItemDateEdit] = useState('')
   const [savingDate, setSavingDate] = useState(false)
+  const [weeklySkipByWeekDraft, setWeeklySkipByWeekDraft] = useState<Record<number, number[]>>({})
+  /** Which week header shows “Saving…” while skip autosave runs; null = none. */
+  const [savingWeeklySkipsForWeek, setSavingWeeklySkipsForWeek] = useState<number | null>(null)
+  const [weeklySkipDeliveredModalCount, setWeeklySkipDeliveredModalCount] = useState<number | null>(null)
+  const [savingWeeklyDeliveredFollowUp, setSavingWeeklyDeliveredFollowUp] = useState(false)
+  const lastPersistedSkipJsonRef = useRef<string | null>(null)
+  const visibleWeeksRef = useRef<number[]>([])
+  const weeklySkipLastEditWeekRef = useRef<number | null>(null)
+  const skipAutosaveDraftRef = useRef({
+    weeklySkipByWeekDraft,
+    visibleWeeks: [] as number[],
+    planDefaultSkipDays: [] as number[],
+  })
+  const mealPlanIdRef = useRef<string | null>(null)
+  const mealPlanRef = useRef<MealPlan | null>(null)
+  const weeklySkipDeliveredFollowUpRef = useRef<{
+    mpId: string
+    payloadJson: string
+    body: { weeklySkipDaysByWeek: Record<string, number[]> }
+  } | null>(null)
+  const fetchMealPlanRef = useRef<(id: string) => Promise<MealPlan | undefined>>(async () => {
+    return undefined
+  })
+
+  const planDefaultSkipDaysNorm = normalizeWeeklySkipDays(mealPlan?.weeklySkipDays)
+
+  const getSkipDaysForPlanWeek = (planWeek: number) =>
+    getSkipDaysForWeekFromDraft(planWeek, weeklySkipByWeekDraft, planDefaultSkipDaysNorm)
 
   useEffect(() => {
     if (params.id) {
@@ -231,7 +345,10 @@ export default function MealPlanViewPage() {
       const response = await fetch(`/api/meal-plans/${id}`, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
+        lastPersistedSkipJsonRef.current = null
         setMealPlan(data)
+        const globalSkip = normalizeWeeklySkipDays(data.weeklySkipDays)
+        const parsedByWeek = parseWeeklySkipDaysByWeekJson(data.weeklySkipDaysByWeek)
 
         // Initialize visible weeks and days based on existing meal items
         if (data.mealPlanItems && data.mealPlanItems.length > 0) {
@@ -251,6 +368,13 @@ export default function MealPlanViewPage() {
           })
           
           const weeksArray = Array.from(weeks).sort((a, b) => a - b)
+          const mergedByWeek: Record<number, number[]> = {}
+          for (const w of weeksArray) {
+            const fromDb = parsedByWeek[String(w)]
+            mergedByWeek[w] =
+              fromDb !== undefined ? normalizeWeeklySkipDays(fromDb) : [...globalSkip]
+          }
+          setWeeklySkipByWeekDraft(mergedByWeek)
           setVisibleWeeks(weeksArray)
           
           // For existing meal plans, we don't restrict visible days - show all days that have items
@@ -267,6 +391,9 @@ export default function MealPlanViewPage() {
           setVisibleWeeks([1])
           setExpandedWeeks(new Set([1]))
           setVisibleDaysByWeek({})
+          setWeeklySkipByWeekDraft({
+            1: [...globalSkip],
+          })
         }
 
         return data as MealPlan
@@ -280,6 +407,161 @@ export default function MealPlanViewPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  fetchMealPlanRef.current = fetchMealPlan
+  visibleWeeksRef.current = visibleWeeks
+  skipAutosaveDraftRef.current = {
+    weeklySkipByWeekDraft,
+    visibleWeeks,
+    planDefaultSkipDays: normalizeWeeklySkipDays(mealPlan?.weeklySkipDays),
+  }
+  mealPlanIdRef.current = mealPlan?.id ?? null
+  mealPlanRef.current = mealPlan
+
+  async function persistWeeklySkipPayload(
+    mpId: string,
+    body: { weeklySkipDaysByWeek: Record<string, number[]> },
+    includeDelivered: boolean
+  ): Promise<{ ok: boolean; errorMsg?: string }> {
+    const res = await fetch(`/api/meal-plans/${mpId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...body,
+        applyWeeklySkipsToExistingItems: true,
+        applyWeeklySkipsToDeliveredItems: includeDelivered,
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      const msg =
+        typeof err.error === 'string'
+          ? err.error
+          : Array.isArray(err.error)
+            ? err.error.map((e: { message?: string }) => e.message).filter(Boolean).join(', ')
+            : 'Failed to save skip days'
+      return { ok: false, errorMsg: msg }
+    }
+    return { ok: true }
+  }
+
+  useEffect(() => {
+    const j = skipSettingsPayloadJson(
+      visibleWeeks,
+      weeklySkipByWeekDraft,
+      normalizeWeeklySkipDays(mealPlan?.weeklySkipDays)
+    )
+    const f = weeklySkipDeliveredFollowUpRef.current
+    if (f && f.payloadJson !== j) {
+      weeklySkipDeliveredFollowUpRef.current = null
+      setWeeklySkipDeliveredModalCount(null)
+    }
+  }, [visibleWeeks, weeklySkipByWeekDraft, mealPlan?.weeklySkipDays])
+
+  useEffect(() => {
+    if (!mealPlan) return
+    const payloadJson = skipSettingsPayloadJson(
+      visibleWeeks,
+      weeklySkipByWeekDraft,
+      normalizeWeeklySkipDays(mealPlan.weeklySkipDays)
+    )
+    if (lastPersistedSkipJsonRef.current === null) {
+      lastPersistedSkipJsonRef.current = payloadJson
+      return
+    }
+    if (lastPersistedSkipJsonRef.current === payloadJson) return
+
+    const t = window.setTimeout(() => {
+      void (async () => {
+        const mpId = mealPlanIdRef.current
+        if (!mpId) return
+        const d = skipAutosaveDraftRef.current
+        const currentJson = skipSettingsPayloadJson(
+          d.visibleWeeks,
+          d.weeklySkipByWeekDraft,
+          d.planDefaultSkipDays
+        )
+        if (lastPersistedSkipJsonRef.current === currentJson) return
+
+        const mp = mealPlanRef.current
+        if (!mp) return
+        const body = JSON.parse(currentJson) as { weeklySkipDaysByWeek: Record<string, number[]> }
+        const deliveredCount = countDeliveredItemsMatchingDraftSkipPattern(mp, {
+          weeklySkipByWeekDraft: d.weeklySkipByWeekDraft,
+          planDefaultSkipDays: d.planDefaultSkipDays,
+        })
+
+        const firstVisibleWeek =
+          [...d.visibleWeeks].filter((w) => w > 0).sort((a, b) => a - b)[0] ?? 1
+        const showSavingOnWeek = weeklySkipLastEditWeekRef.current ?? firstVisibleWeek
+        setSavingWeeklySkipsForWeek(showSavingOnWeek)
+        try {
+          const result = await persistWeeklySkipPayload(mpId, body, false)
+          if (!result.ok) {
+            toast.error(result.errorMsg ?? 'Failed to save skip days')
+            await fetchMealPlanRef.current(mpId)
+            return
+          }
+          lastPersistedSkipJsonRef.current = currentJson
+          await fetchMealPlanRef.current(mpId)
+          if (deliveredCount > 0) {
+            weeklySkipDeliveredFollowUpRef.current = { mpId, body, payloadJson: currentJson }
+            setWeeklySkipDeliveredModalCount(deliveredCount)
+          }
+        } catch (e) {
+          console.error(e)
+          toast.error('Failed to save skip days')
+          const mpId2 = mealPlanIdRef.current
+          if (mpId2) await fetchMealPlanRef.current(mpId2)
+        } finally {
+          setSavingWeeklySkipsForWeek(null)
+        }
+      })()
+    }, 400)
+    return () => clearTimeout(t)
+  }, [mealPlan, visibleWeeks, weeklySkipByWeekDraft])
+
+  const confirmWeeklySkipForDeliveredMeals = async () => {
+    const ctx = weeklySkipDeliveredFollowUpRef.current
+    if (!ctx) return
+    const { mpId, body } = ctx
+    weeklySkipDeliveredFollowUpRef.current = null
+    setWeeklySkipDeliveredModalCount(null)
+    setSavingWeeklyDeliveredFollowUp(true)
+    try {
+      const result = await persistWeeklySkipPayload(mpId, body, true)
+      if (!result.ok) {
+        toast.error(result.errorMsg ?? 'Failed to save skip days')
+        await fetchMealPlanRef.current(mpId)
+        return
+      }
+      await fetchMealPlanRef.current(mpId)
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to save skip days')
+      await fetchMealPlanRef.current(mpId)
+    } finally {
+      setSavingWeeklyDeliveredFollowUp(false)
+    }
+  }
+
+  const dismissWeeklySkipDeliveredModal = () => {
+    weeklySkipDeliveredFollowUpRef.current = null
+    setWeeklySkipDeliveredModalCount(null)
+  }
+
+  const toggleWeeklySkipDayForWeek = (planWeek: number, value: number) => {
+    weeklySkipLastEditWeekRef.current = planWeek
+    setWeeklySkipByWeekDraft((prev) => {
+      const planDefault = normalizeWeeklySkipDays(mealPlanRef.current?.weeklySkipDays)
+      const cur = getSkipDaysForWeekFromDraft(planWeek, prev, planDefault)
+      const nextSet = new Set(cur)
+      if (nextSet.has(value)) nextSet.delete(value)
+      else nextSet.add(value)
+      const nextArr = Array.from(nextSet).sort((a, b) => a - b)
+      return { ...prev, [planWeek]: nextArr }
+    })
   }
 
   const handleMarkAsDelivered = async (itemId: string, isDelivered: boolean) => {
@@ -808,6 +1090,11 @@ export default function MealPlanViewPage() {
       }
       
       const nextWeek = Math.max(...visibleWeeks, 0) + 1
+      const skipForNewWeek = getSkipDaysForWeekFromDraft(
+        nextWeek,
+        weeklySkipByWeekDraft,
+        normalizeWeeklySkipDays(mealPlan.weeklySkipDays)
+      )
 
       const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
       const mealsPerDay = mealPlan.mealsPerDay
@@ -848,7 +1135,7 @@ export default function MealPlanViewPage() {
             deliveryType: 'delivery',
             deliveryTime: deliveryTime,
             location: mealPlan.customer.deliveryArea || '',
-            isSkipped: false,
+            isSkipped: shouldSkipCalendarDay(firstDate, skipForNewWeek),
           }),
         })
       })
@@ -1018,7 +1305,7 @@ export default function MealPlanViewPage() {
             deliveryType: 'delivery',
             deliveryTime: deliveryTime,
             location: mealPlan.customer.deliveryArea || '',
-            isSkipped: false,
+            isSkipped: shouldSkipCalendarDay(nextDayDateStr, getSkipDaysForPlanWeek(week)),
           }),
         })
       })
@@ -1088,7 +1375,7 @@ export default function MealPlanViewPage() {
           deliveryType: 'delivery',
           deliveryTime: deliveryTime,
           location: mealPlan.customer.deliveryArea || '',
-          isSkipped: false,
+          isSkipped: shouldSkipCalendarDay(date, getSkipDaysForPlanWeek(week)),
         }),
       })
       
@@ -1174,7 +1461,9 @@ export default function MealPlanViewPage() {
             deliveryTime: item.deliveryTime || undefined,
             deliveryType: itemAny.deliveryType ?? parsedLegacy?.deliveryType ?? 'delivery',
             location: itemAny.deliveryLocation ?? parsedLegacy?.location ?? parsedLegacy?.deliveryLocation ?? mealPlan.customer.deliveryArea ?? '',
-            isSkipped: item.isSkipped,
+            isSkipped:
+              item.isSkipped ||
+              shouldSkipCalendarDay(targetDateStr, getSkipDaysForPlanWeek(nextWeek)),
             customNote: noteText?.trim() || undefined,
           }),
         })
@@ -1364,6 +1653,10 @@ export default function MealPlanViewPage() {
             <label className="text-xs font-medium text-gray-500">Meals Per Day</label>
             <p className="text-sm text-gray-900">{mealPlan.mealsPerDay}</p>
           </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500">Skipped days</label>
+            <p className="text-sm text-gray-900">{formatPlanDefaultSkipDayLabels(mealPlan.weeklySkipDays)}</p>
+          </div>
           {parseMealPlanTimeSlots(mealPlan.timeSlots).length > 0 && (
             <div className="md:col-span-2">
               <label className="text-xs font-medium text-gray-500">Default time slots (plan)</label>
@@ -1521,7 +1814,7 @@ export default function MealPlanViewPage() {
 
       {/* Meal Plan Items */}
       <div className="bg-white shadow rounded-lg p-3 lg:p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
           <h2 className="text-base lg:text-lg font-semibold text-gray-900">Meal Schedule</h2>
           {(() => {
             if (!mealPlan) return null
@@ -1653,12 +1946,55 @@ export default function MealPlanViewPage() {
                     </div>
                     </div>
                   </div>
+                  {mealPlan && (
+                    <div
+                      className="w-full min-w-0 border-t border-white/35 pt-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-white drop-shadow-sm">
+                          Skip days
+                        </span>
+                        <div className="flex min-w-0 w-full flex-1 flex-wrap items-stretch justify-between gap-1 sm:gap-0.5 sm:justify-start">
+                          {WEEKDAY_SKIP_TOGGLES.map(({ label, value }) => {
+                            const list = getSkipDaysForPlanWeek(week)
+                            const on = list.includes(value)
+                            return (
+                              <label
+                                key={`${week}-${value}`}
+                                className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-md border px-1.5 py-1.5 text-xs font-semibold text-white shadow-sm sm:min-w-[2.75rem] ${
+                                  on
+                                    ? 'border-white/60 bg-white/35 ring-1 ring-white/40'
+                                    : 'border-white/25 bg-white/10 hover:bg-white/25 hover:border-white/40'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="h-3.5 w-3.5 shrink-0 rounded border-white/70 bg-white/30 text-nutrafi-primary focus:ring-white/80"
+                                  checked={on}
+                                  onChange={() => toggleWeeklySkipDayForWeek(week, value)}
+                                />
+                                {label}
+                              </label>
+                            )
+                          })}
+                        </div>
+                        <div className="flex shrink-0 items-center sm:ml-auto sm:pl-2">
+                          {savingWeeklySkipsForWeek === week ? (
+                            <span className="text-center text-[11px] text-white/90 sm:text-right" aria-live="polite">
+                              Saving…
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Week Content */}
                 {isExpanded && (
-                  <div className="overflow-x-auto w-full min-w-0">
-                    <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '800px' }}>
+                  <div className="w-full min-w-0 overflow-x-auto">
+                    <table className="w-full min-w-[800px] divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day / Date</th>
@@ -1965,6 +2301,50 @@ export default function MealPlanViewPage() {
           )}
         </div>
       </div>
+
+      {/* Delivered meals on newly skipped weekdays — optional second save */}
+      {weeklySkipDeliveredModalCount !== null && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="weekly-skip-delivered-title"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={dismissWeeklySkipDeliveredModal}
+            aria-hidden
+          />
+          <div className="relative max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <h3 id="weekly-skip-delivered-title" className="text-base font-semibold text-gray-900">
+              Skip a delivered day?
+            </h3>
+            <p className="mt-3 text-sm text-gray-600">
+              {weeklySkipDeliveredModalCount === 1
+                ? 'A meal on a skipped weekday is already marked as delivered. Are you sure you want to mark it as skipped?'
+                : `${weeklySkipDeliveredModalCount} meals on skipped weekdays are already marked as delivered. Are you sure you want to mark them as skipped?`}{' '}
+              Delivered status will be removed and your remaining meal balance will be updated.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={dismissWeeklySkipDeliveredModal}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmWeeklySkipForDeliveredMeals()}
+                disabled={savingWeeklyDeliveredFollowUp}
+                className="rounded-md bg-nutrafi-primary px-3 py-2 text-sm font-medium text-white hover:bg-nutrafi-dark disabled:opacity-50"
+              >
+                {savingWeeklyDeliveredFollowUp ? 'Saving…' : 'Mark as skipped'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Meal Item Detail Modal */}
       {showModal && selectedItem && (

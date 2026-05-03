@@ -5,6 +5,9 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/lib/generated/prisma/client'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { applyMealPlanTimeSlotsToFutureItems } from '@/lib/meal-plan-propagate-times'
+import { applyWeeklySkipPatternToExistingItems } from '@/lib/meal-plan-apply-weekly-skips'
+import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
+import { normalizeWeeklySkipDays, parseWeeklySkipDaysByWeekJson } from '@/lib/meal-plan-skip-days'
 import { z } from 'zod'
 
 /** Never cache: UI must show DB `remainingMeals` as stored (not a stale or recomputed value). */
@@ -37,6 +40,28 @@ const mealPlanUpdateSchema = z.object({
   /** When true (with changed non-empty timeSlots), reassign future non-delivered item times from today */
   propagateTimeSlotsToFutureItems: z.boolean().optional(),
   updateItemDatesFromStartDate: z.boolean().optional(),
+  /** Weekday skip list: Mon=1 … Sun=7 (legacy 0=Sun accepted, normalized to 7) */
+  weeklySkipDays: z
+    .array(z.number().int().min(0).max(7))
+    .transform((arr) => normalizeWeeklySkipDays(arr))
+    .optional(),
+  /** When true with `weeklySkipDays`, mark matching weekdays skipped on all non-delivered items */
+  applyWeeklySkipsToExistingItems: z.boolean().optional(),
+  /** When true with `applyWeeklySkipsToExistingItems`, also mark delivered matching rows skipped (clears delivery) */
+  applyWeeklySkipsToDeliveredItems: z.boolean().optional(),
+  /** Plan week index (string) → weekdays to skip (Mon=1 … Sun=7; legacy 0=Sun ok) */
+  weeklySkipDaysByWeek: z
+    .record(z.string(), z.array(z.number().int().min(0).max(7)))
+    .optional()
+    .transform((rec) => {
+      if (rec === undefined) return undefined
+      const out: Record<string, number[]> = {}
+      for (const [k, arr] of Object.entries(rec)) {
+        if (!/^\d+$/.test(k)) continue
+        out[k] = normalizeWeeklySkipDays(arr)
+      }
+      return out
+    }),
 })
 
 // GET - Get meal plan with items
@@ -160,6 +185,13 @@ export async function PUT(
       updateData.totalMeals = data.totalMeals
     }
 
+    if (data.weeklySkipDays !== undefined) {
+      updateData.weeklySkipDays = data.weeklySkipDays
+    }
+    if (data.weeklySkipDaysByWeek !== undefined) {
+      updateData.weeklySkipDaysByWeek = data.weeklySkipDaysByWeek as Prisma.InputJsonValue
+    }
+
     const normalizedNewSlots: string[] | null =
       data.timeSlots === undefined
         ? null
@@ -180,6 +212,8 @@ export async function PUT(
       timeSlotsScheduleChanged
 
     let propagatedTimeSlotsCount = 0
+    let appliedWeeklySkipsCount = 0
+    let appliedWeeklySkipsDeliveredCount = 0
     const mealPlan = await prisma.$transaction(async (tx) => {
       const m = await tx.mealPlan.update({
         where: { id },
@@ -195,6 +229,29 @@ export async function PUT(
           id,
           normalizedNewSlots
         )
+      }
+      if (data.applyWeeklySkipsToExistingItems === true) {
+        const global = normalizeWeeklySkipDays((m.weeklySkipDays as number[]) ?? [])
+        const byWeekParsed = parseWeeklySkipDaysByWeekJson(m.weeklySkipDaysByWeek)
+        const hasPattern =
+          global.length > 0 ||
+          Object.values(byWeekParsed).some((a) => Array.isArray(a) && a.length > 0)
+        if (hasPattern) {
+          const includeDelivered = data.applyWeeklySkipsToDeliveredItems === true
+          const result = await applyWeeklySkipPatternToExistingItems(
+            tx,
+            id,
+            m.startDate,
+            global,
+            m.weeklySkipDaysByWeek,
+            { includeDelivered }
+          )
+          appliedWeeklySkipsCount = result.markedUndelivered + result.markedDelivered
+          appliedWeeklySkipsDeliveredCount = result.markedDelivered
+          if (result.markedDelivered > 0) {
+            await syncMealPlanRemainingMeals(tx, id)
+          }
+        }
       }
       return m
     })
@@ -223,6 +280,8 @@ export async function PUT(
     return NextResponse.json({
       ...mealPlan,
       propagatedTimeSlotsCount,
+      appliedWeeklySkipsCount,
+      appliedWeeklySkipsDeliveredCount,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { normalizeWeeklySkipDays } from '@/lib/meal-plan-skip-days'
 import { z } from 'zod'
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,11 @@ const mealPlanSchema = z.object({
   totalAmount: z.number().optional(),
   /** Contract meal count (e.g. after skipped days). On create, `remainingMeals` is always set equal to this — not read from the client. */
   totalMeals: z.number().int().optional(),
+  /** Plan default skip weekdays Mon=1 … Sun=7 (legacy 0=Sun normalized) */
+  weeklySkipDays: z
+    .array(z.number().int().min(0).max(7))
+    .transform((arr) => normalizeWeeklySkipDays(arr))
+    .optional(),
 })
 
 // GET - List meal plans
@@ -158,6 +164,7 @@ export async function POST(request: NextRequest) {
         ...(startDate ? { startDate } : {}),
         ...(endDate ? { endDate } : {}),
         ...(data.timeSlots && data.timeSlots.length > 0 ? { timeSlots: data.timeSlots } : {}),
+        ...(data.weeklySkipDays !== undefined ? { weeklySkipDays: data.weeklySkipDays } : {}),
         customer: { connect: { id: data.customerId } },
         ...(data.planId != null ? { plan: { connect: { id: data.planId } } } : {}),
       },
