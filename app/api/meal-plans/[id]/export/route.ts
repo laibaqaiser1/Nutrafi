@@ -25,6 +25,26 @@ function num(v: number | null | undefined): number {
   return v != null && !Number.isNaN(v) ? Number(v) : 0
 }
 
+/** Strip bidi / invisible chars often pasted into names; breaks HTTP header ByteString if left in. */
+function stripInvisibleAndControlChars(s: string): string {
+  return s.replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')
+}
+
+/**
+ * `filename="..."` must be ASCII for Fetch ByteString headers. Optional RFC 5987 UTF-8 name for real names.
+ */
+function contentDispositionAttachment(filename: string): string {
+  const cleaned = stripInvisibleAndControlChars(filename).trim()
+  const asciiFallback =
+    cleaned
+      .replace(/[^\x20-\x7E]/g, '_')
+      .replace(/["\\]/g, '_')
+      .replace(/\s+/g, ' ')
+      .trim() || 'download.pdf'
+  const star = encodeURIComponent(cleaned)
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${star}`
+}
+
 /** Notes column: only the note text from meal plan item. customNote is JSON; note can be nested JSON string. */
 function getNotesFromCustomNote(customNote: string | null): string {
   if (!customNote || !String(customNote).trim()) return ''
@@ -330,14 +350,15 @@ export async function GET(
       doc.text(lines2, 14, y)
     }
 
-    const filename = `meal-plan-${mealPlan.customer.fullName.replace(/\s+/g, '-')}-${filenameSuffix}.pdf`
+    const safeName = stripInvisibleAndControlChars(mealPlan.customer.fullName).replace(/\s+/g, '-')
+    const filename = `meal-plan-${safeName}-${filenameSuffix}.pdf`
     const pdfBuffer = Buffer.from(doc.output('arraybuffer') as ArrayBuffer)
 
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': contentDispositionAttachment(filename),
         'Content-Length': String(pdfBuffer.length),
       },
     })

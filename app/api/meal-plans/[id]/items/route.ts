@@ -63,7 +63,12 @@ export async function POST(
       const activeCount = await prisma.mealPlanItem.count({
         where: { mealPlanId: id, isSkipped: false, wrongDelivery: false },
       })
-      if (activeCount + 1 > totalMealsCap) {
+      const overCap = activeCount + 1 > totalMealsCap
+      const allowWhenAtCapButContractLeft =
+        mealPlanRow.remainingMeals != null &&
+        mealPlanRow.remainingMeals > 0 &&
+        activeCount <= totalMealsCap
+      if (overCap && !allowWhenAtCapButContractLeft) {
         return NextResponse.json(
           {
             error: `This plan allows at most ${totalMealsCap} active (non-skipped) meals. Skip unused days or increase the plan total.`,
