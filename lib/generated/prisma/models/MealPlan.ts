@@ -1763,15 +1763,15 @@ export type $MealPlanPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
      */
     timeSlots: runtime.JsonValue | null
     /**
-     * JS weekday numbers 0=Sun … 6=Sat; default pattern when “same every week” or fallback per plan week
+     * Weekdays to skip (Mon=1 … Sun=7): plan-wide default for new weeks and weeks without a `weeklySkipDaysByWeek` entry
      */
     weeklySkipDays: number[]
     /**
-     * When true, `weeklySkipDays` applies to every plan week; when false, use `weeklySkipDaysByWeek` per week (fallback global)
+     * Legacy field; per-week patterns use `weeklySkipDaysByWeek` with fallback to `weeklySkipDays`
      */
     weeklySkipDaysSameEveryWeek: boolean
     /**
-     * JSON map plan week number (string) → weekday list e.g. {"1":[6,0],"2":[0]} — used when `weeklySkipDaysSameEveryWeek` is false
+     * JSON map plan week number (string) → weekday list (1–7), e.g. `{"1":[6,7],"2":[7]}` — overrides plan default per week
      */
     weeklySkipDaysByWeek: runtime.JsonValue | null
   }, ExtArgs["result"]["mealPlan"]>

@@ -11,26 +11,51 @@ export function jsWeekdayFromPlanItemDate(date: string | Date): number {
   return jsWeekdayFromYmd(ymd)
 }
 
+/**
+ * Stored skip weekdays use **Monday = 1 … Sunday = 7** (easy to read).
+ * `Date.getDay()` uses Sunday = 0 … Saturday = 6 — convert for comparisons.
+ */
+export function jsWeekdayToMon1Sun7(jsWeekday: number): number {
+  if (jsWeekday === 0) return 7
+  return jsWeekday
+}
+
+/** Inverse of {@link jsWeekdayToMon1Sun7} (for tests / rare use). */
+export function mon1Sun7ToJsWeekday(mon: number): number {
+  if (mon === 7) return 0
+  return mon
+}
+
 export function shouldSkipCalendarDay(
   ymd: string,
   weeklySkipDays: number[] | null | undefined
 ): boolean {
   if (!weeklySkipDays?.length) return false
-  const set = new Set(weeklySkipDays)
-  return set.has(jsWeekdayFromYmd(ymd))
+  const set = new Set(normalizeWeeklySkipDays(weeklySkipDays))
+  const mon = jsWeekdayToMon1Sun7(jsWeekdayFromYmd(ymd))
+  return set.has(mon)
 }
 
+/**
+ * Normalizes skip weekday lists to **1 = Monday … 7 = Sunday**, sorted unique.
+ * Accepts legacy **0 = Sunday** (JS) from older rows or clients and maps it to **7**.
+ */
 export function normalizeWeeklySkipDays(days: unknown): number[] {
   if (!Array.isArray(days)) return []
   const out = new Set<number>()
   for (const x of days) {
     const n = typeof x === 'number' ? x : parseInt(String(x), 10)
-    if (!Number.isNaN(n) && n >= 0 && n <= 6) out.add(n)
+    if (Number.isNaN(n)) continue
+    if (n === 0) {
+      out.add(7)
+      continue
+    }
+    if (n >= 1 && n <= 7) out.add(n)
   }
   return Array.from(out).sort((a, b) => a - b)
 }
 
-/** Mon → Sun labels with JS weekday values */
+/** Mon–Sun toggles; `value` is stored on MealPlan (1–7). */
 export const WEEKDAY_SKIP_TOGGLES: { label: string; value: number }[] = [
   { label: 'Mon', value: 1 },
   { label: 'Tue', value: 2 },
@@ -38,10 +63,10 @@ export const WEEKDAY_SKIP_TOGGLES: { label: string; value: number }[] = [
   { label: 'Thu', value: 4 },
   { label: 'Fri', value: 5 },
   { label: 'Sat', value: 6 },
-  { label: 'Sun', value: 0 },
+  { label: 'Sun', value: 7 },
 ]
 
-/** Parse DB JSON `{ "1": [6,0] }` into normalized weekday arrays per plan week. */
+/** Parse DB JSON `{ "1": [6,7] }` into normalized weekday arrays per plan week (1–7). */
 export function parseWeeklySkipDaysByWeekJson(raw: unknown): Record<string, number[]> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const out: Record<string, number[]> = {}
