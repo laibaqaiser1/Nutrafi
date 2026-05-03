@@ -49,7 +49,6 @@ const mealPlanUpdateSchema = z.object({
   applyWeeklySkipsToExistingItems: z.boolean().optional(),
   /** When true with `applyWeeklySkipsToExistingItems`, also mark delivered matching rows skipped (clears delivery) */
   applyWeeklySkipsToDeliveredItems: z.boolean().optional(),
-  weeklySkipDaysSameEveryWeek: z.boolean().optional(),
   /** Plan week index (string) → weekdays to skip (Mon=1 … Sun=7; legacy 0=Sun ok) */
   weeklySkipDaysByWeek: z
     .record(z.string(), z.array(z.number().int().min(0).max(7)))
@@ -188,9 +187,6 @@ export async function PUT(
 
     if (data.weeklySkipDays !== undefined) {
       updateData.weeklySkipDays = data.weeklySkipDays
-    }
-    if (data.weeklySkipDaysSameEveryWeek !== undefined) {
-      updateData.weeklySkipDaysSameEveryWeek = data.weeklySkipDaysSameEveryWeek
     }
     if (data.weeklySkipDaysByWeek !== undefined) {
       updateData.weeklySkipDaysByWeek = data.weeklySkipDaysByWeek as Prisma.InputJsonValue

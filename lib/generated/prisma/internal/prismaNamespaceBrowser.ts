@@ -162,7 +162,6 @@ export const MealPlanScalarFieldEnum = {
   vatAmount: 'vatAmount',
   timeSlots: 'timeSlots',
   weeklySkipDays: 'weeklySkipDays',
-  weeklySkipDaysSameEveryWeek: 'weeklySkipDaysSameEveryWeek',
   weeklySkipDaysByWeek: 'weeklySkipDaysByWeek'
 } as const
 
