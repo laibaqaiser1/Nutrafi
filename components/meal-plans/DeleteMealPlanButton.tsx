@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useNotification } from '@/components/notifications/NotificationContext'
+import { PK, hasPermissionKey } from '@/lib/permission-keys'
 
 type Props = {
   mealPlanId: string
@@ -14,8 +15,8 @@ type Props = {
 
 export function DeleteMealPlanButton({ mealPlanId, customerName, className = '' }: Props) {
   const { data: session } = useSession()
-  const role = session?.user?.role?.toUpperCase()
-  const canDelete = role === 'ADMIN' || role === 'MANAGER'
+  const keys = session?.user?.permissionKeys ?? []
+  const canDelete = hasPermissionKey(keys, PK.moduleMealPlans)
 
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)

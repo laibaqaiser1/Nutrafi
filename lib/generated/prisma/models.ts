@@ -9,6 +9,8 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/User'
+export type * from './models/Permission'
+export type * from './models/RolePermission'
 export type * from './models/Dish'
 export type * from './models/Customer'
 export type * from './models/Plan'

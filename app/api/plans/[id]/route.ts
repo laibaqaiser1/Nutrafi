@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { sessionHasPermission } from '@/lib/permissions'
+import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -56,7 +58,7 @@ export async function PUT(
     if (id === null) {
       return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 })
     }
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+    if (!session || !sessionHasPermission(session, PK.modulePlans)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

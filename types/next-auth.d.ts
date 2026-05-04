@@ -8,6 +8,8 @@ declare module 'next-auth' {
       email: string
       name: string
       role: UserRole
+      /** Loaded from `RolePermission` for the user’s role (refreshed each session). */
+      permissionKeys: string[]
     }
   }
 

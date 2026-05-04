@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx scripts/seed-admin.ts",
+    "db:seed-operations": "tsx scripts/seed-operations-user.ts",
     "db:import-menu": "tsx scripts/import-menu.ts",
     "db:seed-plans": "tsx scripts/seed-plans.ts",
     "db:backfill-total-meals": "tsx scripts/backfill-total-meals.ts",

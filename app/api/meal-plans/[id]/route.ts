@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { sessionHasPermission } from '@/lib/permissions'
+import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@/lib/generated/prisma/client'
@@ -126,7 +128,7 @@ export async function PUT(
     if (id === null) {
       return NextResponse.json({ error: 'Invalid meal plan ID' }, { status: 400 })
     }
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+    if (!session || !sessionHasPermission(session, PK.moduleMealPlans)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -304,7 +306,7 @@ export async function DELETE(
     if (id === null) {
       return NextResponse.json({ error: 'Invalid meal plan ID' }, { status: 400 })
     }
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+    if (!session || !sessionHasPermission(session, PK.moduleMealPlans)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

@@ -22,6 +22,26 @@ model User {
   @@index([email])
 }
 
+/// UI + route capability keys (e.g. `module.kitchen-planning`). Assigned to roles via `RolePermission`.
+model Permission {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  name  String
+  roles RolePermission[]
+
+  @@index([key])
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  role         UserRole
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
+
 model Dish {
   id            Int             @id @default(autoincrement())
   name          String
@@ -185,6 +205,8 @@ enum UserRole {
   ADMIN
   MANAGER
   CHEF
+  /// Limited staff (e.g. kitchen ops) — grant modules via `RolePermission`, not full manager APIs.
+  OPERATIONS
 }
 
 enum DishCategory {

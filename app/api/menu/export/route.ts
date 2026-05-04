@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { sessionHasPermission } from '@/lib/permissions'
+import { PK } from '@/lib/permission-keys'
 import { prisma } from '@/lib/prisma'
 import * as XLSX from 'xlsx'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession()
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+    if (!session || !sessionHasPermission(session, PK.moduleMenu)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

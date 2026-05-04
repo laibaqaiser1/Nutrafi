@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { sessionHasPermission } from '@/lib/permissions'
+import { PK } from '@/lib/permission-keys'
 import { CustomerStatus } from '@/lib/generated/prisma/enums'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
@@ -11,7 +13,7 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession()
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+    if (!session || !sessionHasPermission(session, PK.moduleCustomers)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

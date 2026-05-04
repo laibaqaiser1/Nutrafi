@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { sessionHasPermission } from '@/lib/permissions'
+import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -62,7 +64,7 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession()
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+    if (!session || !sessionHasPermission(session, PK.moduleCustomers)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -102,7 +104,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession()
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+    if (!session || !sessionHasPermission(session, PK.moduleCustomers)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

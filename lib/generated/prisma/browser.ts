@@ -23,6 +23,16 @@ export * from './enums';
  */
 export type User = Prisma.UserModel
 /**
+ * Model Permission
+ * UI + route capability keys (e.g. `module.kitchen-planning`). Assigned to roles via `RolePermission`.
+ */
+export type Permission = Prisma.PermissionModel
+/**
+ * Model RolePermission
+ * 
+ */
+export type RolePermission = Prisma.RolePermissionModel
+/**
  * Model Dish
  * 
  */

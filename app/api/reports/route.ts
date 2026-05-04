@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
+import { sessionHasPermission } from '@/lib/permissions'
+import { PK } from '@/lib/permission-keys'
 import { prisma } from '@/lib/prisma'
 
 // Parse optional from/to (YYYY-MM-DD) into Date range for filtering
@@ -19,7 +21,7 @@ function getDateRange(searchParams: URLSearchParams): { from: Date; to: Date } |
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession()
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
+    if (!session || !sessionHasPermission(session, PK.moduleReports)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

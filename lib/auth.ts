@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { UserRole } from '@/lib/generated/prisma/client'
+import { getPermissionKeysForRole } from '@/lib/permissions'
 
 export const authOptions: NextAuthConfig = {
   providers: [
@@ -52,9 +53,10 @@ export const authOptions: NextAuthConfig = {
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.role) {
         session.user.role = token.role as UserRole
         ;(session.user as { id: number }).id = token.id as number
+        session.user.permissionKeys = await getPermissionKeysForRole(token.role as UserRole)
       }
       return session
     }

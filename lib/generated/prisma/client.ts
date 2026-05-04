@@ -54,6 +54,16 @@ path.join(process.cwd(), "lib/generated/prisma/libquery_engine-rhel-openssl-3.0.
  */
 export type User = Prisma.UserModel
 /**
+ * Model Permission
+ * UI + route capability keys (e.g. `module.kitchen-planning`). Assigned to roles via `RolePermission`.
+ */
+export type Permission = Prisma.PermissionModel
+/**
+ * Model RolePermission
+ * 
+ */
+export type RolePermission = Prisma.RolePermissionModel
+/**
  * Model Dish
  * 
  */
