@@ -54,14 +54,14 @@ function effectiveMealPlanTimeSlots(slots: string[] | undefined): string[] {
 
 /**
  * Contract total meal slots for the plan (not `formData.meals.length`).
- * The schedule grid often only has rows for days the user opened; skipped weeks/days must still
- * reduce the contract from the full `days × mealsPerDay` range using the same rules as submit.
+ * Uses start date + day span, explicit skipped days, skipped plan weeks, and default weekly skip days.
+ * **`planType` is not used** — Weekly / Monthly / Custom is informational for the saved row only.
  */
-/** True when this calendar date has no contract meals (skipped week/day, explicit skip, or default weekly skip). */
+/** True when this calendar date has no contract meals (skipped plan week, explicit skip, or default weekly skip). */
 function isCreateWizardDateSkipped(
   dateStr: string,
   startDateStr: string,
-  planType: string,
+  _planType: string,
   skippedDays: string[],
   skippedWeeks: number[],
   weeklySkipDays: number[],
@@ -69,7 +69,7 @@ function isCreateWizardDateSkipped(
 ): boolean {
   if (!startDateStr) return false
   const week = getPlanWeekNumber(dateStr, startDateStr)
-  if ((planType === 'MONTHLY' || planType === 'WEEKLY') && skippedWeeks.includes(week)) return true
+  if (skippedWeeks.includes(week)) return true
   if (skippedDays.includes(dateStr)) return true
   const norm = normalizeWeeklySkipDays(weeklySkipDays)
   if (norm.length === 0) return false
@@ -77,52 +77,18 @@ function isCreateWizardDateSkipped(
   return shouldSkipCalendarDay(dateStr, norm)
 }
 
-function countContractMealSlots(input: {
-  startDateStr: string
-  days: number
-  mealsPerDay: number
-  planType: string
-  skippedDays: string[]
-  skippedWeeks: number[]
-  weeklySkipDays: number[]
-  defaultSkipExceptionDates: string[]
-}): number {
-  const {
-    startDateStr,
-    days,
-    mealsPerDay,
-    planType,
-    skippedDays,
-    skippedWeeks,
-    weeklySkipDays,
-    defaultSkipExceptionDates,
-  } = input
-  if (!startDateStr || !Number.isFinite(days) || days < 1 || !Number.isFinite(mealsPerDay) || mealsPerDay < 1) {
-    return 0
+/** Valid positive integer in the field wins; otherwise days × meals per day. */
+function effectiveTotalMealsFromForm(daysStr: string, mpdStr: string, totalMealsStr: string): number {
+  const d = parseInt(daysStr, 10)
+  const mpd = parseInt(mpdStr, 10)
+  const naive =
+    Number.isFinite(d) && d >= 1 && Number.isFinite(mpd) && mpd >= 1 ? d * mpd : 0
+  const raw = totalMealsStr.trim()
+  if (raw !== '') {
+    const n = parseInt(raw, 10)
+    if (Number.isFinite(n) && n >= 1) return Math.min(n, 1_000_000)
   }
-  const startDate = new Date(startDateStr)
-  if (Number.isNaN(startDate.getTime())) return 0
-  const endDate = addDays(startDate, days - 1)
-  const dateRange = eachDayOfInterval({ start: startDate, end: endDate })
-  let slots = 0
-  for (const d of dateRange) {
-    const dateStr = format(d, 'yyyy-MM-dd')
-    if (
-      isCreateWizardDateSkipped(
-        dateStr,
-        startDateStr,
-        planType,
-        skippedDays,
-        skippedWeeks,
-        weeklySkipDays,
-        defaultSkipExceptionDates
-      )
-    ) {
-      continue
-    }
-    slots += mealsPerDay
-  }
-  return slots
+  return naive
 }
 
 function formatDefaultSkipDaysSummary(days: number[]): string {
@@ -232,7 +198,6 @@ export default function NewMealPlanPage() {
   const [dropdownAnchor, setDropdownAnchor] = useState<{ mealKey: string; top: number; left: number; width: number } | null>(null)
   const [hoveredDishIdInDropdown, setHoveredDishIdInDropdown] = useState<string | null>(null)
   const [visibleWeeks, setVisibleWeeks] = useState<number[]>([1]) // Start with only week 1 visible
-  const [totalMealsAllowed, setTotalMealsAllowed] = useState<number>(0) // Total meals allowed by plan
   const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set()) // Track collapsed weeks
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set()) // Track collapsed days
   const [visibleDaysByWeek, setVisibleDaysByWeek] = useState<Record<number, string[]>>({}) // Track visible days per week
@@ -289,6 +254,8 @@ export default function NewMealPlanPage() {
     /** Customer already had a plan off-portal — only this many meals are left on the contract */
     legacyMidPlan: false,
     legacyMealsRemaining: '',
+    /** Total meals (POST); synced from days × meals per day unless edited */
+    totalMeals: '',
   })
 
   useEffect(() => {
@@ -371,58 +338,31 @@ export default function NewMealPlanPage() {
     if (formData.planId) {
       const selectedPlan = plans.find(p => p.id == formData.planId)
       if (selectedPlan) {
-        const totalMeals = selectedPlan.days * selectedPlan.mealsPerDay
-        setTotalMealsAllowed(totalMeals)
+        const product = selectedPlan.days * selectedPlan.mealsPerDay
         setVisibleWeeks([1]) // Reset to show only week 1
         // Keep existing time slots (one default or user-added); do not resize by mealsPerDay
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           planType: selectedPlan.planType,
           mealsPerDay: selectedPlan.mealsPerDay.toString(),
           days: selectedPlan.days.toString(),
           timeSlots: effectiveMealPlanTimeSlots(prev.timeSlots).length > 0 ? prev.timeSlots : [''],
+          totalMeals: String(product),
         }))
       }
     }
   }, [formData.planId, plans])
 
-  // Also handle custom plans - total meals only; time slots stay as one (or user-added)
+  // Also handle custom plans — sync total meals from days × meals per day; time slots stay as one (or user-added)
   useEffect(() => {
     if (planMode === 'custom' && formData.days && formData.mealsPerDay) {
-      const totalMeals = parseInt(formData.days) * parseInt(formData.mealsPerDay)
-      setTotalMealsAllowed(totalMeals)
-      setVisibleWeeks([1]) // Reset to show only week 1
+      const d = parseInt(formData.days, 10)
+      const mpd = parseInt(formData.mealsPerDay, 10)
+      if (!Number.isFinite(d) || !Number.isFinite(mpd) || d < 1 || mpd < 1) return
+      setVisibleWeeks([1])
+      setFormData((prev) => ({ ...prev, totalMeals: String(d * mpd) }))
     }
   }, [planMode, formData.days, formData.mealsPerDay])
-
-  // On meal configuration, contract limit must match skipped days/weeks (same as POST totalMeals)
-  useEffect(() => {
-    if (step < 4 || !formData.startDate) return
-    const d = parseInt(formData.days, 10)
-    const mpd = parseInt(formData.mealsPerDay, 10)
-    if (!Number.isFinite(d) || d < 1 || !Number.isFinite(mpd) || mpd < 1) return
-    const n = countContractMealSlots({
-      startDateStr: formData.startDate,
-      days: d,
-      mealsPerDay: mpd,
-      planType: formData.planType,
-      skippedDays: formData.skippedDays,
-      skippedWeeks: formData.skippedWeeks,
-      weeklySkipDays: formData.weeklySkipDays,
-      defaultSkipExceptionDates: formData.defaultSkipExceptionDates,
-    })
-    if (n > 0) setTotalMealsAllowed(n)
-  }, [
-    step,
-    formData.startDate,
-    formData.days,
-    formData.mealsPerDay,
-    formData.planType,
-    formData.skippedDays,
-    formData.skippedWeeks,
-    formData.weeklySkipDays,
-    formData.defaultSkipExceptionDates,
-  ])
 
   useEffect(() => {
     // Only generate meals if we have all required fields and we're on step 4 or beyond
@@ -610,7 +550,6 @@ export default function NewMealPlanPage() {
       
       const timeSlots = effectiveMealPlanTimeSlots(formData.timeSlots)
       if (timeSlots.length === 0) {
-        console.warn('No valid time slots found')
         return
       }
       
@@ -823,6 +762,11 @@ export default function NewMealPlanPage() {
     // Check if adding this week would exceed total meals allowed
     const mealsPerWeek = 7 * parseInt(formData.mealsPerDay)
     const currentMealsCount = formData.meals.length
+    const totalMealsAllowed = effectiveTotalMealsFromForm(
+      formData.days,
+      formData.mealsPerDay,
+      formData.totalMeals
+    )
     const mealsInNewWeek = Math.min(mealsPerWeek, totalMealsAllowed - currentMealsCount)
     
     if (nextWeek > maxWeek) {
@@ -849,7 +793,6 @@ export default function NewMealPlanPage() {
     
     const timeSlots = effectiveMealPlanTimeSlots(formData.timeSlots)
     if (timeSlots.length === 0) {
-      console.warn('No valid time slots found')
       return
     }
     
@@ -905,16 +848,11 @@ export default function NewMealPlanPage() {
     try {
       const daysNum = parseInt(formData.days, 10)
       const mpd = parseInt(formData.mealsPerDay, 10)
-      const totalMealsForPlan = countContractMealSlots({
-        startDateStr: formData.startDate,
-        days: daysNum,
-        mealsPerDay: mpd,
-        planType: formData.planType,
-        skippedDays: formData.skippedDays,
-        skippedWeeks: formData.skippedWeeks,
-        weeklySkipDays: formData.weeklySkipDays,
-        defaultSkipExceptionDates: formData.defaultSkipExceptionDates,
-      })
+      const totalMealsForPlan = effectiveTotalMealsFromForm(
+        formData.days,
+        formData.mealsPerDay,
+        formData.totalMeals
+      )
 
       if (totalMealsForPlan < 1) {
         toast.warning('This plan has no meals (check skipped days/weeks or plan length).')
@@ -1072,20 +1010,11 @@ export default function NewMealPlanPage() {
   const selectedCustomer = customers.find(c => c.id == formData.customerId)
   const selectedPlan = plans.find(p => p.id == formData.planId)
 
-  // Contract total from calendar + skips (same as POST body), not rows in the partial schedule grid
-  const totalMeals =
-    formData.startDate && formData.days && formData.mealsPerDay
-      ? countContractMealSlots({
-          startDateStr: formData.startDate,
-          days: parseInt(formData.days, 10),
-          mealsPerDay: parseInt(formData.mealsPerDay, 10),
-          planType: formData.planType,
-          skippedDays: formData.skippedDays,
-          skippedWeeks: formData.skippedWeeks,
-          weeklySkipDays: formData.weeklySkipDays,
-          defaultSkipExceptionDates: formData.defaultSkipExceptionDates,
-        })
-      : 0
+  const totalMeals = effectiveTotalMealsFromForm(
+    formData.days,
+    formData.mealsPerDay,
+    formData.totalMeals
+  )
   const customEnteredPricePerMeal = parseFloat(formData.pricePerMeal)
   const customUsesEnteredPricePerMeal =
     Number.isFinite(customEnteredPricePerMeal) && customEnteredPricePerMeal > 0
@@ -1255,7 +1184,7 @@ export default function NewMealPlanPage() {
                     type="radio"
                     value="predefined"
                     checked={planMode === 'predefined'}
-                    onChange={(e) => setPlanMode(e.target.value as PlanMode)}
+                    onChange={() => setPlanMode('predefined')}
                     className="mr-2"
                   />
                   Predefined Plan
@@ -1265,7 +1194,10 @@ export default function NewMealPlanPage() {
                     type="radio"
                     value="custom"
                     checked={planMode === 'custom'}
-                    onChange={(e) => setPlanMode(e.target.value as PlanMode)}
+                    onChange={() => {
+                      setPlanMode('custom')
+                      setFormData((prev) => ({ ...prev, planId: '' }))
+                    }}
                     className="mr-2"
                   />
                   Custom Plan
@@ -1298,6 +1230,18 @@ export default function NewMealPlanPage() {
                     <p className="text-sm text-gray-600">Days: {selectedPlan.days}</p>
                     <p className="text-sm text-gray-600">Meals per Day: {selectedPlan.mealsPerDay}</p>
                     <p className="text-sm font-semibold text-nutrafi-dark">Price: {selectedPlan.price} AED</p>
+                  </div>
+                )}
+                {selectedPlan && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Total meals</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={formData.totalMeals}
+                      onChange={(e) => setFormData({ ...formData, totalMeals: e.target.value })}
+                      className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                    />
                   </div>
                 )}
                 {selectedPlan && (
@@ -1360,7 +1304,6 @@ export default function NewMealPlanPage() {
                         + Add time slot (for special cases)
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">All meals use the first time slot. Add more only if some meals have a different delivery time.</p>
                   </div>
                 )}
                 <div>
@@ -1374,7 +1317,6 @@ export default function NewMealPlanPage() {
                     onFocus={(e) => e.currentTarget.showPicker?.()}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Select the start date for this meal plan</p>
                 </div>
               </>
             ) : (
@@ -1419,6 +1361,16 @@ export default function NewMealPlanPage() {
                       ))}
                     </select>
                   </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Total meals</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.totalMeals}
+                    onChange={(e) => setFormData({ ...formData, totalMeals: e.target.value })}
+                    className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                  />
                 </div>
                 {Number.parseInt(formData.days, 10) >= 1 && (
                   <DefaultSkipDaysMultiSelect
@@ -1479,14 +1431,9 @@ export default function NewMealPlanPage() {
                       + Add time slot (for special cases)
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">All meals use the first time slot. Add more only if some meals have a different delivery time.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Price Per Meal (AED)</label>
-                  <p className="text-xs text-gray-500 mb-1">
-                    Optional. If set, we show total meals × this rate on the payment step. If left blank, enter the
-                    payment amount yourself on the next step (no calculated total).
-                  </p>
                   <input
                     type="number"
                     min="0"
@@ -1494,7 +1441,7 @@ export default function NewMealPlanPage() {
                     value={formData.pricePerMeal}
                     onChange={(e) => setFormData({ ...formData, pricePerMeal: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Optional — enter payment on next step if empty"
+                    placeholder="Optional"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1508,7 +1455,6 @@ export default function NewMealPlanPage() {
                       onFocus={(e) => e.currentTarget.showPicker?.()}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Optional - leave empty if not set</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
@@ -1518,7 +1464,6 @@ export default function NewMealPlanPage() {
                       onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Optional - leave empty if not set</p>
                   </div>
                 </div>
                 {totalMeals > 0 && customUsesEnteredPricePerMeal && (
@@ -1571,28 +1516,26 @@ export default function NewMealPlanPage() {
         {step === 3 && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h2>
-            <div className="bg-[#f0f4e8] p-4 rounded-md mb-4">
-              {planMode === 'predefined' && (
-                <p className="text-lg font-semibold text-nutrafi-dark">
-                  Total Amount: {totalAmount.toFixed(2)} AED
-                </p>
-              )}
-              {planMode === 'custom' && customUsesEnteredPricePerMeal && (
-                <>
+            {(planMode === 'predefined' ||
+              (planMode === 'custom' && customUsesEnteredPricePerMeal)) && (
+              <div className="bg-[#f0f4e8] p-4 rounded-md mb-4">
+                {planMode === 'predefined' && (
                   <p className="text-lg font-semibold text-nutrafi-dark">
                     Total Amount: {totalAmount.toFixed(2)} AED
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    ({totalMeals} meals × {formData.pricePerMeal} AED per meal)
-                  </p>
-                </>
-              )}
-              {planMode === 'custom' && !customUsesEnteredPricePerMeal && (
-                <p className="text-sm text-gray-700">
-                  No price per meal was set. Enter the payment amount below.
-                </p>
-              )}
-            </div>
+                )}
+                {planMode === 'custom' && customUsesEnteredPricePerMeal && (
+                  <>
+                    <p className="text-lg font-semibold text-nutrafi-dark">
+                      Total Amount: {totalAmount.toFixed(2)} AED
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      ({totalMeals} meals × {formData.pricePerMeal} AED per meal)
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Payment Amount (AED) *</label>
@@ -1849,6 +1792,11 @@ export default function NewMealPlanPage() {
 
           // Calculate current meals count and remaining meals
           const currentMealsCount = formData.meals.length
+          const totalMealsAllowed = effectiveTotalMealsFromForm(
+            formData.days,
+            formData.mealsPerDay,
+            formData.totalMeals
+          )
           const remainingMeals = totalMealsAllowed - currentMealsCount
           const maxWeek =
             formData.days && formData.startDate
@@ -1867,7 +1815,7 @@ export default function NewMealPlanPage() {
               ) : null}
               <div className="bg-blue-50 p-4 rounded-md mb-4">
                 <p className="text-sm font-semibold text-blue-700 mb-2">
-                  Meals: {currentMealsCount} / {totalMealsAllowed} (Plan Limit)
+                  Meals on schedule: {currentMealsCount} / {totalMealsAllowed}
                 </p>
                 {remainingMeals > 0 && (
                   <p className="text-sm text-blue-600">
