@@ -22,6 +22,7 @@ interface MealPlanItem {
   customNote: string | null
   isSkipped: boolean
   isDelivered: boolean
+  wrongDelivery?: boolean
   mealPlan: {
     id: string
     status?: string
@@ -100,7 +101,7 @@ export default function KitchenPlanningPage() {
     date: format(new Date(), 'yyyy-MM-dd'),
     startTime: '',
     endTime: '',
-    status: 'active' as 'active' | 'delivered' | 'all', // Default to 'active'
+    status: 'active' as 'active' | 'delivered' | 'all' | 'wrong_delivery',
   })
   /** Avoid naming state `page` in `page.tsx` (can confuse tooling / hydration). */
   const [tablePage, setTablePage] = useState(1)
@@ -523,10 +524,16 @@ export default function KitchenPlanningPage() {
             </label>
             <select
               value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value as 'active' | 'delivered' | 'all' })}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
+                  status: e.target.value as 'active' | 'delivered' | 'all' | 'wrong_delivery',
+                })
+              }
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-nutrafi-primary focus:border-transparent"
             >
               <option value="active">Active</option>
+              <option value="wrong_delivery">Wrong delivery</option>
               <option value="delivered">Delivered</option>
               <option value="all">All</option>
             </select>
@@ -692,11 +699,18 @@ export default function KitchenPlanningPage() {
                     const item = row.data
                     const instructions = getInstructions(item.customNote)
                     const isPaused = isKitchenMealPlanPaused(item.mealPlan)
+                    const wrongDel = Boolean(item.wrongDelivery)
 
                     return (
                       <tr 
                         key={item.id} 
-                        className={isPaused ? 'bg-red-100 hover:bg-red-200 cursor-pointer' : 'hover:bg-gray-50 cursor-pointer'}
+                        className={
+                          isPaused
+                            ? 'bg-red-100 hover:bg-red-200 cursor-pointer'
+                            : wrongDel
+                              ? 'bg-orange-50 hover:bg-orange-100 cursor-pointer'
+                              : 'hover:bg-gray-50 cursor-pointer'
+                        }
                         onClick={() => setSelectedMeal(item)}
                       >
                         <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-900">
@@ -742,6 +756,10 @@ export default function KitchenPlanningPage() {
                           ) : item.isSkipped ? (
                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                               Skipped
+                            </span>
+                          ) : wrongDel ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-900">
+                              Wrong delivery
                             </span>
                           ) : (
                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
@@ -989,6 +1007,10 @@ export default function KitchenPlanningPage() {
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                         Skipped
                       </span>
+                    ) : selectedMeal.wrongDelivery ? (
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-900">
+                        Wrong delivery
+                      </span>
                     ) : (
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#f0f4e8] text-nutrafi-dark">
                         Active
@@ -1053,6 +1075,7 @@ export default function KitchenPlanningPage() {
                 <div className="border-t pt-2 flex gap-2">
                   {!selectedMeal.isDelivered &&
                     !selectedMeal.isSkipped &&
+                    !selectedMeal.wrongDelivery &&
                     !isKitchenMealPlanPaused(selectedMeal.mealPlan) && (
                     <button
                       onClick={() => handleMarkAsDelivered(selectedMeal)}
