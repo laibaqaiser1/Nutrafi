@@ -34,15 +34,17 @@ export async function GET(request: NextRequest) {
         gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
         lt: new Date(new Date(date).setHours(23, 59, 59, 999)),
       },
+      mealPlan: { status: { not: 'CANCELLED' } },
     }
 
-    // Filter by status: 'active' means not delivered, 'delivered' means delivered, 'all' means both
     if (status === 'active') {
       where.isDelivered = false
+      where.wrongDelivery = false
     } else if (status === 'delivered') {
       where.isDelivered = true
+    } else if (status === 'wrong_delivery') {
+      where.wrongDelivery = true
     }
-    // If status is 'all', don't add isDelivered filter
 
     // Fetch all items for the date first (retry: Neon cold start / transient disconnects)
     let items = await withRetry(() =>
@@ -149,8 +151,14 @@ export async function GET(request: NextRequest) {
       },
       mealPlan: { status: 'ACTIVE' },
     } as any
-    if (status === 'active') (whereAll as any).isDelivered = false
-    else if (status === 'delivered') (whereAll as any).isDelivered = true
+    if (status === 'active') {
+      ;(whereAll as any).isDelivered = false
+      ;(whereAll as any).wrongDelivery = false
+    } else if (status === 'delivered') {
+      ;(whereAll as any).isDelivered = true
+    } else if (status === 'wrong_delivery') {
+      ;(whereAll as any).wrongDelivery = true
+    }
     const allItemsForDate = await withRetry(() =>
       prisma.mealPlanItem.findMany({
         where: whereAll,

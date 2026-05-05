@@ -26,15 +26,19 @@ export async function GET(request: NextRequest) {
         gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
         lt: new Date(new Date(date).setHours(23, 59, 59, 999)),
       },
+      mealPlan: { status: { not: 'CANCELLED' } },
     }
 
-    // Filter by status: 'active' means not delivered, 'delivered' means delivered, 'all' means both
+    // Filter by status: active = pending delivery & not wrong-delivery; wrong_delivery = flagged wrong delivery only
     if (status === 'active') {
       where.isDelivered = false
+      where.wrongDelivery = false
     } else if (status === 'delivered') {
       where.isDelivered = true
+    } else if (status === 'wrong_delivery') {
+      where.wrongDelivery = true
     }
-    // If status is 'all', don't add isDelivered filter
+    // 'all': no isDelivered / wrongDelivery filter
 
     // Fetch all items for the date first (with retry on connection pool timeout P2024)
     let items = await withRetry(() =>
