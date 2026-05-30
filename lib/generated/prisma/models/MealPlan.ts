@@ -678,14 +678,6 @@ export type MealPlanOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
-export type IntNullableListFilter<$PrismaModel = never> = {
-  equals?: number[] | Prisma.ListIntFieldRefInput<$PrismaModel> | null
-  has?: number | Prisma.IntFieldRefInput<$PrismaModel> | null
-  hasEvery?: number[] | Prisma.ListIntFieldRefInput<$PrismaModel>
-  hasSome?: number[] | Prisma.ListIntFieldRefInput<$PrismaModel>
-  isEmpty?: boolean
-}
-
 export type MealPlanCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
@@ -882,14 +874,6 @@ export type MealPlanCreateweeklySkipDaysInput = {
 
 export type NullableDateTimeFieldUpdateOperationsInput = {
   set?: Date | string | null
-}
-
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
 }
 
 export type MealPlanUpdateweeklySkipDaysInput = {

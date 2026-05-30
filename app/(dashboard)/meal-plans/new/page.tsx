@@ -12,6 +12,7 @@ import {
 } from '@/lib/meal-plan-skip-days'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
+import { NewMealPlanImportButton } from '@/components/meal-plans/import-default-plan/NewMealPlanImportButton'
 
 interface Customer {
   id: string
@@ -50,6 +51,29 @@ type PlanMode = 'predefined' | 'custom'
 /** User-selected times only — excludes empty placeholders before a time is chosen. */
 function effectiveMealPlanTimeSlots(slots: string[] | undefined): string[] {
   return (Array.isArray(slots) ? slots : []).filter((s) => typeof s === 'string' && s.trim().length > 0)
+}
+
+function findWizardMealDish(
+  dishes: { id: string | number; name: string }[],
+  meal: { dishId?: string; dishName?: string | null }
+): { id: string | number; name: string } | null {
+  const id = meal.dishId != null ? String(meal.dishId).trim() : ''
+  if (id) {
+    const match = dishes.find((d) => String(d.id) === id)
+    if (match) return match
+  }
+  const name = meal.dishName?.trim()
+  if (name) return { id: id || name, name }
+  return null
+}
+
+function wizardDishIdsMatch(
+  mealDishId: string | undefined,
+  dishId: string | number
+): boolean {
+  const a = mealDishId != null ? String(mealDishId).trim() : ''
+  if (!a) return false
+  return a === String(dishId)
 }
 
 /**
@@ -204,6 +228,7 @@ export default function NewMealPlanPage() {
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
   const [customerSearchQuery, setCustomerSearchQuery] = useState('')
   const customerDropdownRef = useRef<HTMLDivElement>(null)
+  const skipNextGenerateMealsRef = useRef(false)
 
   const [formData, setFormData] = useState({
     customerId: '',
@@ -340,15 +365,26 @@ export default function NewMealPlanPage() {
       if (selectedPlan) {
         const product = selectedPlan.days * selectedPlan.mealsPerDay
         setVisibleWeeks([1]) // Reset to show only week 1
-        // Keep existing time slots (one default or user-added); do not resize by mealsPerDay
-        setFormData((prev) => ({
-          ...prev,
-          planType: selectedPlan.planType,
-          mealsPerDay: selectedPlan.mealsPerDay.toString(),
-          days: selectedPlan.days.toString(),
-          timeSlots: effectiveMealPlanTimeSlots(prev.timeSlots).length > 0 ? prev.timeSlots : [''],
-          totalMeals: String(product),
-        }))
+        setFormData((prev) => {
+          const mpd = selectedPlan.mealsPerDay
+          let timeSlots = prev.timeSlots?.length ? [...prev.timeSlots] : ['']
+          const filled = effectiveMealPlanTimeSlots(timeSlots)
+          if (filled.length === 0) {
+            timeSlots = Array.from({ length: mpd }, () => '')
+          } else if (filled.length < mpd) {
+            while (timeSlots.filter((s) => s.trim()).length < mpd) {
+              timeSlots.push('')
+            }
+          }
+          return {
+            ...prev,
+            planType: selectedPlan.planType,
+            mealsPerDay: selectedPlan.mealsPerDay.toString(),
+            days: selectedPlan.days.toString(),
+            timeSlots,
+            totalMeals: String(product),
+          }
+        })
       }
     }
   }, [formData.planId, plans])
@@ -389,6 +425,10 @@ export default function NewMealPlanPage() {
 
   // Regenerate meals when visible weeks change
   useEffect(() => {
+    if (skipNextGenerateMealsRef.current) {
+      skipNextGenerateMealsRef.current = false
+      return
+    }
     if (step >= 4 && formData.startDate && formData.days && formData.mealsPerDay && effectiveMealPlanTimeSlots(formData.timeSlots).length > 0) {
       generateMeals()
     }
@@ -941,8 +981,8 @@ export default function NewMealPlanPage() {
       })
 
       // Create meal plan items for active meals
-      const updatePromises = activeMeals.map(meal => {
-        return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+      const updatePromises = activeMeals.map((meal) =>
+        fetch(`/api/meal-plans/${mealPlan.id}/items`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -965,8 +1005,15 @@ export default function NewMealPlanPage() {
             customNote: meal.customNote || undefined,
           }),
         })
-      })
-      await Promise.all(updatePromises)
+      )
+      for (const res of await Promise.all(updatePromises)) {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(
+            typeof err.error === 'string' ? err.error : 'Failed to save a meal on the plan'
+          )
+        }
+      }
       
       // Create skipped meal plan items for skipped days/weeks
       const skippedMeals = formData.meals.filter((meal) =>
@@ -1809,7 +1856,38 @@ export default function NewMealPlanPage() {
 
           return (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Configure Meals</h2>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Configure Meals</h2>
+                <NewMealPlanImportButton
+                  step={step}
+                  startDate={formData.startDate}
+                  days={formData.days}
+                  mealsPerDay={formData.mealsPerDay}
+                  totalMeals={formData.totalMeals}
+                  timeSlots={formData.timeSlots}
+                  deliveryType={formData.deliveryType}
+                  customerId={formData.customerId}
+                  customers={customers}
+                  meals={formData.meals}
+                  isCalendarDaySkipped={(dateStr) =>
+                    isCreateWizardDateSkipped(
+                      dateStr,
+                      formData.startDate,
+                      formData.planType,
+                      formData.skippedDays,
+                      formData.skippedWeeks,
+                      formData.weeklySkipDays,
+                      formData.defaultSkipExceptionDates
+                    )
+                  }
+                  setMeals={(meals) => setFormData((prev) => ({ ...prev, meals }))}
+                  onImportApplied={() => {
+                    skipNextGenerateMealsRef.current = true
+                  }}
+                  setVisibleWeeks={setVisibleWeeks}
+                  setVisibleDaysByWeek={setVisibleDaysByWeek}
+                />
+              </div>
               {selectedCustomer ? (
                 <CustomerInstructionsBanner instructions={selectedCustomer.instructions} className="mb-4" />
               ) : null}
@@ -2018,7 +2096,7 @@ export default function NewMealPlanPage() {
                                                       dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                                       dish.category.toLowerCase().includes(searchQuery.toLowerCase())
                                                     ) : []
-                                                    const selectedDish = dishes.find(d => d.id === meal.dishId)
+                                                    const selectedDish = findWizardMealDish(dishes, meal)
                                                     
                                                     return (
                                                       <div className="relative dish-dropdown-container">
@@ -2064,7 +2142,7 @@ export default function NewMealPlanPage() {
                                                             <div className="max-h-[280px] overflow-auto">
                                                               {filteredDishes.length > 0 ? (
                                                                 filteredDishes.slice(0, 6).map((dish) => {
-                                                                  const isSelected = meal.dishId === dish.id
+                                                                  const isSelected = wizardDishIdsMatch(meal.dishId, dish.id)
                                                                   const isHovered = hoveredDishIdInDropdown === dish.id
                                                                   const isHighlighted = isSelected || isHovered
                                                                   return (
@@ -2513,7 +2591,7 @@ export default function NewMealPlanPage() {
                                                       dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                                       dish.category.toLowerCase().includes(searchQuery.toLowerCase())
                                                     ) : []
-                                                    const selectedDish = dishes.find(d => d.id === meal.dishId)
+                                                    const selectedDish = findWizardMealDish(dishes, meal)
                                                     
                                                     return (
                                                       <div className="relative dish-dropdown-container">
@@ -2559,7 +2637,7 @@ export default function NewMealPlanPage() {
                                                             <div className="max-h-[280px] overflow-auto">
                                                               {filteredDishes.length > 0 ? (
                                                                 filteredDishes.slice(0, 6).map((dish) => {
-                                                                  const isSelected = meal.dishId === dish.id
+                                                                  const isSelected = wizardDishIdsMatch(meal.dishId, dish.id)
                                                                   const isHovered = hoveredDishIdInDropdown === dish.id
                                                                   const isHighlighted = isSelected || isHovered
                                                                   return (
@@ -2900,7 +2978,7 @@ export default function NewMealPlanPage() {
               <div className="overflow-auto flex-1 min-h-0 max-h-[280px]">
                 {filteredDishes.length > 0 ? (
                   filteredDishes.slice(0, 6).map((dish) => {
-                    const isSelected = meal.dishId === dish.id
+                    const isSelected = wizardDishIdsMatch(meal.dishId, dish.id)
                     const isHovered = hoveredDishIdInDropdown === dish.id
                     const isHighlighted = isSelected || isHovered
                     return (

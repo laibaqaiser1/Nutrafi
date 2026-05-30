@@ -926,10 +926,6 @@ export type MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput = {
   deleteMany?: Prisma.MealPlanItemScalarWhereInput | Prisma.MealPlanItemScalarWhereInput[]
 }
 
-export type NullableEnumDishCategoryFieldUpdateOperationsInput = {
-  set?: $Enums.DishCategory | null
-}
-
 export type MealPlanItemCreateWithoutDishInput = {
   date: Date | string
   timeSlot: string

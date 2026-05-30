@@ -521,14 +521,6 @@ export type PlanNullableScalarRelationFilter = {
   isNot?: Prisma.PlanWhereInput | null
 }
 
-export type EnumPlanTypeFieldUpdateOperationsInput = {
-  set?: $Enums.PlanType
-}
-
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
-}
-
 export type PlanCreateNestedOneWithoutMealPlansInput = {
   create?: Prisma.XOR<Prisma.PlanCreateWithoutMealPlansInput, Prisma.PlanUncheckedCreateWithoutMealPlansInput>
   connectOrCreate?: Prisma.PlanCreateOrConnectWithoutMealPlansInput

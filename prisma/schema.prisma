@@ -43,25 +43,74 @@ model RolePermission {
 }
 
 model Dish {
-  id            Int             @id @default(autoincrement())
-  name          String
-  description   String?
-  category      DishCategory
-  ingredients   String?
-  allergens     String?
-  calories      Int
-  protein       Float
-  carbs         Float
-  fats          Float
-  price         Float?
-  status        String          @default("ACTIVE")
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  mealPlanItems MealPlanItem[]
+  id                      Int                      @id @default(autoincrement())
+  name                    String
+  description             String?
+  category                DishCategory
+  ingredients             String?
+  allergens               String?
+  calories                Int
+  protein                 Float
+  carbs                   Float
+  fats                    Float
+  price                   Float?
+  status                  String                   @default("ACTIVE")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  mealPlanItems           MealPlanItem[]
+  mealPlanTemplateItems   MealPlanTemplateItem[]
 
   @@index([category])
   @@index([status])
   @@index([name])
+}
+
+/// Reusable labeled **week menu** (Mon–Sun by row): optimized for copying onto customer weekly meal plans.
+/// `planType` and `days` describe contract metadata (today: weekly + 7 days is typical); monthly/custom kept for longer-term longer contracts.
+model MealPlanTemplate {
+  id             Int                      @id @default(autoincrement())
+  label          String
+  planType       PlanType
+  days           Int
+  mealsPerDay    Int
+  timeSlots      Json?
+  weeklySkipDays Int[]                    @default([])
+  notes          String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  items          MealPlanTemplateItem[]
+
+  @@index([label])
+}
+
+model MealPlanTemplateItem {
+  id              Int              @id @default(autoincrement())
+  templateId      Int
+  /// Calendar weekday: **1 = Monday … 7 = Sunday** (same as `weeklySkipDays` / `WEEKDAY_SKIP_TOGGLES`).
+  /// Same pattern repeats each calendar week on customers; per-week-of-month variants could be added later if needed.
+  weekday         Int
+  /// 0-based meal index for that weekday (matches time-slot order for that day).
+  slotIndex       Int
+  isSkipped       Boolean          @default(false)
+  dishId          Int?
+  dishName        String?
+  dishDescription String?
+  dishCategory    DishCategory?
+  ingredients     String?
+  allergens       String?
+  calories        Int?
+  protein         Float?
+  carbs           Float?
+  fats            Float?
+  price           Float?
+  customNote      String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  template        MealPlanTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  dish            Dish?            @relation(fields: [dishId], references: [id])
+
+  @@unique([templateId, weekday, slotIndex])
+  @@index([templateId])
 }
 
 model Customer {

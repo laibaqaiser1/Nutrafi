@@ -53,6 +53,8 @@ export const ModelName = {
   Permission: 'Permission',
   RolePermission: 'RolePermission',
   Dish: 'Dish',
+  MealPlanTemplate: 'MealPlanTemplate',
+  MealPlanTemplateItem: 'MealPlanTemplateItem',
   Customer: 'Customer',
   Plan: 'Plan',
   MealPlan: 'MealPlan',
@@ -125,6 +127,47 @@ export const DishScalarFieldEnum = {
 } as const
 
 export type DishScalarFieldEnum = (typeof DishScalarFieldEnum)[keyof typeof DishScalarFieldEnum]
+
+
+export const MealPlanTemplateScalarFieldEnum = {
+  id: 'id',
+  label: 'label',
+  planType: 'planType',
+  days: 'days',
+  mealsPerDay: 'mealsPerDay',
+  timeSlots: 'timeSlots',
+  weeklySkipDays: 'weeklySkipDays',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MealPlanTemplateScalarFieldEnum = (typeof MealPlanTemplateScalarFieldEnum)[keyof typeof MealPlanTemplateScalarFieldEnum]
+
+
+export const MealPlanTemplateItemScalarFieldEnum = {
+  id: 'id',
+  templateId: 'templateId',
+  weekday: 'weekday',
+  slotIndex: 'slotIndex',
+  isSkipped: 'isSkipped',
+  dishId: 'dishId',
+  dishName: 'dishName',
+  dishDescription: 'dishDescription',
+  dishCategory: 'dishCategory',
+  ingredients: 'ingredients',
+  allergens: 'allergens',
+  calories: 'calories',
+  protein: 'protein',
+  carbs: 'carbs',
+  fats: 'fats',
+  price: 'price',
+  customNote: 'customNote',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MealPlanTemplateItemScalarFieldEnum = (typeof MealPlanTemplateItemScalarFieldEnum)[keyof typeof MealPlanTemplateItemScalarFieldEnum]
 
 
 export const CustomerScalarFieldEnum = {

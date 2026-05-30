@@ -394,6 +394,8 @@ export const ModelName = {
   Permission: 'Permission',
   RolePermission: 'RolePermission',
   Dish: 'Dish',
+  MealPlanTemplate: 'MealPlanTemplate',
+  MealPlanTemplateItem: 'MealPlanTemplateItem',
   Customer: 'Customer',
   Plan: 'Plan',
   MealPlan: 'MealPlan',
@@ -414,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "permission" | "rolePermission" | "dish" | "customer" | "plan" | "mealPlan" | "mealPlanItem" | "payment"
+    modelProps: "user" | "permission" | "rolePermission" | "dish" | "mealPlanTemplate" | "mealPlanTemplateItem" | "customer" | "plan" | "mealPlan" | "mealPlanItem" | "payment"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -711,6 +713,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.DishCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.DishCountAggregateOutputType> | number
+        }
+      }
+    }
+    MealPlanTemplate: {
+      payload: Prisma.$MealPlanTemplatePayload<ExtArgs>
+      fields: Prisma.MealPlanTemplateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.MealPlanTemplateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.MealPlanTemplateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>
+        }
+        findFirst: {
+          args: Prisma.MealPlanTemplateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.MealPlanTemplateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>
+        }
+        findMany: {
+          args: Prisma.MealPlanTemplateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>[]
+        }
+        create: {
+          args: Prisma.MealPlanTemplateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>
+        }
+        createMany: {
+          args: Prisma.MealPlanTemplateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.MealPlanTemplateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>[]
+        }
+        delete: {
+          args: Prisma.MealPlanTemplateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>
+        }
+        update: {
+          args: Prisma.MealPlanTemplateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>
+        }
+        deleteMany: {
+          args: Prisma.MealPlanTemplateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.MealPlanTemplateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.MealPlanTemplateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>[]
+        }
+        upsert: {
+          args: Prisma.MealPlanTemplateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplatePayload>
+        }
+        aggregate: {
+          args: Prisma.MealPlanTemplateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateMealPlanTemplate>
+        }
+        groupBy: {
+          args: Prisma.MealPlanTemplateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MealPlanTemplateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.MealPlanTemplateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MealPlanTemplateCountAggregateOutputType> | number
+        }
+      }
+    }
+    MealPlanTemplateItem: {
+      payload: Prisma.$MealPlanTemplateItemPayload<ExtArgs>
+      fields: Prisma.MealPlanTemplateItemFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.MealPlanTemplateItemFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.MealPlanTemplateItemFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>
+        }
+        findFirst: {
+          args: Prisma.MealPlanTemplateItemFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.MealPlanTemplateItemFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>
+        }
+        findMany: {
+          args: Prisma.MealPlanTemplateItemFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>[]
+        }
+        create: {
+          args: Prisma.MealPlanTemplateItemCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>
+        }
+        createMany: {
+          args: Prisma.MealPlanTemplateItemCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.MealPlanTemplateItemCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>[]
+        }
+        delete: {
+          args: Prisma.MealPlanTemplateItemDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>
+        }
+        update: {
+          args: Prisma.MealPlanTemplateItemUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>
+        }
+        deleteMany: {
+          args: Prisma.MealPlanTemplateItemDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.MealPlanTemplateItemUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.MealPlanTemplateItemUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>[]
+        }
+        upsert: {
+          args: Prisma.MealPlanTemplateItemUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanTemplateItemPayload>
+        }
+        aggregate: {
+          args: Prisma.MealPlanTemplateItemAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateMealPlanTemplateItem>
+        }
+        groupBy: {
+          args: Prisma.MealPlanTemplateItemGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MealPlanTemplateItemGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.MealPlanTemplateItemCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MealPlanTemplateItemCountAggregateOutputType> | number
         }
       }
     }
@@ -1174,6 +1324,47 @@ export const DishScalarFieldEnum = {
 export type DishScalarFieldEnum = (typeof DishScalarFieldEnum)[keyof typeof DishScalarFieldEnum]
 
 
+export const MealPlanTemplateScalarFieldEnum = {
+  id: 'id',
+  label: 'label',
+  planType: 'planType',
+  days: 'days',
+  mealsPerDay: 'mealsPerDay',
+  timeSlots: 'timeSlots',
+  weeklySkipDays: 'weeklySkipDays',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MealPlanTemplateScalarFieldEnum = (typeof MealPlanTemplateScalarFieldEnum)[keyof typeof MealPlanTemplateScalarFieldEnum]
+
+
+export const MealPlanTemplateItemScalarFieldEnum = {
+  id: 'id',
+  templateId: 'templateId',
+  weekday: 'weekday',
+  slotIndex: 'slotIndex',
+  isSkipped: 'isSkipped',
+  dishId: 'dishId',
+  dishName: 'dishName',
+  dishDescription: 'dishDescription',
+  dishCategory: 'dishCategory',
+  ingredients: 'ingredients',
+  allergens: 'allergens',
+  calories: 'calories',
+  protein: 'protein',
+  carbs: 'carbs',
+  fats: 'fats',
+  price: 'price',
+  customNote: 'customNote',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MealPlanTemplateItemScalarFieldEnum = (typeof MealPlanTemplateItemScalarFieldEnum)[keyof typeof MealPlanTemplateItemScalarFieldEnum]
+
+
 export const CustomerScalarFieldEnum = {
   id: 'id',
   fullName: 'fullName',
@@ -1415,20 +1606,6 @@ export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaMode
 
 
 /**
- * Reference to a field of type 'CustomerStatus'
- */
-export type EnumCustomerStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CustomerStatus'>
-    
-
-
-/**
- * Reference to a field of type 'CustomerStatus[]'
- */
-export type ListEnumCustomerStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CustomerStatus[]'>
-    
-
-
-/**
  * Reference to a field of type 'PlanType'
  */
 export type EnumPlanTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlanType'>
@@ -1443,13 +1620,6 @@ export type ListEnumPlanTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$Pri
 
 
 /**
- * Reference to a field of type 'Boolean'
- */
-export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
-    
-
-
-/**
  * Reference to a field of type 'Json'
  */
 export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -1460,6 +1630,27 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+/**
+ * Reference to a field of type 'CustomerStatus'
+ */
+export type EnumCustomerStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CustomerStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'CustomerStatus[]'
+ */
+export type ListEnumCustomerStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CustomerStatus[]'>
     
 
 /**
@@ -1553,6 +1744,8 @@ export type GlobalOmitConfig = {
   permission?: Prisma.PermissionOmit
   rolePermission?: Prisma.RolePermissionOmit
   dish?: Prisma.DishOmit
+  mealPlanTemplate?: Prisma.MealPlanTemplateOmit
+  mealPlanTemplateItem?: Prisma.MealPlanTemplateItemOmit
   customer?: Prisma.CustomerOmit
   plan?: Prisma.PlanOmit
   mealPlan?: Prisma.MealPlanOmit

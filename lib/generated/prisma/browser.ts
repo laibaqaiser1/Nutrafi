@@ -38,6 +38,17 @@ export type RolePermission = Prisma.RolePermissionModel
  */
 export type Dish = Prisma.DishModel
 /**
+ * Model MealPlanTemplate
+ * Reusable labeled **week menu** (Mon–Sun by row): optimized for copying onto customer weekly meal plans.
+ * `planType` and `days` describe contract metadata (today: weekly + 7 days is typical); monthly/custom kept for longer-term longer contracts.
+ */
+export type MealPlanTemplate = Prisma.MealPlanTemplateModel
+/**
+ * Model MealPlanTemplateItem
+ * 
+ */
+export type MealPlanTemplateItem = Prisma.MealPlanTemplateItemModel
+/**
  * Model Customer
  * 
  */

@@ -66,6 +66,21 @@ export const WEEKDAY_SKIP_TOGGLES: { label: string; value: number }[] = [
   { label: 'Sun', value: 7 },
 ]
 
+const WEEKDAY_FULL_NAME_BY_VALUE: Record<number, string> = {
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday',
+  7: 'Sunday',
+}
+
+/** Full weekday name for headers (1 = Monday … 7 = Sunday). */
+export function weekdayFullName(mon1Sun7: number): string {
+  return WEEKDAY_FULL_NAME_BY_VALUE[mon1Sun7] ?? String(mon1Sun7)
+}
+
 /** Parse DB JSON `{ "1": [6,7] }` into normalized weekday arrays per plan week (1–7). */
 export function parseWeeklySkipDaysByWeekJson(raw: unknown): Record<string, number[]> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}

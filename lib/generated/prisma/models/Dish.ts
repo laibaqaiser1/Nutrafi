@@ -309,6 +309,7 @@ export type DishWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Dish"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Dish"> | Date | string
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemListRelationFilter
 }
 
 export type DishOrderByWithRelationInput = {
@@ -327,6 +328,7 @@ export type DishOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   mealPlanItems?: Prisma.MealPlanItemOrderByRelationAggregateInput
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemOrderByRelationAggregateInput
 }
 
 export type DishWhereUniqueInput = Prisma.AtLeast<{
@@ -348,6 +350,7 @@ export type DishWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Dish"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Dish"> | Date | string
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemListRelationFilter
 }, "id">
 
 export type DishOrderByWithAggregationInput = {
@@ -407,6 +410,7 @@ export type DishCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutDishInput
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemCreateNestedManyWithoutDishInput
 }
 
 export type DishUncheckedCreateInput = {
@@ -425,6 +429,7 @@ export type DishUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutDishInput
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemUncheckedCreateNestedManyWithoutDishInput
 }
 
 export type DishUpdateInput = {
@@ -442,6 +447,7 @@ export type DishUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutDishNestedInput
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemUpdateManyWithoutDishNestedInput
 }
 
 export type DishUncheckedUpdateInput = {
@@ -460,6 +466,7 @@ export type DishUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutDishNestedInput
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemUncheckedUpdateManyWithoutDishNestedInput
 }
 
 export type DishCreateManyInput = {
@@ -610,6 +617,22 @@ export type NullableFloatFieldUpdateOperationsInput = {
   divide?: number
 }
 
+export type DishCreateNestedOneWithoutMealPlanTemplateItemsInput = {
+  create?: Prisma.XOR<Prisma.DishCreateWithoutMealPlanTemplateItemsInput, Prisma.DishUncheckedCreateWithoutMealPlanTemplateItemsInput>
+  connectOrCreate?: Prisma.DishCreateOrConnectWithoutMealPlanTemplateItemsInput
+  connect?: Prisma.DishWhereUniqueInput
+}
+
+export type DishUpdateOneWithoutMealPlanTemplateItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.DishCreateWithoutMealPlanTemplateItemsInput, Prisma.DishUncheckedCreateWithoutMealPlanTemplateItemsInput>
+  connectOrCreate?: Prisma.DishCreateOrConnectWithoutMealPlanTemplateItemsInput
+  upsert?: Prisma.DishUpsertWithoutMealPlanTemplateItemsInput
+  disconnect?: Prisma.DishWhereInput | boolean
+  delete?: Prisma.DishWhereInput | boolean
+  connect?: Prisma.DishWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DishUpdateToOneWithWhereWithoutMealPlanTemplateItemsInput, Prisma.DishUpdateWithoutMealPlanTemplateItemsInput>, Prisma.DishUncheckedUpdateWithoutMealPlanTemplateItemsInput>
+}
+
 export type DishCreateNestedOneWithoutMealPlanItemsInput = {
   create?: Prisma.XOR<Prisma.DishCreateWithoutMealPlanItemsInput, Prisma.DishUncheckedCreateWithoutMealPlanItemsInput>
   connectOrCreate?: Prisma.DishCreateOrConnectWithoutMealPlanItemsInput
@@ -626,6 +649,92 @@ export type DishUpdateOneWithoutMealPlanItemsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.DishUpdateToOneWithWhereWithoutMealPlanItemsInput, Prisma.DishUpdateWithoutMealPlanItemsInput>, Prisma.DishUncheckedUpdateWithoutMealPlanItemsInput>
 }
 
+export type DishCreateWithoutMealPlanTemplateItemsInput = {
+  name: string
+  description?: string | null
+  category: $Enums.DishCategory
+  ingredients?: string | null
+  allergens?: string | null
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+  price?: number | null
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutDishInput
+}
+
+export type DishUncheckedCreateWithoutMealPlanTemplateItemsInput = {
+  id?: number
+  name: string
+  description?: string | null
+  category: $Enums.DishCategory
+  ingredients?: string | null
+  allergens?: string | null
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+  price?: number | null
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutDishInput
+}
+
+export type DishCreateOrConnectWithoutMealPlanTemplateItemsInput = {
+  where: Prisma.DishWhereUniqueInput
+  create: Prisma.XOR<Prisma.DishCreateWithoutMealPlanTemplateItemsInput, Prisma.DishUncheckedCreateWithoutMealPlanTemplateItemsInput>
+}
+
+export type DishUpsertWithoutMealPlanTemplateItemsInput = {
+  update: Prisma.XOR<Prisma.DishUpdateWithoutMealPlanTemplateItemsInput, Prisma.DishUncheckedUpdateWithoutMealPlanTemplateItemsInput>
+  create: Prisma.XOR<Prisma.DishCreateWithoutMealPlanTemplateItemsInput, Prisma.DishUncheckedCreateWithoutMealPlanTemplateItemsInput>
+  where?: Prisma.DishWhereInput
+}
+
+export type DishUpdateToOneWithWhereWithoutMealPlanTemplateItemsInput = {
+  where?: Prisma.DishWhereInput
+  data: Prisma.XOR<Prisma.DishUpdateWithoutMealPlanTemplateItemsInput, Prisma.DishUncheckedUpdateWithoutMealPlanTemplateItemsInput>
+}
+
+export type DishUpdateWithoutMealPlanTemplateItemsInput = {
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  category?: Prisma.EnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.IntFieldUpdateOperationsInput | number
+  protein?: Prisma.FloatFieldUpdateOperationsInput | number
+  carbs?: Prisma.FloatFieldUpdateOperationsInput | number
+  fats?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutDishNestedInput
+}
+
+export type DishUncheckedUpdateWithoutMealPlanTemplateItemsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  category?: Prisma.EnumDishCategoryFieldUpdateOperationsInput | $Enums.DishCategory
+  ingredients?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allergens?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  calories?: Prisma.IntFieldUpdateOperationsInput | number
+  protein?: Prisma.FloatFieldUpdateOperationsInput | number
+  carbs?: Prisma.FloatFieldUpdateOperationsInput | number
+  fats?: Prisma.FloatFieldUpdateOperationsInput | number
+  price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutDishNestedInput
+}
+
 export type DishCreateWithoutMealPlanItemsInput = {
   name: string
   description?: string | null
@@ -640,6 +749,7 @@ export type DishCreateWithoutMealPlanItemsInput = {
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemCreateNestedManyWithoutDishInput
 }
 
 export type DishUncheckedCreateWithoutMealPlanItemsInput = {
@@ -657,6 +767,7 @@ export type DishUncheckedCreateWithoutMealPlanItemsInput = {
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemUncheckedCreateNestedManyWithoutDishInput
 }
 
 export type DishCreateOrConnectWithoutMealPlanItemsInput = {
@@ -689,6 +800,7 @@ export type DishUpdateWithoutMealPlanItemsInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemUpdateManyWithoutDishNestedInput
 }
 
 export type DishUncheckedUpdateWithoutMealPlanItemsInput = {
@@ -706,6 +818,7 @@ export type DishUncheckedUpdateWithoutMealPlanItemsInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlanTemplateItems?: Prisma.MealPlanTemplateItemUncheckedUpdateManyWithoutDishNestedInput
 }
 
 
@@ -715,10 +828,12 @@ export type DishUncheckedUpdateWithoutMealPlanItemsInput = {
 
 export type DishCountOutputType = {
   mealPlanItems: number
+  mealPlanTemplateItems: number
 }
 
 export type DishCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   mealPlanItems?: boolean | DishCountOutputTypeCountMealPlanItemsArgs
+  mealPlanTemplateItems?: boolean | DishCountOutputTypeCountMealPlanTemplateItemsArgs
 }
 
 /**
@@ -738,6 +853,13 @@ export type DishCountOutputTypeCountMealPlanItemsArgs<ExtArgs extends runtime.Ty
   where?: Prisma.MealPlanItemWhereInput
 }
 
+/**
+ * DishCountOutputType without action
+ */
+export type DishCountOutputTypeCountMealPlanTemplateItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.MealPlanTemplateItemWhereInput
+}
+
 
 export type DishSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -755,6 +877,7 @@ export type DishSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   createdAt?: boolean
   updatedAt?: boolean
   mealPlanItems?: boolean | Prisma.Dish$mealPlanItemsArgs<ExtArgs>
+  mealPlanTemplateItems?: boolean | Prisma.Dish$mealPlanTemplateItemsArgs<ExtArgs>
   _count?: boolean | Prisma.DishCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["dish"]>
 
@@ -812,6 +935,7 @@ export type DishSelectScalar = {
 export type DishOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "category" | "ingredients" | "allergens" | "calories" | "protein" | "carbs" | "fats" | "price" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["dish"]>
 export type DishInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   mealPlanItems?: boolean | Prisma.Dish$mealPlanItemsArgs<ExtArgs>
+  mealPlanTemplateItems?: boolean | Prisma.Dish$mealPlanTemplateItemsArgs<ExtArgs>
   _count?: boolean | Prisma.DishCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type DishIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -821,6 +945,7 @@ export type $DishPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   name: "Dish"
   objects: {
     mealPlanItems: Prisma.$MealPlanItemPayload<ExtArgs>[]
+    mealPlanTemplateItems: Prisma.$MealPlanTemplateItemPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -1232,6 +1357,7 @@ readonly fields: DishFieldRefs;
 export interface Prisma__DishClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   mealPlanItems<T extends Prisma.Dish$mealPlanItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Dish$mealPlanItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MealPlanItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  mealPlanTemplateItems<T extends Prisma.Dish$mealPlanTemplateItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Dish$mealPlanTemplateItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MealPlanTemplateItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1684,6 +1810,30 @@ export type Dish$mealPlanItemsArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   distinct?: Prisma.MealPlanItemScalarFieldEnum | Prisma.MealPlanItemScalarFieldEnum[]
+}
+
+/**
+ * Dish.mealPlanTemplateItems
+ */
+export type Dish$mealPlanTemplateItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the MealPlanTemplateItem
+   */
+  select?: Prisma.MealPlanTemplateItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the MealPlanTemplateItem
+   */
+  omit?: Prisma.MealPlanTemplateItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.MealPlanTemplateItemInclude<ExtArgs> | null
+  where?: Prisma.MealPlanTemplateItemWhereInput
+  orderBy?: Prisma.MealPlanTemplateItemOrderByWithRelationInput | Prisma.MealPlanTemplateItemOrderByWithRelationInput[]
+  cursor?: Prisma.MealPlanTemplateItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.MealPlanTemplateItemScalarFieldEnum | Prisma.MealPlanTemplateItemScalarFieldEnum[]
 }
 
 /**
