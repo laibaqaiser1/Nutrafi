@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format, addDays, eachDayOfInterval } from 'date-fns'
@@ -24,6 +24,10 @@ import {
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { DeleteMealPlanButton } from '@/components/meal-plans/DeleteMealPlanButton'
 import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
+import { useMealPlanViewImport } from '@/components/meal-plans/import-default-plan/use-meal-plan-view-import'
+import { MealPlanViewImportControls } from '@/components/meal-plans/import-default-plan/MealPlanViewImportControls'
+import { ensureViewVisibilityForDates } from '@/lib/import-default-plan/ensure-view-visibility'
+import { mealPlanDateYmd } from '@/lib/meal-plan-calendar-date'
 
 interface MealPlan {
   id: string
@@ -110,7 +114,7 @@ function countUniqueActiveDays(
   const days = new Set<string>()
   for (const item of items) {
     if (itemCountsForPlanSchedule(item)) {
-      days.add(format(new Date(item.date), 'yyyy-MM-dd'))
+      days.add(mealPlanDateYmd(item.date))
     }
   }
   return days.size
@@ -159,7 +163,7 @@ function itemDateMatchesDraftSkipPattern(
   byWeekDraft: Record<number, number[]>,
   planDefaultSkipDays: number[]
 ): boolean {
-  const ymd = format(new Date(dateStr), 'yyyy-MM-dd')
+  const ymd = mealPlanDateYmd(dateStr)
   const mon = jsWeekdayToMon1Sun7(jsWeekdayFromYmd(ymd))
   const wk = getWeekNumber(dateStr, planStartDate)
   const pattern = getSkipDaysForWeekFromDraft(wk, byWeekDraft, planDefaultSkipDays)
@@ -281,6 +285,12 @@ export default function MealPlanViewPage() {
   const getSkipDaysForPlanWeek = (planWeek: number) =>
     getSkipDaysForWeekFromDraft(planWeek, weeklySkipByWeekDraft, planDefaultSkipDaysNorm)
 
+  const resolveSkipDaysForPlanWeek = useCallback(
+    (planWeek: number) =>
+      getSkipDaysForWeekFromDraft(planWeek, weeklySkipByWeekDraft, planDefaultSkipDaysNorm),
+    [weeklySkipByWeekDraft, planDefaultSkipDaysNorm]
+  )
+
   useEffect(() => {
     if (params.id) {
       fetchMealPlan(params.id as string)
@@ -359,7 +369,7 @@ export default function MealPlanViewPage() {
             const week = getWeekNumber(item.date, data.startDate)
             if (week > 0) {
               weeks.add(week)
-              const date = format(new Date(item.date), 'yyyy-MM-dd')
+              const date = mealPlanDateYmd(item.date)
               if (!daysByWeek[week]) {
                 daysByWeek[week] = new Set()
               }
@@ -418,6 +428,27 @@ export default function MealPlanViewPage() {
   }
   mealPlanIdRef.current = mealPlan?.id ?? null
   mealPlanRef.current = mealPlan
+
+  const mealPlanImport = useMealPlanViewImport(
+    mealPlan,
+    async () => {
+      const id = mealPlanIdRef.current
+      if (id) await fetchMealPlanRef.current(id)
+    },
+    toast,
+    (dates) => {
+      const mp = mealPlanRef.current
+      if (!mp?.startDate) return
+      ensureViewVisibilityForDates(
+        dates,
+        mp.startDate,
+        setVisibleWeeks,
+        setVisibleDaysByWeek,
+        setExpandedWeeks
+      )
+    },
+    { resolveSkipDaysForPlanWeek }
+  )
 
   async function persistWeeklySkipPayload(
     mpId: string,
@@ -803,7 +834,7 @@ export default function MealPlanViewPage() {
 
   const handleItemClick = (item: MealPlan['mealPlanItems'][0]) => {
     setSelectedItem(item)
-    setItemDateEdit(format(new Date(item.date), 'yyyy-MM-dd'))
+    setItemDateEdit(mealPlanDateYmd(item.date))
     setShowModal(true)
     setEditingDish(false)
     setDishDropdownOpen(false)
@@ -963,7 +994,7 @@ export default function MealPlanViewPage() {
           if (updatedPlan) {
             const updated = updatedPlan.mealPlanItems.find((i) => i.id === selectedItem.id)
             if (updated) setSelectedItem(updated)
-            setItemDateEdit(updated ? format(new Date(updated.date), 'yyyy-MM-dd') : itemDateEdit)
+            setItemDateEdit(updated ? mealPlanDateYmd(updated.date) : itemDateEdit)
           }
           setEditingDish(false)
           setShowModal(false)
@@ -1011,7 +1042,7 @@ export default function MealPlanViewPage() {
           const updated = updatedPlan.mealPlanItems.find((i) => i.id === selectedItem.id)
           if (updated) {
             setSelectedItem(updated)
-            setItemDateEdit(format(new Date(updated.date), 'yyyy-MM-dd'))
+            setItemDateEdit(mealPlanDateYmd(updated.date))
           }
         }
         toast.success('Date updated')
@@ -1056,7 +1087,7 @@ export default function MealPlanViewPage() {
     }
     const byDate = new Map<string, MealPlan['mealPlanItems']>()
     for (const item of plan.mealPlanItems) {
-      const d = format(new Date(item.date), 'yyyy-MM-dd')
+      const d = mealPlanDateYmd(item.date)
       if (!byDate.has(d)) byDate.set(d, [])
       byDate.get(d)!.push(item)
     }
@@ -1207,7 +1238,7 @@ export default function MealPlanViewPage() {
       mealPlan.mealPlanItems.forEach(item => {
         const itemWeek = getWeekNumber(item.date, mealPlan.startDate)
         if (itemWeek === week) {
-          weekDates.add(format(new Date(item.date), 'yyyy-MM-dd'))
+          weekDates.add(mealPlanDateYmd(item.date))
         }
       })
       const currentDaysInWeek = weekDates.size
@@ -1335,7 +1366,7 @@ export default function MealPlanViewPage() {
     try {
       // Get existing meals for this day
       const existingMeals = mealPlan.mealPlanItems.filter(item => 
-        format(new Date(item.date), 'yyyy-MM-dd') === date
+        mealPlanDateYmd(item.date) === date
       )
       
       const activeMealsOnDay = existingMeals.filter((item) => itemCountsForPlanSchedule(item)).length
@@ -1512,10 +1543,11 @@ export default function MealPlanViewPage() {
   }
 
   // Group meal plan items by week, then by date
+  const scheduleItems = mealPlan?.mealPlanItems ?? []
   const itemsByWeek: Record<number, Record<string, typeof mealPlan.mealPlanItems>> = {}
-  mealPlan.mealPlanItems.forEach(item => {
+  scheduleItems.forEach(item => {
     const week = getWeekNumber(item.date, mealPlan.startDate)
-    const date = format(new Date(item.date), 'yyyy-MM-dd')
+    const date = mealPlanDateYmd(item.date)
     
     if (!itemsByWeek[week]) {
       itemsByWeek[week] = {}
@@ -1816,6 +1848,8 @@ export default function MealPlanViewPage() {
       <div className="bg-white shadow rounded-lg p-3 lg:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
           <h2 className="text-base lg:text-lg font-semibold text-gray-900">Meal Schedule</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <MealPlanViewImportControls importApi={mealPlanImport} />
           {(() => {
             if (!mealPlan) return null
             const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
@@ -1842,6 +1876,7 @@ export default function MealPlanViewPage() {
               </button>
             ) : null
           })()}
+          </div>
         </div>
         <div className="space-y-6">
           {visibleWeeks.length > 0 ? (
@@ -2123,30 +2158,19 @@ export default function MealPlanViewPage() {
                               )}
                               {/* Add Next Day Button - show below the daily total if we can still add days */}
                               {(() => {
-                                // Check if this is the last day in the sorted list
                                 const sortedDates = Object.keys(weekDates).sort()
                                 const isLastDay = date === sortedDates[sortedDates.length - 1]
-                                console.log('[Add Next Day UI]', {
-                                  planId: mealPlan.id,
-                                  week,
-                                  date,
-                                  sortedDates,
-                                  isLastDay,
-                                })
                                 if (!isLastDay) return null
-                                
-                                // Check total days across all weeks - limit to plan days
+
                                 const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
                                 const maxDays = mealPlan.days || 22
                                 const remainingDays = maxDays - totalDays
-                                console.log('[Add Next Day UI] day budget', { totalDays, maxDays, remainingDays })
-                                
+
                                 const weekDatesSet = new Set<string>()
                                 mealPlan.mealPlanItems.forEach(item => {
                                   const itemWeek = getWeekNumber(item.date, mealPlan.startDate)
                                   if (itemWeek === week) {
-                                    const date = format(new Date(item.date), 'yyyy-MM-dd')
-                                    weekDatesSet.add(date)
+                                    weekDatesSet.add(mealPlanDateYmd(item.date))
                                   }
                                 })
                                 const currentDaysInWeek = weekDatesSet.size
@@ -2164,29 +2188,12 @@ export default function MealPlanViewPage() {
                                     mealPlan.remainingMeals > 0 &&
                                     activeMealSlots < totalMealsAllowed)
                                 const canAddDay = canAddDayInWeek && dayBudgetAllows
-                                console.log('[Add Next Day UI] week slot', {
-                                  currentDaysInWeek,
-                                  maxDaysInThisWeek,
-                                  canAddDayInWeek,
-                                  remainingDays,
-                                  dayBudgetAllows,
-                                  canAddDay,
-                                })
-                                
+
                                 const capOk = activeMealSlots < totalMealsAllowed
                                 const remainingOk =
                                   mealPlan.remainingMeals != null && mealPlan.remainingMeals > 0
                                 const canAddMoreMeals = capOk || remainingOk
-                                console.log('[Add Next Day UI] meal cap', {
-                                  activeMealSlots,
-                                  totalMealsAllowed,
-                                  capOk,
-                                  remainingMeals: mealPlan.remainingMeals,
-                                  remainingOk,
-                                  canAddMoreMeals,
-                                })
                                 const show = canAddDay && canAddMoreMeals
-                                console.log('[Add Next Day UI] SHOW_BUTTON', show)
 
                                 return show ? (
                                   <tr>

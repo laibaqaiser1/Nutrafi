@@ -103,14 +103,22 @@ export default function MealPlansPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-3 lg:mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-3 lg:mb-6">
         <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Meal Plans</h1>
-        <Link
-          href="/meal-plans/new"
-          className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded hover:bg-nutrafi-dark"
-        >
-          Create New Meal Plan
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/meal-plans/templates"
+            className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm font-medium border-2 border-nutrafi-primary text-nutrafi-primary rounded-md hover:bg-[#f0f4e8]"
+          >
+            Default meal plans
+          </Link>
+          <Link
+            href="/meal-plans/new"
+            className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded hover:bg-nutrafi-dark"
+          >
+            Create New Meal Plan
+          </Link>
+        </div>
       </div>
 
       {/* Meal Plans */}

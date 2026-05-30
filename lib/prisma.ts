@@ -77,9 +77,11 @@ export async function withRetry<T>(
       if (
         error?.message?.includes('Closed') ||
         error?.message?.includes('connection') ||
+        error?.message?.includes('Transaction not found') ||
         error?.code === 'P1001' ||
         error?.code === 'P1008' ||
-        error?.code === 'P2024'
+        error?.code === 'P2024' ||
+        error?.code === 'P2028'
       ) {
         if (i < maxRetries - 1) {
           await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)))
