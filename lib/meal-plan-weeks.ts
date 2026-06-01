@@ -78,3 +78,17 @@ export function dayOffsetBetweenPlanWeeks(
   const b = getMondayOfPlanWeek(planStartDate, toWeek)
   return Math.round((b.getTime() - a.getTime()) / (24 * 60 * 60 * 1000))
 }
+
+/** Last plan week number that still contains at least one in-contract calendar day. */
+export function getMaxPlanWeekNumber(
+  planStartDate: Date | string | null,
+  planDays: number
+): number {
+  if (!planStartDate || planDays <= 0) {
+    return Math.max(1, Math.ceil(planDays / 7))
+  }
+  const start =
+    typeof planStartDate === 'string' ? new Date(planStartDate) : planStartDate
+  const planEndStr = format(addDays(start, Math.max(0, planDays - 1)), 'yyyy-MM-dd')
+  return getPlanWeekNumber(planEndStr, planStartDate)
+}

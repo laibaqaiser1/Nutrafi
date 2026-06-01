@@ -1426,45 +1426,58 @@ export default function MealPlanViewPage() {
   // Function to duplicate a week
   const duplicateWeek = async (sourceWeek: number) => {
     if (!mealPlan) return
-    
+
     setDuplicatingWeek(true)
     try {
-      const maxWeek = Math.ceil(mealPlan.days / 7)
       const nextWeek = Math.max(...visibleWeeks, 0) + 1
-      
-      // Check if adding this week would exceed plan days
-      if (nextWeek > maxWeek) {
-        toast.warning('Cannot duplicate week. Maximum weeks for this plan reached.')
-        setDuplicatingWeek(false)
-        return
-      }
-      
-      // Get all items from the source week
+
       const sourceItems = mealPlan.mealPlanItems.filter(item => {
         const week = getWeekNumber(item.date, mealPlan.startDate)
         return week === sourceWeek
       })
-      
+
       if (sourceItems.length === 0) {
         toast.warning('No meals found in the source week to duplicate.')
         setDuplicatingWeek(false)
         return
       }
-      
+
       const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
-      const activeSlotsBeingDuplicated = sourceItems.filter((i) => !i.isSkipped).length
       const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-      
-      if (activeMealSlots + activeSlotsBeingDuplicated > totalMealsAllowed) {
-        toast.warning(`Cannot duplicate week. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`)
+      let slotsRemaining = Math.max(0, totalMealsAllowed - activeMealSlots)
+
+      const sortedSourceItems = [...sourceItems].sort((a, b) => {
+        const dateCmp = mealPlanDateYmd(a.date).localeCompare(mealPlanDateYmd(b.date))
+        if (dateCmp !== 0) return dateCmp
+        return (a.timeSlot || '').localeCompare(b.timeSlot || '')
+      })
+
+      const itemsToDuplicate: typeof sourceItems = []
+      let omittedForCap = 0
+      for (const item of sortedSourceItems) {
+        if (item.isSkipped) {
+          itemsToDuplicate.push(item)
+          continue
+        }
+        if (slotsRemaining <= 0) {
+          omittedForCap += 1
+          continue
+        }
+        itemsToDuplicate.push(item)
+        slotsRemaining -= 1
+      }
+
+      if (itemsToDuplicate.length === 0) {
+        toast.warning(
+          `Cannot duplicate week. This plan has reached its limit of ${totalMealsAllowed} active meals.`
+        )
         setDuplicatingWeek(false)
         return
       }
-      
+
       const dayOffset = dayOffsetBetweenPlanWeeks(mealPlan.startDate, sourceWeek, nextWeek)
-      
-      // Create new items for the next week with same dishes (keep original time slots)
-      const mealItemPromises = sourceItems.map(item => {
+
+      const mealItemPromises = itemsToDuplicate.map(item => {
         const sourceDate = new Date(item.date)
         const targetDate = addDays(sourceDate, dayOffset)
         const targetDateStr = format(targetDate, 'yyyy-MM-dd')
@@ -1499,37 +1512,57 @@ export default function MealPlanViewPage() {
           }),
         })
       })
-      
-      await Promise.all(mealItemPromises)
-      
-      // Add the new week to visible weeks
+
+      const createResults = await Promise.all(mealItemPromises)
+      const failureCount = createResults.filter((r) => !r.ok).length
+      const successCount = createResults.length - failureCount
+
+      if (failureCount > 0) {
+        console.error('Error duplicating week: some meals failed to create', {
+          failureCount,
+          total: createResults.length,
+        })
+      }
+
+      const activeOmitted = omittedForCap + failureCount
+      if (activeOmitted > 0 && successCount > 0) {
+        toast.warning(
+          `Duplicated ${successCount} of ${sourceItems.length} meals. ${activeOmitted} could not be added (plan limit or save error).`
+        )
+      } else if (failureCount > 0) {
+        toast.error(`Duplicated ${successCount} of ${sourceItems.length} meals. Some could not be saved.`)
+      } else if (omittedForCap > 0) {
+        toast.warning(
+          `Duplicated ${successCount} of ${sourceItems.length} meals. ${omittedForCap} omitted — plan active meal limit reached.`
+        )
+      }
+
       setVisibleWeeks(prev => [...prev, nextWeek].sort((a, b) => a - b))
-      
-      // Get visible days from source week and add to target week
+
       const sourceDays = visibleDaysByWeek[sourceWeek] || []
       const targetDays = sourceDays.map(dateStr => {
         const sourceDate = new Date(dateStr)
         const targetDate = addDays(sourceDate, dayOffset)
         return format(targetDate, 'yyyy-MM-dd')
       })
-      
+
       setVisibleDaysByWeek(prev => ({
         ...prev,
         [nextWeek]: targetDays
       }))
-      
-      // Expand the new week
+
       setExpandedWeeks(prev => {
         const newSet = new Set(prev)
         newSet.add(nextWeek)
         return newSet
       })
-      
-      // Refresh meal plan to get new items
+
       await fetchMealPlan(mealPlan.id)
-      
+
       setWeekMenuOpen(null)
-      toast.success(`Week ${nextWeek} duplicated successfully!`)
+      if (failureCount === 0 && omittedForCap === 0) {
+        toast.success(`Week ${nextWeek} duplicated successfully!`)
+      }
     } catch (error) {
       console.error('Error duplicating week:', error)
       toast.error('Failed to duplicate week')

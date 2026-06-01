@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
-import { groupKitchenItemsByCustomerSlot } from '@/lib/kitchen-planning-group-rows'
+import { groupKitchenItemsByCustomerSlot, type KitchenGroupedCustomerRow } from '@/lib/kitchen-planning-group-rows'
 
 const BATCH_DELIVER_PAGE_SIZE = 12
 
@@ -172,14 +172,14 @@ export default function KitchenPlanningPage() {
   // Clamp page when data shrinks (e.g. fewer results)
   useEffect(() => {
     if (!data) return
-    const groupedCount = groupKitchenItemsByCustomerSlot(data.items).length
+    const groupedCount = groupKitchenItemsByCustomerSlot<MealPlanItem>(data.items).length
     const totalRows = groupedCount + (data.skippedDayRows?.length ?? 0)
     const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
     setTablePage((p) => Math.min(p, totalPages))
   }, [data, pageSize])
 
   const groupedMealRows = useMemo(
-    () => (data ? groupKitchenItemsByCustomerSlot(data.items) : []),
+    () => (data ? groupKitchenItemsByCustomerSlot<MealPlanItem>(data.items) : []),
     [data]
   )
 
@@ -718,7 +718,7 @@ export default function KitchenPlanningPage() {
             deliveryTime?: string | null
           }
           type RowItem =
-            | { type: 'group'; data: ReturnType<typeof groupKitchenItemsByCustomerSlot>[number] }
+            | { type: 'group'; data: KitchenGroupedCustomerRow<MealPlanItem> }
             | { type: 'skipped'; data: SkippedDayRowItem }
           const allRows: RowItem[] = [
             ...groupedMealRows.map((row): RowItem => ({ type: 'group', data: row })),
