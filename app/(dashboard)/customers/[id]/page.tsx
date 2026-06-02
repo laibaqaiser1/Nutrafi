@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { customerStatusLabel } from '@/lib/utils'
 import { CustomerInstructionsBanner } from '@/components/customers/CustomerInstructionsBanner'
+import { CustomerLocationsPanel } from '@/components/customers/CustomerLocationsPanel'
 
 interface Customer {
   id: number
@@ -156,6 +157,8 @@ export default function ViewCustomerPage() {
         </div>
 
         <CustomerInstructionsBanner instructions={customer.instructions} className="mt-6" />
+
+        <CustomerLocationsPanel customerId={customer.id} />
 
         {customer.mealPlans && customer.mealPlans.length > 0 && (
           <div className="mt-6 pt-4 border-t border-gray-200">

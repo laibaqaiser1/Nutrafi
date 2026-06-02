@@ -6,6 +6,8 @@ import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { groupKitchenItemsByCustomerSlot, type KitchenGroupedCustomerRow } from '@/lib/kitchen-planning-group-rows'
 import { kitchenInstructionLinesForItems } from '@/lib/kitchen-planning-instructions'
+import { resolveItemDeliveryArea } from '@/lib/customer-location'
+import { MealPlanItemLocationSummary } from '@/components/meal-plans/MealPlanItemLocationSummary'
 
 const BATCH_DELIVER_PAGE_SIZE = 12
 
@@ -25,6 +27,14 @@ interface MealPlanItem {
   isSkipped: boolean
   isDelivered: boolean
   wrongDelivery?: boolean
+  deliveredLocation?: string | null
+  deliveredAddress?: string | null
+  customerLocation?: {
+    label: string
+    icon?: string
+    address: string
+    deliveryArea: string
+  } | null
   mealPlan: {
     id: string
     status?: string
@@ -34,6 +44,7 @@ interface MealPlanItem {
       fullName: string
       phone: string | null
       deliveryArea: string | null
+      address?: string | null
       instructions: string | null
     }
   }
@@ -57,6 +68,19 @@ function isKitchenMealPlanPaused(mealPlan: MealPlanItem['mealPlan']): boolean {
 function kitchenDishLabel(item: MealPlanItem): string {
   if (isKitchenMealPlanPaused(item.mealPlan)) return KITCHEN_DISH_CUSTOMER_UNAVAILABLE
   return item.dishName || item.dish?.name || 'Not Assigned'
+}
+
+function kitchenCustomerAddressFallback(item: MealPlanItem) {
+  return {
+    address: item.mealPlan.customer.address ?? '',
+    deliveryArea: item.mealPlan.customer.deliveryArea ?? '',
+  }
+}
+
+function kitchenGroupDeliveryArea(group: KitchenGroupedCustomerRow<MealPlanItem>): string {
+  const first = group.items[0]
+  if (!first) return group.customer.deliveryArea || '-'
+  return resolveItemDeliveryArea(first, kitchenCustomerAddressFallback(first)) || '-'
 }
 
 function KitchenInstructionsLines({
@@ -877,7 +901,7 @@ export default function KitchenPlanningPage() {
                           <KitchenInstructionsLines lines={instructionLines} />
                         </td>
                         <td className="px-2 lg:px-4 py-2 lg:py-3 align-top text-sm text-gray-500 break-words leading-snug">
-                          {group.customer.deliveryArea || '-'}
+                          {kitchenGroupDeliveryArea(group)}
                         </td>
                         <td className="px-2 lg:px-4 py-2 lg:py-3 align-top whitespace-nowrap">
                           {group.status === 'delivered' ? (
@@ -1117,9 +1141,15 @@ export default function KitchenPlanningPage() {
                   {primaryMeal.mealPlan.customer.phone && (
                     <p className="text-sm text-gray-600">{primaryMeal.mealPlan.customer.phone}</p>
                   )}
-                  {primaryMeal.mealPlan.customer.deliveryArea && (
-                    <p className="text-sm text-gray-600">{primaryMeal.mealPlan.customer.deliveryArea}</p>
-                  )}
+                  {(() => {
+                    const fallback = kitchenCustomerAddressFallback(primaryMeal)
+                    return (
+                      <MealPlanItemLocationSummary
+                        item={primaryMeal}
+                        customer={fallback}
+                      />
+                    )
+                  })()}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 border-b border-gray-300 pb-2">

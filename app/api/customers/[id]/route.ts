@@ -4,6 +4,7 @@ import { sessionHasPermission } from '@/lib/permissions'
 import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
+import { syncDefaultHomeFromCustomer } from '@/lib/customer-location'
 import { z } from 'zod'
 
 const customerSchema = z.object({
@@ -36,6 +37,9 @@ export async function GET(
     const customer = await prisma.customer.findUnique({
       where: { id },
       include: {
+        locations: {
+          orderBy: [{ isDefault: 'desc' }, { label: 'asc' }],
+        },
         mealPlans: {
           orderBy: { createdAt: 'desc' },
         },
@@ -82,9 +86,15 @@ export async function PUT(
       updateData.instructions = updateData.instructions?.trim() ? updateData.instructions.trim() : null
     }
 
-    const customer = await prisma.customer.update({
-      where: { id },
-      data: updateData,
+    const customer = await prisma.$transaction(async (tx) => {
+      const updated = await tx.customer.update({
+        where: { id },
+        data: updateData,
+      })
+      if (data.address !== undefined || data.deliveryArea !== undefined) {
+        await syncDefaultHomeFromCustomer(tx, updated)
+      }
+      return updated
     })
 
     return NextResponse.json(customer)

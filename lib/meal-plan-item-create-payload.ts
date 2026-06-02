@@ -14,7 +14,7 @@ export interface MealPlanItemCreateInput {
   price?: number
   deliveryTime?: string
   deliveryType?: string
-  location?: string
+  customerLocationId?: number
   isSkipped?: boolean
   customNote?: string
 }

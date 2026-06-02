@@ -40,7 +40,6 @@ export function appliedMealsToBulkPayload(meals: AppliedImportMeal[]) {
     price: m.price ?? undefined,
     deliveryTime: m.deliveryTime ?? undefined,
     deliveryType: m.deliveryType ?? 'delivery',
-    location: m.location ?? undefined,
     isSkipped: m.isSkipped,
     customNote: m.customNote ?? undefined,
   }))

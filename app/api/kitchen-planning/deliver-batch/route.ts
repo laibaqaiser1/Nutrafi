@@ -4,6 +4,7 @@ import { sessionHasPermission } from '@/lib/permissions'
 import { PK } from '@/lib/permission-keys'
 import { prisma } from '@/lib/prisma'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
+import { deliverySnapshotsForItem } from '@/lib/customer-location'
 
 // POST - Mark multiple meal plan items as delivered (batch)
 export async function POST(request: NextRequest) {
@@ -35,13 +36,18 @@ export async function POST(request: NextRequest) {
     const idsToUpdate = items.map((i) => i.id)
 
     await prisma.$transaction(async (tx) => {
-      await tx.mealPlanItem.updateMany({
-        where: { id: { in: idsToUpdate } },
-        data: {
-          isDelivered: true,
-          deliveredAt: new Date(),
-        },
-      })
+      const deliveredAt = new Date()
+      for (const itemId of idsToUpdate) {
+        const snapshots = await deliverySnapshotsForItem(tx, itemId)
+        await tx.mealPlanItem.update({
+          where: { id: itemId },
+          data: {
+            isDelivered: true,
+            deliveredAt,
+            ...snapshots,
+          },
+        })
+      }
 
       const planIds = [...new Set(items.map((i) => i.mealPlanId))]
       for (const mealPlanId of planIds) {

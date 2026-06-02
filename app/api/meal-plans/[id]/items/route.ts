@@ -6,6 +6,7 @@ import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
+import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
 import { z } from 'zod'
 
 const mealPlanItemSchema = z.object({
@@ -29,7 +30,14 @@ const mealPlanItemSchema = z.object({
   price: z.number().optional(),
   deliveryTime: z.string().optional(),
   deliveryType: z.enum(['delivery', 'pickup']).optional(),
-  location: z.string().optional(),
+  customerLocationId: z
+    .union([z.string(), z.number()])
+    .transform((v) => {
+      if (v === '' || v === null || v === undefined) return undefined
+      const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+      return Number.isNaN(n) ? undefined : n
+    })
+    .optional(),
   isSkipped: z.boolean().optional(),
   customNote: z.string().optional(),
 })
@@ -53,9 +61,23 @@ export async function POST(
     const body = await request.json()
     const data = mealPlanItemSchema.parse(body)
 
-    const mealPlanRow = await prisma.mealPlan.findUnique({ where: { id } })
+    const mealPlanRow = await prisma.mealPlan.findUnique({
+      where: { id },
+      select: { id: true, customerId: true, totalMeals: true, days: true, mealsPerDay: true, remainingMeals: true, timeSlots: true },
+    })
     if (!mealPlanRow) {
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
+    }
+
+    let customerLocationId: number | null
+    try {
+      customerLocationId = await resolveCustomerLocationIdForWrite(
+        prisma,
+        mealPlanRow.customerId,
+        data.customerLocationId
+      )
+    } catch {
+      return NextResponse.json({ error: 'Invalid delivery location for this customer' }, { status: 400 })
     }
 
     const creatingSkipped = data.isSkipped === true
@@ -173,7 +195,7 @@ export async function POST(
       ...dishData,
       deliveryTime: deliveryTime || undefined,
       deliveryType: data.deliveryType || undefined,
-      deliveryLocation: data.location ?? undefined,
+      customerLocationId,
       customNote: data.customNote != null && String(data.customNote).trim() !== '' ? String(data.customNote).trim() : undefined,
       isSkipped: data.isSkipped !== undefined ? data.isSkipped : undefined,
     }

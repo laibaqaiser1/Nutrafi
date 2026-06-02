@@ -54,6 +54,11 @@ export type MealPlanTemplateItem = Prisma.MealPlanTemplateItemModel
  */
 export type Customer = Prisma.CustomerModel
 /**
+ * Model CustomerLocation
+ * Saved delivery places for a customer (e.g. Home, Work). Meal items link here in a later step.
+ */
+export type CustomerLocation = Prisma.CustomerLocationModel
+/**
  * Model Plan
  * 
  */

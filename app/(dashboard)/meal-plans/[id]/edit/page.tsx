@@ -27,7 +27,7 @@ interface MealPlanItem {
   price: number | null
   deliveryTime: string | null
   deliveryType?: string | null
-  deliveryLocation?: string | null
+  deliveredLocation?: string | null
   isSkipped: boolean
   isDelivered: boolean
   customNote: string | null

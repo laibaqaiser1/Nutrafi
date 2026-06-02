@@ -5,6 +5,7 @@ import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
+import { deliverySnapshotsForItem } from '@/lib/customer-location'
 
 // POST - Mark meal plan item as delivered
 export async function POST(
@@ -33,12 +34,15 @@ export async function POST(
         throw new Error('NOT_FOUND')
       }
 
+      const snapshots = await deliverySnapshotsForItem(tx, itemId)
+
       const updated = await tx.mealPlanItem.update({
         where: { id: itemId },
         data: {
           isDelivered: true,
           deliveredAt: new Date(),
           wrongDelivery: false,
+          ...snapshots,
         },
         include: {
           mealPlan: true,
@@ -96,6 +100,8 @@ export async function DELETE(
           isDelivered: false,
           deliveredAt: null,
           wrongDelivery: false,
+          deliveredLocation: null,
+          deliveredAddress: null,
         },
         include: {
           mealPlan: true,

@@ -266,6 +266,7 @@ export type CustomerWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
   mealPlans?: Prisma.MealPlanListRelationFilter
   payments?: Prisma.PaymentListRelationFilter
+  locations?: Prisma.CustomerLocationListRelationFilter
 }
 
 export type CustomerOrderByWithRelationInput = {
@@ -282,6 +283,7 @@ export type CustomerOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   mealPlans?: Prisma.MealPlanOrderByRelationAggregateInput
   payments?: Prisma.PaymentOrderByRelationAggregateInput
+  locations?: Prisma.CustomerLocationOrderByRelationAggregateInput
 }
 
 export type CustomerWhereUniqueInput = Prisma.AtLeast<{
@@ -301,6 +303,7 @@ export type CustomerWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
   mealPlans?: Prisma.MealPlanListRelationFilter
   payments?: Prisma.PaymentListRelationFilter
+  locations?: Prisma.CustomerLocationListRelationFilter
 }, "id">
 
 export type CustomerOrderByWithAggregationInput = {
@@ -352,6 +355,7 @@ export type CustomerCreateInput = {
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateInput = {
@@ -368,6 +372,7 @@ export type CustomerUncheckedCreateInput = {
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUpdateInput = {
@@ -383,6 +388,7 @@ export type CustomerUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateInput = {
@@ -399,6 +405,7 @@ export type CustomerUncheckedUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateManyInput = {
@@ -501,6 +508,20 @@ export type EnumCustomerStatusFieldUpdateOperationsInput = {
   set?: $Enums.CustomerStatus
 }
 
+export type CustomerCreateNestedOneWithoutLocationsInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutLocationsInput, Prisma.CustomerUncheckedCreateWithoutLocationsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutLocationsInput
+  connect?: Prisma.CustomerWhereUniqueInput
+}
+
+export type CustomerUpdateOneRequiredWithoutLocationsNestedInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutLocationsInput, Prisma.CustomerUncheckedCreateWithoutLocationsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutLocationsInput
+  upsert?: Prisma.CustomerUpsertWithoutLocationsInput
+  connect?: Prisma.CustomerWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutLocationsInput, Prisma.CustomerUpdateWithoutLocationsInput>, Prisma.CustomerUncheckedUpdateWithoutLocationsInput>
+}
+
 export type CustomerCreateNestedOneWithoutMealPlansInput = {
   create?: Prisma.XOR<Prisma.CustomerCreateWithoutMealPlansInput, Prisma.CustomerUncheckedCreateWithoutMealPlansInput>
   connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutMealPlansInput
@@ -529,6 +550,84 @@ export type CustomerUpdateOneRequiredWithoutPaymentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutPaymentsInput, Prisma.CustomerUpdateWithoutPaymentsInput>, Prisma.CustomerUncheckedUpdateWithoutPaymentsInput>
 }
 
+export type CustomerCreateWithoutLocationsInput = {
+  fullName: string
+  phone: string
+  email?: string | null
+  address: string
+  deliveryArea: string
+  status?: $Enums.CustomerStatus
+  notes?: string | null
+  instructions?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerUncheckedCreateWithoutLocationsInput = {
+  id?: number
+  fullName: string
+  phone: string
+  email?: string | null
+  address: string
+  deliveryArea: string
+  status?: $Enums.CustomerStatus
+  notes?: string | null
+  instructions?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerCreateOrConnectWithoutLocationsInput = {
+  where: Prisma.CustomerWhereUniqueInput
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutLocationsInput, Prisma.CustomerUncheckedCreateWithoutLocationsInput>
+}
+
+export type CustomerUpsertWithoutLocationsInput = {
+  update: Prisma.XOR<Prisma.CustomerUpdateWithoutLocationsInput, Prisma.CustomerUncheckedUpdateWithoutLocationsInput>
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutLocationsInput, Prisma.CustomerUncheckedCreateWithoutLocationsInput>
+  where?: Prisma.CustomerWhereInput
+}
+
+export type CustomerUpdateToOneWithWhereWithoutLocationsInput = {
+  where?: Prisma.CustomerWhereInput
+  data: Prisma.XOR<Prisma.CustomerUpdateWithoutLocationsInput, Prisma.CustomerUncheckedUpdateWithoutLocationsInput>
+}
+
+export type CustomerUpdateWithoutLocationsInput = {
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerUncheckedUpdateWithoutLocationsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
+}
+
 export type CustomerCreateWithoutMealPlansInput = {
   fullName: string
   phone: string
@@ -541,6 +640,7 @@ export type CustomerCreateWithoutMealPlansInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutMealPlansInput = {
@@ -556,6 +656,7 @@ export type CustomerUncheckedCreateWithoutMealPlansInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutMealPlansInput = {
@@ -586,6 +687,7 @@ export type CustomerUpdateWithoutMealPlansInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutMealPlansInput = {
@@ -601,6 +703,7 @@ export type CustomerUncheckedUpdateWithoutMealPlansInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateWithoutPaymentsInput = {
@@ -615,6 +718,7 @@ export type CustomerCreateWithoutPaymentsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutPaymentsInput = {
@@ -630,6 +734,7 @@ export type CustomerUncheckedCreateWithoutPaymentsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutPaymentsInput = {
@@ -660,6 +765,7 @@ export type CustomerUpdateWithoutPaymentsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutPaymentsInput = {
@@ -675,6 +781,7 @@ export type CustomerUncheckedUpdateWithoutPaymentsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 
@@ -685,11 +792,13 @@ export type CustomerUncheckedUpdateWithoutPaymentsInput = {
 export type CustomerCountOutputType = {
   mealPlans: number
   payments: number
+  locations: number
 }
 
 export type CustomerCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   mealPlans?: boolean | CustomerCountOutputTypeCountMealPlansArgs
   payments?: boolean | CustomerCountOutputTypeCountPaymentsArgs
+  locations?: boolean | CustomerCountOutputTypeCountLocationsArgs
 }
 
 /**
@@ -716,6 +825,13 @@ export type CustomerCountOutputTypeCountPaymentsArgs<ExtArgs extends runtime.Typ
   where?: Prisma.PaymentWhereInput
 }
 
+/**
+ * CustomerCountOutputType without action
+ */
+export type CustomerCountOutputTypeCountLocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CustomerLocationWhereInput
+}
+
 
 export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -731,6 +847,7 @@ export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   updatedAt?: boolean
   mealPlans?: boolean | Prisma.Customer$mealPlansArgs<ExtArgs>
   payments?: boolean | Prisma.Customer$paymentsArgs<ExtArgs>
+  locations?: boolean | Prisma.Customer$locationsArgs<ExtArgs>
   _count?: boolean | Prisma.CustomerCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["customer"]>
 
@@ -780,6 +897,7 @@ export type CustomerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs =
 export type CustomerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   mealPlans?: boolean | Prisma.Customer$mealPlansArgs<ExtArgs>
   payments?: boolean | Prisma.Customer$paymentsArgs<ExtArgs>
+  locations?: boolean | Prisma.Customer$locationsArgs<ExtArgs>
   _count?: boolean | Prisma.CustomerCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type CustomerIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -790,6 +908,7 @@ export type $CustomerPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
   objects: {
     mealPlans: Prisma.$MealPlanPayload<ExtArgs>[]
     payments: Prisma.$PaymentPayload<ExtArgs>[]
+    locations: Prisma.$CustomerLocationPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -1202,6 +1321,7 @@ export interface Prisma__CustomerClient<T, Null = never, ExtArgs extends runtime
   readonly [Symbol.toStringTag]: "PrismaPromise"
   mealPlans<T extends Prisma.Customer$mealPlansArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$mealPlansArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MealPlanPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   payments<T extends Prisma.Customer$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  locations<T extends Prisma.Customer$locationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$locationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CustomerLocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1675,6 +1795,30 @@ export type Customer$paymentsArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   distinct?: Prisma.PaymentScalarFieldEnum | Prisma.PaymentScalarFieldEnum[]
+}
+
+/**
+ * Customer.locations
+ */
+export type Customer$locationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CustomerLocation
+   */
+  select?: Prisma.CustomerLocationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CustomerLocation
+   */
+  omit?: Prisma.CustomerLocationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CustomerLocationInclude<ExtArgs> | null
+  where?: Prisma.CustomerLocationWhereInput
+  orderBy?: Prisma.CustomerLocationOrderByWithRelationInput | Prisma.CustomerLocationOrderByWithRelationInput[]
+  cursor?: Prisma.CustomerLocationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CustomerLocationScalarFieldEnum | Prisma.CustomerLocationScalarFieldEnum[]
 }
 
 /**

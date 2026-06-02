@@ -3,6 +3,7 @@ import { getServerSession } from '@/lib/auth-helpers'
 import { getKitchenUnscheduledRows } from '@/lib/kitchen-unscheduled-rows'
 import { kitchenInstructionsExportText } from '@/lib/kitchen-planning-instructions'
 import { prisma, withRetry } from '@/lib/prisma'
+import { resolveItemDeliveryArea, resolveItemDeliveryAddress } from '@/lib/customer-location'
 import ExcelJS from 'exceljs'
 import path from 'path'
 import fs from 'fs'
@@ -10,6 +11,22 @@ import { format } from 'date-fns'
 
 /** Single workbook template for both chef and rider exports (first sheet is filled as before). */
 const kitchenExportTemplatePath = path.join(process.cwd(), 'templates', 'template.xlsx')
+
+function resolvedCustomerForExport(item: {
+  isDelivered?: boolean
+  deliveredLocation?: string | null
+  deliveredAddress?: string | null
+  customerLocation?: { address: string; deliveryArea: string; label: string; id: number } | null
+  mealPlan: { customer: { fullName: string; phone: string | null; address: string; deliveryArea: string } }
+}) {
+  const c = item.mealPlan.customer
+  return {
+    fullName: c.fullName,
+    phone: c.phone,
+    address: resolveItemDeliveryAddress(item, c),
+    deliveryArea: resolveItemDeliveryArea(item, c),
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,6 +69,9 @@ export async function GET(request: NextRequest) {
       prisma.mealPlanItem.findMany({
         where,
         include: {
+          customerLocation: {
+            select: { id: true, label: true, icon: true, address: true, deliveryArea: true },
+          },
           mealPlan: {
             include: {
               customer: true,
@@ -128,7 +148,7 @@ export async function GET(request: NextRequest) {
         timeSlot: first.timeSlot || '',
         deliveryTime: first.deliveryTime || '',
         customerName: first.mealPlan.customer.fullName,
-        customer: first.mealPlan.customer,
+        customer: resolvedCustomerForExport(first),
         dishNames: isPaused
           ? 'Customer not available'
           : groupItems.map(i => i.dishName || i.dish?.name || 'Not Assigned').join(', '),
@@ -202,7 +222,7 @@ export async function GET(request: NextRequest) {
           timeSlot: first.timeSlot || '',
           deliveryTime: first.deliveryTime || '',
           customerName: c.fullName,
-          customer: c,
+          customer: resolvedCustomerForExport(first),
           dishNames: 'No meal for today',
           items: group,
           isPaused: false,

@@ -85,9 +85,27 @@ export async function GET(
     const mealPlan = await prisma.mealPlan.findUnique({
       where: { id },
       include: {
-        customer: true,
+        customer: {
+          include: {
+            locations: {
+              where: { isActive: true },
+              orderBy: [{ isDefault: 'desc' }, { label: 'asc' }],
+            },
+          },
+        },
         plan: true,
         mealPlanItems: {
+          include: {
+            customerLocation: {
+              select: {
+                id: true,
+                label: true,
+                icon: true,
+                address: true,
+                deliveryArea: true,
+              },
+            },
+          },
           orderBy: [
             { date: 'asc' },
             { timeSlot: 'asc' },

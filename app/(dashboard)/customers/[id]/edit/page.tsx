@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useNotification } from '@/components/notifications/NotificationContext'
+import { CustomerLocationsPanel } from '@/components/customers/CustomerLocationsPanel'
+import {
+  CustomerLocationIcon,
+  homeLocationDraftFromCustomer,
+} from '@/components/customers/CustomerLocationFormFields'
 
 interface Customer {
   id: string
@@ -33,6 +38,8 @@ export default function EditCustomerPage() {
     notes: '',
     instructions: '',
   })
+
+  const homePreview = homeLocationDraftFromCustomer(formData.address, formData.deliveryArea)
 
   useEffect(() => {
     async function fetchCustomer() {
@@ -66,7 +73,7 @@ export default function EditCustomerPage() {
     if (customerId) {
       fetchCustomer()
     }
-  }, [customerId, router])
+  }, [customerId, router, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,7 +89,7 @@ export default function EditCustomerPage() {
       })
 
       if (response.ok) {
-        router.push('/customers')
+        router.push(`/customers/${customerId}`)
       } else {
         const error = await response.json()
         toast.error('Error: ' + JSON.stringify(error))
@@ -106,7 +113,7 @@ export default function EditCustomerPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-lg font-bold text-gray-900 mb-3">Edit Customer</h1>
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded p-3">
+      <form onSubmit={handleSubmit} className="bg-white shadow rounded p-3 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
@@ -138,26 +145,6 @@ export default function EditCustomerPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Area *</label>
-            <input
-              type="text"
-              required
-              value={formData.deliveryArea}
-              onChange={(e) => setFormData({ ...formData, deliveryArea: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
-            <textarea
-              required
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              rows={2}
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
             <select
               required
@@ -170,7 +157,56 @@ export default function EditCustomerPage() {
               <option value="PAUSED">Disabled</option>
             </select>
           </div>
-          <div className="md:col-span-2">
+        </div>
+
+        <div className="border border-gray-200 rounded p-3 bg-gray-50/60">
+          <div className="flex items-center gap-2 mb-3">
+            <CustomerLocationIcon iconKey="home" className="text-xl" />
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">Home location (default)</h2>
+              <p className="text-xs text-gray-500">
+                Updates the customer&apos;s primary delivery location used for new meals.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Area *</label>
+              <input
+                type="text"
+                required
+                value={formData.deliveryArea}
+                onChange={(e) => setFormData({ ...formData, deliveryArea: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
+              <textarea
+                required
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+                rows={2}
+              />
+            </div>
+          </div>
+          {(formData.address || formData.deliveryArea) && (
+            <p className="mt-2 text-xs text-gray-500">
+              Preview: {homePreview.label} — {formData.deliveryArea || '…'}
+            </p>
+          )}
+        </div>
+
+        <CustomerLocationsPanel
+          customerId={Number(customerId)}
+          excludeHome
+          title="Additional locations"
+          description="Edit Work, gym, or other saved addresses. Changes save immediately."
+        />
+
+        <div className="grid grid-cols-1 gap-3">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
             <textarea
               value={formData.notes}
@@ -179,7 +215,7 @@ export default function EditCustomerPage() {
               rows={3}
             />
           </div>
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Instructions & alerts</label>
             <p className="text-xs text-gray-500 mb-2">
               Allergies, dietary needs, or delivery notes — highlighted on the customer profile and on meal plans for this customer.
@@ -193,7 +229,8 @@ export default function EditCustomerPage() {
             />
           </div>
         </div>
-        <div className="mt-6 flex gap-4">
+
+        <div className="flex gap-4">
           <button
             type="submit"
             disabled={loading}
@@ -213,10 +250,3 @@ export default function EditCustomerPage() {
     </div>
   )
 }
-
-
-
-
-
-
-

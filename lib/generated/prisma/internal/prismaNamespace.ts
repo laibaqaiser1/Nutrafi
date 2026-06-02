@@ -397,6 +397,7 @@ export const ModelName = {
   MealPlanTemplate: 'MealPlanTemplate',
   MealPlanTemplateItem: 'MealPlanTemplateItem',
   Customer: 'Customer',
+  CustomerLocation: 'CustomerLocation',
   Plan: 'Plan',
   MealPlan: 'MealPlan',
   MealPlanItem: 'MealPlanItem',
@@ -416,7 +417,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "permission" | "rolePermission" | "dish" | "mealPlanTemplate" | "mealPlanTemplateItem" | "customer" | "plan" | "mealPlan" | "mealPlanItem" | "payment"
+    modelProps: "user" | "permission" | "rolePermission" | "dish" | "mealPlanTemplate" | "mealPlanTemplateItem" | "customer" | "customerLocation" | "plan" | "mealPlan" | "mealPlanItem" | "payment"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -938,6 +939,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    CustomerLocation: {
+      payload: Prisma.$CustomerLocationPayload<ExtArgs>
+      fields: Prisma.CustomerLocationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CustomerLocationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CustomerLocationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>
+        }
+        findFirst: {
+          args: Prisma.CustomerLocationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CustomerLocationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>
+        }
+        findMany: {
+          args: Prisma.CustomerLocationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>[]
+        }
+        create: {
+          args: Prisma.CustomerLocationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>
+        }
+        createMany: {
+          args: Prisma.CustomerLocationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CustomerLocationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>[]
+        }
+        delete: {
+          args: Prisma.CustomerLocationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>
+        }
+        update: {
+          args: Prisma.CustomerLocationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>
+        }
+        deleteMany: {
+          args: Prisma.CustomerLocationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CustomerLocationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CustomerLocationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>[]
+        }
+        upsert: {
+          args: Prisma.CustomerLocationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CustomerLocationPayload>
+        }
+        aggregate: {
+          args: Prisma.CustomerLocationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCustomerLocation>
+        }
+        groupBy: {
+          args: Prisma.CustomerLocationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CustomerLocationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CustomerLocationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CustomerLocationCountAggregateOutputType> | number
+        }
+      }
+    }
     Plan: {
       payload: Prisma.$PlanPayload<ExtArgs>
       fields: Prisma.PlanFieldRefs
@@ -1382,6 +1457,22 @@ export const CustomerScalarFieldEnum = {
 export type CustomerScalarFieldEnum = (typeof CustomerScalarFieldEnum)[keyof typeof CustomerScalarFieldEnum]
 
 
+export const CustomerLocationScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  label: 'label',
+  icon: 'icon',
+  address: 'address',
+  deliveryArea: 'deliveryArea',
+  isDefault: 'isDefault',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CustomerLocationScalarFieldEnum = (typeof CustomerLocationScalarFieldEnum)[keyof typeof CustomerLocationScalarFieldEnum]
+
+
 export const PlanScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -1435,7 +1526,9 @@ export const MealPlanItemScalarFieldEnum = {
   isSkipped: 'isSkipped',
   customNote: 'customNote',
   deliveryType: 'deliveryType',
-  deliveryLocation: 'deliveryLocation',
+  deliveredLocation: 'deliveredLocation',
+  deliveredAddress: 'deliveredAddress',
+  customerLocationId: 'customerLocationId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   isDelivered: 'isDelivered',
@@ -1747,6 +1840,7 @@ export type GlobalOmitConfig = {
   mealPlanTemplate?: Prisma.MealPlanTemplateOmit
   mealPlanTemplateItem?: Prisma.MealPlanTemplateItemOmit
   customer?: Prisma.CustomerOmit
+  customerLocation?: Prisma.CustomerLocationOmit
   plan?: Prisma.PlanOmit
   mealPlan?: Prisma.MealPlanOmit
   mealPlanItem?: Prisma.MealPlanItemOmit

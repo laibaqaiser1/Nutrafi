@@ -128,11 +128,31 @@ model Customer {
   updatedAt    DateTime        @updatedAt
   mealPlans    MealPlan[]
   payments     Payment[]
+  locations    CustomerLocation[]
 
   @@index([status])
   @@index([deliveryArea])
   @@index([phone])
   @@index([fullName])
+}
+
+/// Saved delivery places for a customer (e.g. Home, Work). Meal items link here in a later step.
+model CustomerLocation {
+  id           Int      @id @default(autoincrement())
+  customerId   Int
+  label        String
+  icon         String   @default("home")
+  address      String
+  deliveryArea String
+  isDefault    Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  customer     Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  mealPlanItems MealPlanItem[]
+
+  @@unique([customerId, label])
+  @@index([customerId])
 }
 
 model Plan {
@@ -199,9 +219,14 @@ model MealPlanItem {
   timeSlot         String
   isSkipped        Boolean      @default(false)
   customNote       String?      // Plain text note only (no JSON)
-  deliveryType     String?      // 'delivery' | 'pickup'
-  deliveryLocation String?      // Address/location for delivery
-  createdAt        DateTime     @default(now())
+  deliveryType         String?           // 'delivery' | 'pickup'
+  /// Delivery area snapshot when marked delivered (live: use customerLocation)
+  deliveredLocation    String?
+  /// Full address snapshot when marked delivered (live: use customerLocation)
+  deliveredAddress     String?
+  customerLocationId   Int?
+  customerLocation     CustomerLocation? @relation(fields: [customerLocationId], references: [id], onDelete: SetNull)
+  createdAt            DateTime          @default(now())
   updatedAt        DateTime     @updatedAt
   isDelivered      Boolean      @default(false)
   /// Marked when delivery was incorrect; not counted toward remaining balance (isDelivered cleared)
@@ -226,6 +251,7 @@ model MealPlanItem {
   @@index([timeSlot])
   @@index([dishId])
   @@index([dishCategory])
+  @@index([customerLocationId])
 }
 
 model Payment {

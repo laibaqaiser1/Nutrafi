@@ -3,7 +3,16 @@ import { getServerSession } from '@/lib/auth-helpers'
 import { sessionHasPermission } from '@/lib/permissions'
 import { PK } from '@/lib/permission-keys'
 import { prisma } from '@/lib/prisma'
+import { createCustomerLocation, ensureDefaultHomeLocation } from '@/lib/customer-location'
 import { z } from 'zod'
+
+const additionalLocationSchema = z.object({
+  label: z.string().min(1).max(80),
+  icon: z.string().optional(),
+  address: z.string().min(1),
+  deliveryArea: z.string().min(1),
+  isDefault: z.boolean().optional(),
+})
 
 const customerSchema = z.object({
   fullName: z.string().min(1),
@@ -14,6 +23,7 @@ const customerSchema = z.object({
   status: z.enum(['ACTIVE', 'INACTIVE', 'PAUSED', 'CANCELLED']).default('ACTIVE'),
   notes: z.string().optional(),
   instructions: z.string().max(4000).optional(),
+  additionalLocations: z.array(additionalLocationSchema).optional(),
 })
 
 // GET - List customers with filtering
@@ -117,12 +127,36 @@ export async function POST(request: NextRequest) {
       email: body.email || undefined,
     })
 
-    const customer = await prisma.customer.create({
-      data: {
-        ...data,
-        email: data.email || null,
-        instructions: data.instructions?.trim() ? data.instructions.trim() : null,
-      },
+    const customer = await prisma.$transaction(async (tx) => {
+      const created = await tx.customer.create({
+        data: {
+          fullName: data.fullName,
+          phone: data.phone,
+          email: data.email || null,
+          address: data.address,
+          deliveryArea: data.deliveryArea,
+          status: data.status,
+          notes: data.notes,
+          instructions: data.instructions?.trim() ? data.instructions.trim() : null,
+        },
+      })
+
+      await ensureDefaultHomeLocation(tx, created)
+
+      const extras = data.additionalLocations ?? []
+      for (const loc of extras) {
+        const label = loc.label.trim()
+        if (label.toLowerCase() === 'home') continue
+        await createCustomerLocation(tx, created.id, {
+          label,
+          icon: loc.icon,
+          address: loc.address,
+          deliveryArea: loc.deliveryArea,
+          isDefault: loc.isDefault,
+        })
+      }
+
+      return created
     })
 
     return NextResponse.json(customer, { status: 201 })

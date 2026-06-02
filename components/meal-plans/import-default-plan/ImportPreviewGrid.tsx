@@ -183,7 +183,7 @@ export function ImportPreviewGrid({
                   const key = importMealKey(slot)
                   const deliveryLabel = slot.isSkipped
                     ? '—'
-                    : `${slot.deliveryType === 'pickup' ? 'Pickup' : slot.location || 'Delivery'}${
+                    : `${slot.deliveryType === 'pickup' ? 'Pickup' : 'Delivery'}${
                         slot.deliveryTime ? ` · ${slot.deliveryTime.slice(0, 5)}` : ''
                       }`
 

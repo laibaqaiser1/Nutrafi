@@ -56,6 +56,7 @@ export const ModelName = {
   MealPlanTemplate: 'MealPlanTemplate',
   MealPlanTemplateItem: 'MealPlanTemplateItem',
   Customer: 'Customer',
+  CustomerLocation: 'CustomerLocation',
   Plan: 'Plan',
   MealPlan: 'MealPlan',
   MealPlanItem: 'MealPlanItem',
@@ -187,6 +188,22 @@ export const CustomerScalarFieldEnum = {
 export type CustomerScalarFieldEnum = (typeof CustomerScalarFieldEnum)[keyof typeof CustomerScalarFieldEnum]
 
 
+export const CustomerLocationScalarFieldEnum = {
+  id: 'id',
+  customerId: 'customerId',
+  label: 'label',
+  icon: 'icon',
+  address: 'address',
+  deliveryArea: 'deliveryArea',
+  isDefault: 'isDefault',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CustomerLocationScalarFieldEnum = (typeof CustomerLocationScalarFieldEnum)[keyof typeof CustomerLocationScalarFieldEnum]
+
+
 export const PlanScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -240,7 +257,9 @@ export const MealPlanItemScalarFieldEnum = {
   isSkipped: 'isSkipped',
   customNote: 'customNote',
   deliveryType: 'deliveryType',
-  deliveryLocation: 'deliveryLocation',
+  deliveredLocation: 'deliveredLocation',
+  deliveredAddress: 'deliveredAddress',
+  customerLocationId: 'customerLocationId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   isDelivered: 'isDelivered',

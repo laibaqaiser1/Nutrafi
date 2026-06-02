@@ -5,6 +5,7 @@ import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
+import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
 import { z } from 'zod'
 
 const mealPlanItemUpdateSchema = z.object({
@@ -27,7 +28,15 @@ const mealPlanItemUpdateSchema = z.object({
   price: z.number().optional().nullable(),
   deliveryTime: z.string().optional().nullable(),
   deliveryType: z.enum(['delivery', 'pickup']).optional(),
-  location: z.string().optional(),
+  customerLocationId: z
+    .union([z.string(), z.number(), z.null()])
+    .transform((v) => {
+      if (v === null || v === '') return null
+      const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+      return Number.isNaN(n) ? null : n
+    })
+    .optional()
+    .nullable(),
   isSkipped: z.boolean().optional(),
   /** True = not counted toward balance (clears delivery). False = clear the flag only. */
   wrongDelivery: z.boolean().optional(),
@@ -54,6 +63,7 @@ export async function PATCH(
 
     const item = await prisma.mealPlanItem.findUnique({
       where: { id: itemId },
+      include: { mealPlan: { select: { customerId: true } } },
     })
     if (!item || item.mealPlanId !== id) {
       return NextResponse.json({ error: 'Meal plan item not found' }, { status: 404 })
@@ -61,6 +71,22 @@ export async function PATCH(
 
     const body = await request.json()
     const data = mealPlanItemUpdateSchema.parse(body)
+
+    let resolvedLocationId: number | null | undefined
+    if (data.customerLocationId !== undefined) {
+      try {
+        resolvedLocationId =
+          data.customerLocationId === null
+            ? null
+            : await resolveCustomerLocationIdForWrite(
+                prisma,
+                item.mealPlan.customerId,
+                data.customerLocationId
+              )
+      } catch {
+        return NextResponse.json({ error: 'Invalid delivery location for this customer' }, { status: 400 })
+      }
+    }
 
     let dishData: Record<string, unknown> = {}
     if (data.dishId) {
@@ -102,7 +128,7 @@ export async function PATCH(
       ...(data.timeSlot !== undefined && { timeSlot: data.timeSlot }),
       ...(data.deliveryTime !== undefined && { deliveryTime: data.deliveryTime }),
       ...(data.deliveryType !== undefined && { deliveryType: data.deliveryType }),
-      ...(data.location !== undefined && { deliveryLocation: data.location }),
+      ...(resolvedLocationId !== undefined && { customerLocationId: resolvedLocationId }),
       ...(data.customNote !== undefined && { customNote: data.customNote === null || (typeof data.customNote === 'string' && data.customNote.trim() === '') ? null : String(data.customNote).trim() }),
       ...(data.isSkipped !== undefined && { isSkipped: data.isSkipped }),
       ...dishData,

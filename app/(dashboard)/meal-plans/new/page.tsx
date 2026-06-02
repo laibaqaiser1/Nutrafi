@@ -1001,7 +1001,6 @@ export default function NewMealPlanPage() {
             price: meal.price || undefined,
             deliveryType: meal.deliveryType,
             deliveryTime: meal.deliveryTime || undefined,
-            location: meal.location || undefined,
             customNote: meal.customNote || undefined,
           }),
         })
@@ -1037,7 +1036,6 @@ export default function NewMealPlanPage() {
             timeSlot: meal.timeSlot,
             dishId: meal.dishId || undefined,
             deliveryType: meal.deliveryType,
-            location: meal.location,
             isSkipped: true,
             customNote: meal.customNote || undefined,
           }),
@@ -2206,14 +2204,9 @@ export default function NewMealPlanPage() {
                                                 </div>
                                                 {meal.deliveryType === 'delivery' && (
                                                   <div className="md:col-span-3">
-                                                    <label className="block text-xs text-gray-600 mb-1">Delivery Address</label>
-                                                    <input
-                                                      type="text"
-                                                      value={meal.location || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'location', e.target.value, idx)}
-                                                      placeholder={selectedCustomer?.deliveryArea || 'Delivery Address'}
-                                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                                                    />
+                                                    <p className="text-xs text-gray-500">
+                                                      Delivery location uses the customer&apos;s saved address (default Home).
+                                                    </p>
                                                   </div>
                                                 )}
                                               </div>
@@ -2701,14 +2694,9 @@ export default function NewMealPlanPage() {
                                                 </div>
                                                 {meal.deliveryType === 'delivery' && (
                                                   <div className="md:col-span-3">
-                                                    <label className="block text-xs text-gray-600 mb-1">Delivery Address</label>
-                                                    <input
-                                                      type="text"
-                                                      value={meal.location || ''}
-                                                      onChange={(e) => updateMeal(meal.date, meal.timeSlot, 'location', e.target.value, idx)}
-                                                      placeholder={selectedCustomer?.deliveryArea || 'Delivery Address'}
-                                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                                                    />
+                                                    <p className="text-xs text-gray-500">
+                                                      Delivery location uses the customer&apos;s saved address (default Home).
+                                                    </p>
                                                   </div>
                                                 )}
                                               </div>

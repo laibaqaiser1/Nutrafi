@@ -36,14 +36,12 @@ export function ImportMealDeliveryDialog({
 }: ImportMealDeliveryDialogProps) {
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>(initial.deliveryType)
   const [time, setTime] = useState(timeInputFromSlot(initial.timeSlot, initial.deliveryTime))
-  const [location, setLocation] = useState(initial.location || defaultLocation || '')
 
   useEffect(() => {
     if (!open) return
     setDeliveryType(initial.deliveryType)
     setTime(timeInputFromSlot(initial.timeSlot, initial.deliveryTime))
-    setLocation(initial.location || defaultLocation || '')
-  }, [open, initial, defaultLocation])
+  }, [open, initial])
 
   if (!open) return null
 
@@ -58,7 +56,7 @@ export function ImportMealDeliveryDialog({
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <h3 id="import-delivery-title" className="text-base font-semibold text-gray-900">
-            Time &amp; address
+            Time &amp; delivery type
           </h3>
           <button
             type="button"
@@ -90,18 +88,6 @@ export function ImportMealDeliveryDialog({
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
             />
           </div>
-          {deliveryType === 'delivery' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder={defaultLocation || 'Delivery address'}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
-              />
-            </div>
-          )}
         </div>
         <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
           <button
@@ -118,7 +104,7 @@ export function ImportMealDeliveryDialog({
                 deliveryType,
                 timeSlot: time,
                 deliveryTime: `${time}:00`,
-                location: deliveryType === 'delivery' ? location : '',
+                location: '',
               })
               onClose()
             }}

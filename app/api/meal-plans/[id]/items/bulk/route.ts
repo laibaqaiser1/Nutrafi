@@ -16,6 +16,7 @@ import {
   resolveDishDataForItem,
   type MealPlanItemCreateInput,
 } from '@/lib/meal-plan-item-create-payload'
+import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
 import { z } from 'zod'
 
 const bulkItemSchema = z.object({
@@ -46,7 +47,14 @@ const bulkItemSchema = z.object({
   price: z.number().optional(),
   deliveryTime: z.string().optional(),
   deliveryType: z.enum(['delivery', 'pickup']).optional(),
-  location: z.string().optional(),
+  customerLocationId: z
+    .union([z.string(), z.number()])
+    .transform((v) => {
+      if (v === '' || v === null || v === undefined) return undefined
+      const n = typeof v === 'number' ? v : parseInt(String(v), 10)
+      return Number.isNaN(n) ? undefined : n
+    })
+    .optional(),
   isSkipped: z.boolean().optional(),
   customNote: z.string().optional(),
 })
@@ -183,10 +191,28 @@ export async function POST(
     const body = await request.json()
     const { items } = bulkSchema.parse(body)
 
-    const mealPlanRow = await prisma.mealPlan.findUnique({ where: { id } })
+    const mealPlanRow = await prisma.mealPlan.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        customerId: true,
+        totalMeals: true,
+        days: true,
+        mealsPerDay: true,
+        remainingMeals: true,
+        timeSlots: true,
+        startDate: true,
+      },
+    })
     if (!mealPlanRow) {
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
     }
+
+    const defaultCustomerLocationId = await resolveCustomerLocationIdForWrite(
+      prisma,
+      mealPlanRow.customerId,
+      undefined
+    )
 
     const dishIds = items
       .map((i) => i.dishId)
@@ -280,6 +306,18 @@ export async function POST(
             const deliveryTime = deliveryTimeFromSlot(timeSlot, data.deliveryTime)
             const dish = data.dishId ? dishById.get(data.dishId) ?? null : null
             const dishData = resolveDishDataForItem(data as MealPlanItemCreateInput, dish)
+            let itemLocationId = defaultCustomerLocationId
+            if (data.customerLocationId != null) {
+              try {
+                itemLocationId = await resolveCustomerLocationIdForWrite(
+                  tx,
+                  mealPlanRow.customerId,
+                  data.customerLocationId
+                )
+              } catch {
+                throw new Error('Invalid delivery location for this customer')
+              }
+            }
             const itemDate = mealPlanDateFromYmd(ymd)
             const rowPayload = {
               date: itemDate,
@@ -288,7 +326,7 @@ export async function POST(
               ...dishData,
               deliveryTime: deliveryTime ?? undefined,
               deliveryType: data.deliveryType ?? undefined,
-              deliveryLocation: data.location ?? undefined,
+              customerLocationId: itemLocationId,
               customNote:
                 data.customNote != null && String(data.customNote).trim() !== ''
                   ? String(data.customNote).trim()

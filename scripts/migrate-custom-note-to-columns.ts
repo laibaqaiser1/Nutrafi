@@ -1,7 +1,7 @@
 /**
  * Migrate existing MealPlanItem.customNote (JSON) into:
  * - deliveryType column
- * - deliveryLocation column
+ * - deliveredLocation column
  * - customNote as plain note text only
  *
  * Run: npm run db:migrate-custom-note
@@ -82,9 +82,9 @@ async function main() {
       continue
     }
     const { deliveryType, deliveryLocation, noteText } = extractDeliveryAndNote(cn)
-    const updates: { deliveryType?: string | null; deliveryLocation?: string | null; customNote?: string | null } = {}
+    const updates: { deliveryType?: string | null; deliveredLocation?: string | null; customNote?: string | null } = {}
     if (deliveryType != null) updates.deliveryType = deliveryType
-    if (deliveryLocation != null) updates.deliveryLocation = deliveryLocation
+    if (deliveryLocation != null) updates.deliveredLocation = deliveryLocation
     updates.customNote = noteText || null
     await prisma.mealPlanItem.update({
       where: { id: item.id },

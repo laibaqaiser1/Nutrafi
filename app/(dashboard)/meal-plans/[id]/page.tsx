@@ -28,6 +28,9 @@ import { useMealPlanViewImport } from '@/components/meal-plans/import-default-pl
 import { MealPlanViewImportControls } from '@/components/meal-plans/import-default-plan/MealPlanViewImportControls'
 import { ensureViewVisibilityForDates } from '@/lib/import-default-plan/ensure-view-visibility'
 import { mealPlanDateYmd } from '@/lib/meal-plan-calendar-date'
+import { pickDefaultLocationId, getMealPlanItemLocationView } from '@/lib/customer-location'
+import { locationIconEmoji } from '@/lib/customer-location-icons'
+import { MealPlanItemLocationSummary } from '@/components/meal-plans/MealPlanItemLocationSummary'
 
 interface MealPlan {
   id: string
@@ -39,6 +42,15 @@ interface MealPlan {
     deliveryArea: string
     address: string
     instructions?: string | null
+    locations?: Array<{
+      id: number
+      label: string
+      icon: string
+      address: string
+      deliveryArea: string
+      isDefault: boolean
+      isActive: boolean
+    }>
   }
   plan: {
     id: string
@@ -80,7 +92,16 @@ interface MealPlan {
     price: number | null
     deliveryTime: string | null
     deliveryType: string | null
-    deliveryLocation: string | null
+    deliveredLocation: string | null
+    deliveredAddress: string | null
+    customerLocationId: number | null
+    customerLocation?: {
+      id: number
+      label: string
+      icon: string
+      address: string
+      deliveryArea: string
+    } | null
     isSkipped: boolean
     isDelivered: boolean
     wrongDelivery?: boolean
@@ -236,7 +257,7 @@ export default function MealPlanViewPage() {
     price: '',
     deliveryType: 'delivery' as 'delivery' | 'pickup',
     deliveryTime: '',
-    location: '',
+    customerLocationId: '' as string | number,
     customNote: '',
   })
   const [savingDish, setSavingDish] = useState(false)
@@ -841,7 +862,7 @@ export default function MealPlanViewPage() {
     setActionsMenuOpen(false)
     setDishSearchQuery('')
     setShowDishDetails(false) // Hide details by default
-    // Initialize dish form: customNote is plain text; deliveryType/deliveryLocation from item or legacy JSON
+    // Initialize dish form: customNote is plain text; deliveryType/deliveredLocation from item or legacy JSON
     let deliveryTime = item.deliveryTime || ''
     if (!deliveryTime && item.timeSlot) {
       const timeMatch = item.timeSlot.match(/(\d{1,2}):(\d{2})/)
@@ -863,7 +884,10 @@ export default function MealPlanViewPage() {
       price: item.price?.toString() || '',
       deliveryType: ((item as { deliveryType?: string }).deliveryType ?? parsedLegacy?.deliveryType) || 'delivery',
       deliveryTime: deliveryTime,
-      location: (item as { deliveryLocation?: string }).deliveryLocation ?? parsedLegacy?.location ?? parsedLegacy?.deliveryLocation ?? mealPlan?.customer.deliveryArea ?? '',
+      customerLocationId:
+        (item as { customerLocationId?: number | null }).customerLocationId ??
+        pickDefaultLocationId(mealPlan?.customer.locations ?? []) ??
+        '',
       customNote: isPlainNote ? (item.customNote || '') : (parsedLegacy?.note ?? parsedLegacy?.instructions ?? ''),
     })
   }
@@ -977,7 +1001,10 @@ export default function MealPlanViewPage() {
         price: dishFormData.price ? parseFloat(dishFormData.price) : undefined,
         deliveryTime: dishFormData.deliveryTime || undefined,
         deliveryType: dishFormData.deliveryType,
-        location: dishFormData.location || undefined,
+        customerLocationId:
+          dishFormData.deliveryType === 'delivery' && dishFormData.customerLocationId
+            ? Number(dishFormData.customerLocationId)
+            : undefined,
         isSkipped: false,
         customNote: dishFormData.customNote?.trim() || undefined,
       }
@@ -1165,7 +1192,7 @@ export default function MealPlanViewPage() {
             timeSlot: timeSlot,
             deliveryType: 'delivery',
             deliveryTime: deliveryTime,
-            location: mealPlan.customer.deliveryArea || '',
+            customerLocationId: pickDefaultLocationId(mealPlan.customer.locations ?? []) ?? undefined,
             isSkipped: shouldSkipCalendarDay(firstDate, skipForNewWeek),
           }),
         })
@@ -1335,7 +1362,7 @@ export default function MealPlanViewPage() {
             timeSlot: timeSlot,
             deliveryType: 'delivery',
             deliveryTime: deliveryTime,
-            location: mealPlan.customer.deliveryArea || '',
+            customerLocationId: pickDefaultLocationId(mealPlan.customer.locations ?? []) ?? undefined,
             isSkipped: shouldSkipCalendarDay(nextDayDateStr, getSkipDaysForPlanWeek(week)),
           }),
         })
@@ -1405,7 +1432,7 @@ export default function MealPlanViewPage() {
           timeSlot: nextTimeSlot,
           deliveryType: 'delivery',
           deliveryTime: deliveryTime,
-          location: mealPlan.customer.deliveryArea || '',
+          customerLocationId: pickDefaultLocationId(mealPlan.customer.locations ?? []) ?? undefined,
           isSkipped: shouldSkipCalendarDay(date, getSkipDaysForPlanWeek(week)),
         }),
       })
@@ -1484,7 +1511,7 @@ export default function MealPlanViewPage() {
         const parsedLegacy = parseCustomNote(item.customNote)
         const isPlainNote = typeof item.customNote === 'string' && !item.customNote.trim().startsWith('{')
         const noteText = isPlainNote ? (item.customNote || '') : (parsedLegacy?.note ?? parsedLegacy?.instructions ?? '')
-        const itemAny = item as { deliveryType?: string; deliveryLocation?: string }
+        const itemAny = item as { deliveryType?: string; deliveredLocation?: string }
         return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1504,7 +1531,10 @@ export default function MealPlanViewPage() {
             price: item.price || undefined,
             deliveryTime: item.deliveryTime || undefined,
             deliveryType: itemAny.deliveryType ?? parsedLegacy?.deliveryType ?? 'delivery',
-            location: itemAny.deliveryLocation ?? parsedLegacy?.location ?? parsedLegacy?.deliveryLocation ?? mealPlan.customer.deliveryArea ?? '',
+            customerLocationId:
+              (item as { customerLocationId?: number | null }).customerLocationId ??
+              pickDefaultLocationId(mealPlan.customer.locations ?? []) ??
+              undefined,
             isSkipped:
               item.isSkipped ||
               shouldSkipCalendarDay(targetDateStr, getSkipDaysForPlanWeek(nextWeek)),
@@ -2070,7 +2100,6 @@ export default function MealPlanViewPage() {
                         <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dish</th>
                         <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calories</th>
                         <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-2 py-2 lg:px-6 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -2153,7 +2182,6 @@ export default function MealPlanViewPage() {
                                       </span>
                                     )}
                                   </td>
-                                  <td></td>
                                 </tr>
                               )) : (
                                 // Empty day row
@@ -2166,7 +2194,7 @@ export default function MealPlanViewPage() {
                                       </div>
                                     </div>
                                   </td>
-                                  <td colSpan={5} className="px-2 py-2 lg:px-6 lg:py-4 text-sm text-gray-500">
+                                  <td colSpan={4} className="px-2 py-2 lg:px-6 lg:py-4 text-sm text-gray-500">
                                     No meals for this day
                                   </td>
                                 </tr>
@@ -2186,7 +2214,6 @@ export default function MealPlanViewPage() {
                                   <td className="px-2 py-2 lg:px-6 lg:py-4 text-sm text-gray-600 text-left">
                                     P: {dayTotal.protein.toFixed(1)}g | C: {dayTotal.carbs.toFixed(1)}g | F: {dayTotal.fats.toFixed(1)}g
                                   </td>
-                                  <td></td>
                                 </tr>
                               )}
                               {/* Add Next Day Button - show below the daily total if we can still add days */}
@@ -2230,7 +2257,7 @@ export default function MealPlanViewPage() {
 
                                 return show ? (
                                   <tr>
-                                    <td colSpan={6} className="px-2 py-2 lg:px-6 lg:py-4 text-center">
+                                    <td colSpan={5} className="px-2 py-2 lg:px-6 lg:py-4 text-center">
                                       <button
                                         onClick={() => addDayToWeek(week)}
                                         disabled={addingDay}
@@ -2251,7 +2278,7 @@ export default function MealPlanViewPage() {
                           )
                         }) : (
                           <tr>
-                            <td colSpan={6} className="px-6 py-8 text-center">
+                            <td colSpan={5} className="px-6 py-8 text-center">
                               <div className="flex flex-col items-center gap-3 lg:p-5">
                                 <p className="text-sm text-gray-500 mb-2">
                                   No days added to this week yet.
@@ -2315,7 +2342,7 @@ export default function MealPlanViewPage() {
                       })()}
                       {/* Week Total Row */}
                       <tr className="bg-nutrafi-primary font-semibold border-t-2 border-nutrafi-primary/50">
-                        <td colSpan={6} className="px-2 py-2 lg:px-4 lg:py-3 text-left">
+                        <td colSpan={5} className="px-2 py-2 lg:px-4 lg:py-3 text-left">
                           <div className="flex items-center gap-2 text-white">
                             <span className="text-sm">Week {week} Total:</span>
                             <span className="text-sm font-bold">
@@ -2533,7 +2560,7 @@ export default function MealPlanViewPage() {
 
               {/* Instructions / Notes */}
               {(() => {
-                const itemAny = selectedItem as { deliveryType?: string; deliveryLocation?: string }
+                const itemAny = selectedItem as { deliveryType?: string; deliveredLocation?: string }
                 const parsed = parseCustomNote(selectedItem.customNote)
                 const noteText = (selectedItem.customNote && !selectedItem.customNote.trim().startsWith('{'))
                   ? selectedItem.customNote
@@ -2551,34 +2578,43 @@ export default function MealPlanViewPage() {
 
               {/* Delivery Information */}
               {(() => {
-                const itemAny = selectedItem as { deliveryType?: string; deliveryLocation?: string }
-                const deliveryType = itemAny.deliveryType
-                const deliveryLocation = itemAny.deliveryLocation
-                const parsed = parseCustomNote(selectedItem.customNote)
-                const loc = deliveryLocation ?? parsed?.deliveryLocation ?? parsed?.location
-                const type = deliveryType ?? parsed?.deliveryType
-                if (loc || type) {
-                  return (
-                    <div className="border-t border-gray-200 pt-4">
-                      <h4 className="text-md font-semibold text-gray-900 mb-3 lg:mb-6">Delivery Information</h4>
-                      <div className="grid grid-cols-2 gap-2 lg:p-4">
-                        {type && (
-                          <div>
-                            <label className="text-xs font-medium text-gray-500">Delivery Type</label>
-                            <p className="text-sm text-gray-900 capitalize">{type}</p>
-                          </div>
-                        )}
-                        {loc && (
-                          <div>
-                            <label className="text-xs font-medium text-gray-500">Location</label>
-                            <p className="text-sm text-gray-900">{loc}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
+                const itemAny = selectedItem as {
+                  deliveryType?: string | null
+                  deliveredLocation?: string | null
+                  deliveredAddress?: string | null
+                  customerLocationId?: number | null
+                  isDelivered?: boolean
                 }
-                return null
+                const parsed = parseCustomNote(selectedItem.customNote)
+                const type = itemAny.deliveryType ?? parsed?.deliveryType
+                const locationView = getMealPlanItemLocationView(
+                  itemAny,
+                  mealPlan.customer,
+                  mealPlan.customer.locations ?? []
+                )
+                if (!type && !locationView) return null
+                return (
+                  <div className="border-t border-gray-200 pt-4">
+                    <h4 className="text-md font-semibold text-gray-900 mb-3 lg:mb-6">Delivery Information</h4>
+                    <div className="grid grid-cols-2 gap-2 lg:p-4">
+                      {type && (
+                        <div>
+                          <label className="text-xs font-medium text-gray-500">Delivery Type</label>
+                          <p className="text-sm text-gray-900 capitalize">{type}</p>
+                        </div>
+                      )}
+                      {locationView && (
+                        <div className="col-span-2">
+                          <MealPlanItemLocationSummary
+                            item={itemAny}
+                            customer={mealPlan.customer}
+                            locations={mealPlan.customer.locations ?? []}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
               })()}
             </div>
 
@@ -2686,14 +2722,24 @@ export default function MealPlanViewPage() {
                     
                     {dishFormData.deliveryType === 'delivery' && (
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Delivery Address</label>
-                        <input
-                          type="text"
-                          value={dishFormData.location}
-                          onChange={(e) => setDishFormData({ ...dishFormData, location: e.target.value })}
-                          placeholder={mealPlan?.customer.deliveryArea || 'Delivery Address'}
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Delivery location</label>
+                        <select
+                          value={String(dishFormData.customerLocationId || '')}
+                          onChange={(e) =>
+                            setDishFormData({
+                              ...dishFormData,
+                              customerLocationId: e.target.value ? Number(e.target.value) : '',
+                            })
+                          }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-nutrafi-primary focus:border-nutrafi-primary"
-                        />
+                        >
+                          <option value="">Default location</option>
+                          {(mealPlan?.customer.locations ?? []).map((loc) => (
+                            <option key={loc.id} value={String(loc.id)}>
+                              {locationIconEmoji(loc.icon, loc.label)} {loc.label} — {loc.deliveryArea}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     )}
                   </div>

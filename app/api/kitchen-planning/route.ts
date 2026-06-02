@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { prisma, withRetry } from '@/lib/prisma'
+import { resolveItemDeliveryArea, resolveItemDeliveryAddress } from '@/lib/customer-location'
 
 // GET - Get kitchen planning data filtered by date and time range
 export async function GET(request: NextRequest) {
@@ -45,6 +46,9 @@ export async function GET(request: NextRequest) {
       prisma.mealPlanItem.findMany({
         where,
         include: {
+          customerLocation: {
+            select: { id: true, label: true, icon: true, address: true, deliveryArea: true },
+          },
           mealPlan: {
             include: {
               customer: true,
@@ -162,8 +166,9 @@ export async function GET(request: NextRequest) {
 
       dishAggregation[dishName].totalPortions++
       dishAggregation[dishName].customers.add(item.mealPlan.customer.fullName)
-      if (item.mealPlan.customer.deliveryArea) {
-        dishAggregation[dishName].deliveryAreas.add(item.mealPlan.customer.deliveryArea)
+      const area = resolveItemDeliveryArea(item, item.mealPlan.customer)
+      if (area) {
+        dishAggregation[dishName].deliveryAreas.add(area)
       }
     })
 
