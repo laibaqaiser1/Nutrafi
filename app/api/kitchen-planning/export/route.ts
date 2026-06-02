@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { getKitchenUnscheduledRows } from '@/lib/kitchen-unscheduled-rows'
+import { kitchenInstructionsExportText } from '@/lib/kitchen-planning-instructions'
 import { prisma, withRetry } from '@/lib/prisma'
 import ExcelJS from 'exceljs'
 import path from 'path'
@@ -215,18 +216,43 @@ export async function GET(request: NextRequest) {
       return a.customerName.localeCompare(b.customerName)
     })
 
-    // Parse custom note for instructions
-    const parseInstructions = (customNote: string | null): string => {
-      if (!customNote) return ''
-      try {
-        const parsed = JSON.parse(customNote)
-        return parsed.instructions || ''
-      } catch (e) {
-        return customNote // Return as-is if not JSON
+    // Chef sheet column 5 = Instructions: dark text (row fill stays yellow/white/red from exportHighlight).
+    const CHEF_INSTRUCTIONS_COL = 5
+    const FONT_INSTRUCTIONS_DARK_ARGB = 'FF111827'
+    const applyChefInstructionsDarkFont = (row: ExcelJS.Row) => {
+      const cell = row.getCell(CHEF_INSTRUCTIONS_COL)
+      const prevFont = cell.style?.font
+      const fontBase =
+        prevFont && typeof prevFont === 'object' ? { ...(prevFont as object) } : {}
+      cell.style = {
+        ...cell.style,
+        font: { ...fontBase, color: { argb: FONT_INSTRUCTIONS_DARK_ARGB } },
       }
     }
 
-    // Dish names in one cell, each on its own line (so cell doesn't overflow column)
+    // Merge normal + skipped-day rows and sort by time then customer name
+    // Item shape for chef row math (skipped-day items don't have dish)
+    type ItemWithOptionalDish = {
+      customNote: string | null
+      ingredients: string | null
+      allergens: string | null
+      calories: number | null
+      protein: number | null
+      carbs: number | null
+      fats: number | null
+      mealPlan: {
+        notes: string | null
+        customer: { instructions: string | null }
+      }
+      dish?: {
+        ingredients?: string | null
+        allergens?: string | null
+        calories?: number
+        protein?: number
+        carbs?: number
+        fats?: number
+      } | null
+    }
     const dishNamesForCell = (commaSeparated: string): string =>
       commaSeparated.split(',').map(s => s.trim()).filter(Boolean).join('\n')
 
@@ -293,23 +319,7 @@ export async function GET(request: NextRequest) {
       setRowFill(row, lastCol, solidFill(FILL_SKIPPED_DAY_ARGB))
     }
 
-    // Chef sheet column 5 = Instructions: red font only (row fill stays yellow/white/red from exportHighlight).
-    const CHEF_INSTRUCTIONS_COL = 5
-    const FONT_INSTRUCTIONS_RED_ARGB = 'FFFF0000'
-    const applyChefInstructionsRedFont = (row: ExcelJS.Row) => {
-      const cell = row.getCell(CHEF_INSTRUCTIONS_COL)
-      const prevFont = cell.style?.font
-      const fontBase =
-        prevFont && typeof prevFont === 'object' ? { ...(prevFont as object) } : {}
-      cell.style = {
-        ...cell.style,
-        font: { ...fontBase, color: { argb: FONT_INSTRUCTIONS_RED_ARGB } },
-      }
-    }
-
-    // Merge normal + skipped-day rows and sort by time then customer name
-    // Item shape for chef row math (skipped-day items don't have dish)
-    type ItemWithOptionalDish = { customNote: string | null; ingredients: string | null; allergens: string | null; calories: number | null; protein: number | null; carbs: number | null; fats: number | null; dish?: { ingredients?: string | null; allergens?: string | null; calories?: number; protein?: number; carbs?: number; fats?: number } | null }
+    // Dish names in one cell, each on its own line (so cell doesn't overflow column)
     const allRows: ExportRow[] = [...aggregated, ...skippedDayRows]
     allRows.sort((a, b) => {
       const t = a.timeSlot.localeCompare(b.timeSlot)
@@ -416,7 +426,7 @@ export async function GET(request: NextRequest) {
           const chefLastCol = 8
           allRows.forEach((rowData, index) => {
             const groupItems = rowData.items as ItemWithOptionalDish[]
-            const instructions = groupItems.map(i => parseInstructions(i.customNote)).filter(Boolean).join('; ')
+            const instructions = kitchenInstructionsExportText(groupItems)
             const dishText =
               rowData.exportHighlight === 'skipped_day'
                 ? 'No meal for today'
@@ -435,7 +445,7 @@ export async function GET(request: NextRequest) {
             if (rowData.exportHighlight === 'paused') applyPausedRowStyle(row, chefLastCol)
             else if (rowData.exportHighlight === 'skipped_day') applySkippedDayRowStyle(row, chefLastCol)
             else applyNormalDataRowFill(row, chefLastCol)
-            applyChefInstructionsRedFont(row)
+            applyChefInstructionsDarkFont(row)
           })
         }
       } else {
@@ -457,7 +467,7 @@ export async function GET(request: NextRequest) {
         const chefLastCol = 8
         allRows.forEach((rowData, index) => {
           const groupItems = rowData.items as ItemWithOptionalDish[]
-          const instructions = groupItems.map(i => parseInstructions(i.customNote)).filter(Boolean).join('; ')
+          const instructions = kitchenInstructionsExportText(groupItems)
           const dishText =
             rowData.exportHighlight === 'skipped_day'
               ? 'No meal for today'
@@ -476,7 +486,7 @@ export async function GET(request: NextRequest) {
           if (rowData.exportHighlight === 'paused') applyPausedRowStyle(row, chefLastCol)
           else if (rowData.exportHighlight === 'skipped_day') applySkippedDayRowStyle(row, chefLastCol)
           else applyNormalDataRowFill(row, chefLastCol)
-          applyChefInstructionsRedFont(row)
+          applyChefInstructionsDarkFont(row)
         })
       }
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { useNotification } from '@/components/notifications/NotificationContext'
 import { groupKitchenItemsByCustomerSlot, type KitchenGroupedCustomerRow } from '@/lib/kitchen-planning-group-rows'
+import { kitchenInstructionLinesForItems } from '@/lib/kitchen-planning-instructions'
 
 const BATCH_DELIVER_PAGE_SIZE = 12
 
@@ -27,11 +28,13 @@ interface MealPlanItem {
   mealPlan: {
     id: string
     status?: string
+    notes: string | null
     customer: {
       id: string
       fullName: string
       phone: string | null
       deliveryArea: string | null
+      instructions: string | null
     }
   }
   dish: {
@@ -54,6 +57,29 @@ function isKitchenMealPlanPaused(mealPlan: MealPlanItem['mealPlan']): boolean {
 function kitchenDishLabel(item: MealPlanItem): string {
   if (isKitchenMealPlanPaused(item.mealPlan)) return KITCHEN_DISH_CUSTOMER_UNAVAILABLE
   return item.dishName || item.dish?.name || 'Not Assigned'
+}
+
+function KitchenInstructionsLines({
+  lines,
+  mutedWhenEmpty = true,
+}: {
+  lines: string[]
+  mutedWhenEmpty?: boolean
+}) {
+  if (lines.length === 0) {
+    return mutedWhenEmpty ? (
+      <span className="text-sm text-gray-400">—</span>
+    ) : null
+  }
+  return (
+    <div className="space-y-1">
+      {lines.map((line, index) => (
+        <p key={index} className="text-xs text-gray-900 leading-snug whitespace-pre-wrap">
+          {line}
+        </p>
+      ))}
+    </div>
+  )
 }
 
 interface AggregatedDish {
@@ -260,18 +286,6 @@ export default function KitchenPlanningPage() {
       }
     } catch (error) {
       console.error('Error exporting kitchen planning data:', error)
-    }
-  }
-
-  const getInstructions = (customNote: string | null): string => {
-    if (!customNote || !customNote.trim()) return ''
-    const raw = customNote.trim()
-    if (!raw.startsWith('{')) return raw
-    try {
-      const parsed = JSON.parse(customNote) as Record<string, string>
-      return parsed.note ?? parsed.instructions ?? ''
-    } catch {
-      return ''
     }
   }
 
@@ -776,22 +790,33 @@ export default function KitchenPlanningPage() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="w-full table-fixed divide-y divide-gray-200">
+              <colgroup>
+                <col />
+                <col />
+                <col className="w-[320px]" />
+                <col className="w-[170px]" />
+                <col />
+                <col />
+              </colgroup>
               <thead className="bg-nutrafi-primary">
                 <tr>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Time
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Dish
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    Instructions
+                  </th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Delivery Area
                   </th>
-                  <th className="px-2 lg:px-6 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
@@ -802,6 +827,9 @@ export default function KitchenPlanningPage() {
                     const group = row.data
                     const isPaused = group.isPaused
                     const wrongDel = group.status === 'wrong_delivery'
+                    const instructionLines = !isPaused
+                      ? kitchenInstructionLinesForItems(group.items)
+                      : []
 
                     return (
                       <tr
@@ -815,7 +843,7 @@ export default function KitchenPlanningPage() {
                         }
                         onClick={() => setSelectedMeals(group.items)}
                       >
-                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-2 lg:px-4 py-2 lg:py-3 align-top whitespace-nowrap text-sm text-gray-900">
                           <div className="font-medium">{formatTime12h(group.timeSlot) || group.timeSlot}</div>
                           {group.deliveryTime && (
                             <div className="text-xs text-gray-500">
@@ -823,8 +851,8 @@ export default function KitchenPlanningPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                        <td className="px-2 lg:px-4 py-2 lg:py-3 align-top">
+                          <div className="text-sm font-medium text-gray-900 break-words">
                             {group.customer.fullName}
                           </div>
                           {group.customer.phone && (
@@ -833,28 +861,25 @@ export default function KitchenPlanningPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-2 lg:px-6 py-2 lg:py-4">
-                          <div className="space-y-1">
-                            {group.items.map((item) => {
-                              const label = kitchenDishLabel(item)
-                              const instructions = getInstructions(item.customNote)
-                              return (
-                                <div key={item.id}>
-                                  <div className="text-sm font-medium text-gray-900">{label}</div>
-                                  {instructions && !isPaused && (
-                                    <div className="text-xs text-gray-500 mt-0.5">
-                                      <span className="font-medium">Note:</span> {instructions}
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            })}
+                        <td className="px-2 lg:px-4 py-2 lg:py-3 align-top">
+                          <div className="space-y-1.5">
+                            {group.items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="text-sm font-medium text-gray-900 leading-snug break-words"
+                              >
+                                {kitchenDishLabel(item)}
+                              </div>
+                            ))}
                           </div>
                         </td>
-                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-2 lg:px-4 py-2 lg:py-3 align-top">
+                          <KitchenInstructionsLines lines={instructionLines} />
+                        </td>
+                        <td className="px-2 lg:px-4 py-2 lg:py-3 align-top text-sm text-gray-500 break-words leading-snug">
                           {group.customer.deliveryArea || '-'}
                         </td>
-                        <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
+                        <td className="px-2 lg:px-4 py-2 lg:py-3 align-top whitespace-nowrap">
                           {group.status === 'delivered' ? (
                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                               Delivered
@@ -901,7 +926,10 @@ export default function KitchenPlanningPage() {
                       <td className="px-2 lg:px-6 py-2 lg:py-4">
                         <span className="text-sm font-medium text-yellow-900">No meal for today</span>
                       </td>
-                      <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-2 lg:px-6 py-2 lg:py-4">
+                        <span className="text-sm text-gray-400">—</span>
+                      </td>
+                      <td className="px-2 lg:px-6 py-2 lg:py-4 text-sm text-gray-600 break-words leading-snug">
                         {sk.deliveryArea || '—'}
                       </td>
                       <td className="px-2 lg:px-6 py-2 lg:py-4 whitespace-nowrap">
@@ -1053,6 +1081,9 @@ export default function KitchenPlanningPage() {
       {selectedMeals && selectedMeals.length > 0 && (() => {
         const primaryMeal = selectedMeals[0]!
         const mealPlanPaused = isKitchenMealPlanPaused(primaryMeal.mealPlan)
+        const modalInstructionLines = mealPlanPaused
+          ? []
+          : kitchenInstructionLinesForItems(selectedMeals)
 
         return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2">
@@ -1107,6 +1138,13 @@ export default function KitchenPlanningPage() {
                     </div>
                   )}
                 </div>
+
+                {modalInstructionLines.length > 0 && (
+                  <div className="border-b border-gray-300 pb-2">
+                    <h3 className="text-xs font-medium text-gray-500 mb-1">Instructions</h3>
+                    <KitchenInstructionsLines lines={modalInstructionLines} mutedWhenEmpty={false} />
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   {selectedMeals.map((item, index) => {
@@ -1169,12 +1207,6 @@ export default function KitchenPlanningPage() {
                               </div>
                             </div>
 
-                            {getInstructions(item.customNote) && (
-                              <div>
-                                <h4 className="text-xs font-medium text-gray-500 mb-1">Special Instructions</h4>
-                                <p className="text-sm text-gray-700">{getInstructions(item.customNote)}</p>
-                              </div>
-                            )}
                           </>
                         )}
 
