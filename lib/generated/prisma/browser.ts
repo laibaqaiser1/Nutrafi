@@ -78,3 +78,13 @@ export type MealPlanItem = Prisma.MealPlanItemModel
  * 
  */
 export type Payment = Prisma.PaymentModel
+/**
+ * Model WhatsAppConversation
+ * 
+ */
+export type WhatsAppConversation = Prisma.WhatsAppConversationModel
+/**
+ * Model WhatsAppMessage
+ * 
+ */
+export type WhatsAppMessage = Prisma.WhatsAppMessageModel

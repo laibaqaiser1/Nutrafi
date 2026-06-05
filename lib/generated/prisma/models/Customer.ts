@@ -267,6 +267,7 @@ export type CustomerWhereInput = {
   mealPlans?: Prisma.MealPlanListRelationFilter
   payments?: Prisma.PaymentListRelationFilter
   locations?: Prisma.CustomerLocationListRelationFilter
+  whatsappConversations?: Prisma.WhatsAppConversationListRelationFilter
 }
 
 export type CustomerOrderByWithRelationInput = {
@@ -284,6 +285,7 @@ export type CustomerOrderByWithRelationInput = {
   mealPlans?: Prisma.MealPlanOrderByRelationAggregateInput
   payments?: Prisma.PaymentOrderByRelationAggregateInput
   locations?: Prisma.CustomerLocationOrderByRelationAggregateInput
+  whatsappConversations?: Prisma.WhatsAppConversationOrderByRelationAggregateInput
 }
 
 export type CustomerWhereUniqueInput = Prisma.AtLeast<{
@@ -304,6 +306,7 @@ export type CustomerWhereUniqueInput = Prisma.AtLeast<{
   mealPlans?: Prisma.MealPlanListRelationFilter
   payments?: Prisma.PaymentListRelationFilter
   locations?: Prisma.CustomerLocationListRelationFilter
+  whatsappConversations?: Prisma.WhatsAppConversationListRelationFilter
 }, "id">
 
 export type CustomerOrderByWithAggregationInput = {
@@ -356,6 +359,7 @@ export type CustomerCreateInput = {
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateInput = {
@@ -373,6 +377,7 @@ export type CustomerUncheckedCreateInput = {
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUpdateInput = {
@@ -389,6 +394,7 @@ export type CustomerUpdateInput = {
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateInput = {
@@ -406,6 +412,7 @@ export type CustomerUncheckedUpdateInput = {
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateManyInput = {
@@ -504,6 +511,11 @@ export type CustomerScalarRelationFilter = {
   isNot?: Prisma.CustomerWhereInput
 }
 
+export type CustomerNullableScalarRelationFilter = {
+  is?: Prisma.CustomerWhereInput | null
+  isNot?: Prisma.CustomerWhereInput | null
+}
+
 export type EnumCustomerStatusFieldUpdateOperationsInput = {
   set?: $Enums.CustomerStatus
 }
@@ -550,6 +562,22 @@ export type CustomerUpdateOneRequiredWithoutPaymentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutPaymentsInput, Prisma.CustomerUpdateWithoutPaymentsInput>, Prisma.CustomerUncheckedUpdateWithoutPaymentsInput>
 }
 
+export type CustomerCreateNestedOneWithoutWhatsappConversationsInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappConversationsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappConversationsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutWhatsappConversationsInput
+  connect?: Prisma.CustomerWhereUniqueInput
+}
+
+export type CustomerUpdateOneWithoutWhatsappConversationsNestedInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappConversationsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappConversationsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutWhatsappConversationsInput
+  upsert?: Prisma.CustomerUpsertWithoutWhatsappConversationsInput
+  disconnect?: Prisma.CustomerWhereInput | boolean
+  delete?: Prisma.CustomerWhereInput | boolean
+  connect?: Prisma.CustomerWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutWhatsappConversationsInput, Prisma.CustomerUpdateWithoutWhatsappConversationsInput>, Prisma.CustomerUncheckedUpdateWithoutWhatsappConversationsInput>
+}
+
 export type CustomerCreateWithoutLocationsInput = {
   fullName: string
   phone: string
@@ -563,6 +591,7 @@ export type CustomerCreateWithoutLocationsInput = {
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutLocationsInput = {
@@ -579,6 +608,7 @@ export type CustomerUncheckedCreateWithoutLocationsInput = {
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutLocationsInput = {
@@ -610,6 +640,7 @@ export type CustomerUpdateWithoutLocationsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutLocationsInput = {
@@ -626,6 +657,7 @@ export type CustomerUncheckedUpdateWithoutLocationsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateWithoutMealPlansInput = {
@@ -641,6 +673,7 @@ export type CustomerCreateWithoutMealPlansInput = {
   updatedAt?: Date | string
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutMealPlansInput = {
@@ -657,6 +690,7 @@ export type CustomerUncheckedCreateWithoutMealPlansInput = {
   updatedAt?: Date | string
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutMealPlansInput = {
@@ -688,6 +722,7 @@ export type CustomerUpdateWithoutMealPlansInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutMealPlansInput = {
@@ -704,6 +739,7 @@ export type CustomerUncheckedUpdateWithoutMealPlansInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateWithoutPaymentsInput = {
@@ -719,6 +755,7 @@ export type CustomerCreateWithoutPaymentsInput = {
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutPaymentsInput = {
@@ -735,6 +772,7 @@ export type CustomerUncheckedCreateWithoutPaymentsInput = {
   updatedAt?: Date | string
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutPaymentsInput = {
@@ -766,6 +804,7 @@ export type CustomerUpdateWithoutPaymentsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutPaymentsInput = {
@@ -782,6 +821,89 @@ export type CustomerUncheckedUpdateWithoutPaymentsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerCreateWithoutWhatsappConversationsInput = {
+  fullName: string
+  phone: string
+  email?: string | null
+  address: string
+  deliveryArea: string
+  status?: $Enums.CustomerStatus
+  notes?: string | null
+  instructions?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerUncheckedCreateWithoutWhatsappConversationsInput = {
+  id?: number
+  fullName: string
+  phone: string
+  email?: string | null
+  address: string
+  deliveryArea: string
+  status?: $Enums.CustomerStatus
+  notes?: string | null
+  instructions?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerCreateOrConnectWithoutWhatsappConversationsInput = {
+  where: Prisma.CustomerWhereUniqueInput
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappConversationsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappConversationsInput>
+}
+
+export type CustomerUpsertWithoutWhatsappConversationsInput = {
+  update: Prisma.XOR<Prisma.CustomerUpdateWithoutWhatsappConversationsInput, Prisma.CustomerUncheckedUpdateWithoutWhatsappConversationsInput>
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappConversationsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappConversationsInput>
+  where?: Prisma.CustomerWhereInput
+}
+
+export type CustomerUpdateToOneWithWhereWithoutWhatsappConversationsInput = {
+  where?: Prisma.CustomerWhereInput
+  data: Prisma.XOR<Prisma.CustomerUpdateWithoutWhatsappConversationsInput, Prisma.CustomerUncheckedUpdateWithoutWhatsappConversationsInput>
+}
+
+export type CustomerUpdateWithoutWhatsappConversationsInput = {
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerUncheckedUpdateWithoutWhatsappConversationsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 
@@ -793,12 +915,14 @@ export type CustomerCountOutputType = {
   mealPlans: number
   payments: number
   locations: number
+  whatsappConversations: number
 }
 
 export type CustomerCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   mealPlans?: boolean | CustomerCountOutputTypeCountMealPlansArgs
   payments?: boolean | CustomerCountOutputTypeCountPaymentsArgs
   locations?: boolean | CustomerCountOutputTypeCountLocationsArgs
+  whatsappConversations?: boolean | CustomerCountOutputTypeCountWhatsappConversationsArgs
 }
 
 /**
@@ -832,6 +956,13 @@ export type CustomerCountOutputTypeCountLocationsArgs<ExtArgs extends runtime.Ty
   where?: Prisma.CustomerLocationWhereInput
 }
 
+/**
+ * CustomerCountOutputType without action
+ */
+export type CustomerCountOutputTypeCountWhatsappConversationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WhatsAppConversationWhereInput
+}
+
 
 export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -848,6 +979,7 @@ export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   mealPlans?: boolean | Prisma.Customer$mealPlansArgs<ExtArgs>
   payments?: boolean | Prisma.Customer$paymentsArgs<ExtArgs>
   locations?: boolean | Prisma.Customer$locationsArgs<ExtArgs>
+  whatsappConversations?: boolean | Prisma.Customer$whatsappConversationsArgs<ExtArgs>
   _count?: boolean | Prisma.CustomerCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["customer"]>
 
@@ -898,6 +1030,7 @@ export type CustomerInclude<ExtArgs extends runtime.Types.Extensions.InternalArg
   mealPlans?: boolean | Prisma.Customer$mealPlansArgs<ExtArgs>
   payments?: boolean | Prisma.Customer$paymentsArgs<ExtArgs>
   locations?: boolean | Prisma.Customer$locationsArgs<ExtArgs>
+  whatsappConversations?: boolean | Prisma.Customer$whatsappConversationsArgs<ExtArgs>
   _count?: boolean | Prisma.CustomerCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type CustomerIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -909,6 +1042,7 @@ export type $CustomerPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     mealPlans: Prisma.$MealPlanPayload<ExtArgs>[]
     payments: Prisma.$PaymentPayload<ExtArgs>[]
     locations: Prisma.$CustomerLocationPayload<ExtArgs>[]
+    whatsappConversations: Prisma.$WhatsAppConversationPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -1322,6 +1456,7 @@ export interface Prisma__CustomerClient<T, Null = never, ExtArgs extends runtime
   mealPlans<T extends Prisma.Customer$mealPlansArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$mealPlansArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MealPlanPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   payments<T extends Prisma.Customer$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   locations<T extends Prisma.Customer$locationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$locationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CustomerLocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  whatsappConversations<T extends Prisma.Customer$whatsappConversationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$whatsappConversationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WhatsAppConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1819,6 +1954,30 @@ export type Customer$locationsArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   distinct?: Prisma.CustomerLocationScalarFieldEnum | Prisma.CustomerLocationScalarFieldEnum[]
+}
+
+/**
+ * Customer.whatsappConversations
+ */
+export type Customer$whatsappConversationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WhatsAppConversation
+   */
+  select?: Prisma.WhatsAppConversationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WhatsAppConversation
+   */
+  omit?: Prisma.WhatsAppConversationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WhatsAppConversationInclude<ExtArgs> | null
+  where?: Prisma.WhatsAppConversationWhereInput
+  orderBy?: Prisma.WhatsAppConversationOrderByWithRelationInput | Prisma.WhatsAppConversationOrderByWithRelationInput[]
+  cursor?: Prisma.WhatsAppConversationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WhatsAppConversationScalarFieldEnum | Prisma.WhatsAppConversationScalarFieldEnum[]
 }
 
 /**

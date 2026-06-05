@@ -5,6 +5,7 @@ export const NAV_MODULE_DEFINITIONS = [
   { key: 'dashboard', name: 'Dashboard', href: '/dashboard', permissionKey: PK.moduleDashboard },
   { key: 'menu', name: 'Menu', href: '/menu', permissionKey: PK.moduleMenu },
   { key: 'customers', name: 'Customers', href: '/customers', permissionKey: PK.moduleCustomers },
+  { key: 'whatsapp', name: 'WhatsApp', href: '/whatsapp', permissionKey: PK.moduleCustomers },
   { key: 'meal-plans', name: 'Meal Plans', href: '/meal-plans', permissionKey: PK.moduleMealPlans },
   {
     key: 'kitchen-planning',

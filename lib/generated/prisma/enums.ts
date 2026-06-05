@@ -9,6 +9,25 @@
 * 🟢 You can import this file directly.
 */
 
+export const WhatsAppMessageDirection = {
+  INBOUND: 'INBOUND',
+  OUTBOUND: 'OUTBOUND'
+} as const
+
+export type WhatsAppMessageDirection = (typeof WhatsAppMessageDirection)[keyof typeof WhatsAppMessageDirection]
+
+
+export const WhatsAppMessageStatus = {
+  RECEIVED: 'RECEIVED',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  READ: 'READ',
+  FAILED: 'FAILED'
+} as const
+
+export type WhatsAppMessageStatus = (typeof WhatsAppMessageStatus)[keyof typeof WhatsAppMessageStatus]
+
+
 export const UserRole = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
