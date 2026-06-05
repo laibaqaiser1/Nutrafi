@@ -60,7 +60,9 @@ export const ModelName = {
   Plan: 'Plan',
   MealPlan: 'MealPlan',
   MealPlanItem: 'MealPlanItem',
-  Payment: 'Payment'
+  Payment: 'Payment',
+  WhatsAppConversation: 'WhatsAppConversation',
+  WhatsAppMessage: 'WhatsAppMessage'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -296,6 +298,37 @@ export const PaymentScalarFieldEnum = {
 } as const
 
 export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
+
+
+export const WhatsAppConversationScalarFieldEnum = {
+  id: 'id',
+  phoneE164: 'phoneE164',
+  customerId: 'customerId',
+  contactName: 'contactName',
+  lastMessageAt: 'lastMessageAt',
+  lastMessagePreview: 'lastMessagePreview',
+  unreadCount: 'unreadCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type WhatsAppConversationScalarFieldEnum = (typeof WhatsAppConversationScalarFieldEnum)[keyof typeof WhatsAppConversationScalarFieldEnum]
+
+
+export const WhatsAppMessageScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  externalId: 'externalId',
+  direction: 'direction',
+  messageType: 'messageType',
+  body: 'body',
+  status: 'status',
+  timestamp: 'timestamp',
+  rawPayload: 'rawPayload',
+  createdAt: 'createdAt'
+} as const
+
+export type WhatsAppMessageScalarFieldEnum = (typeof WhatsAppMessageScalarFieldEnum)[keyof typeof WhatsAppMessageScalarFieldEnum]
 
 
 export const SortOrder = {
