@@ -141,6 +141,24 @@ function countUniqueActiveDays(
   return days.size
 }
 
+/** Whether the plan can add another week (first day only). No day-count limit — meals / remaining balance only. */
+function canAddAnotherWeekOnPlan(plan: {
+  mealPlanItems: { isSkipped: boolean; wrongDelivery?: boolean }[]
+  totalMeals: number | null
+  days: number
+  mealsPerDay: number
+  remainingMeals: number | null
+}): boolean {
+  const activeMealSlots = countActiveMealSlots(plan.mealPlanItems)
+  const totalMealsAllowed = plan.totalMeals ?? plan.days * plan.mealsPerDay
+  const capOk = activeMealSlots + plan.mealsPerDay <= totalMealsAllowed
+  const remainingOk =
+    plan.remainingMeals != null &&
+    plan.remainingMeals > 0 &&
+    activeMealSlots < totalMealsAllowed
+  return capOk || remainingOk
+}
+
 /** Effective skip weekdays: explicit per-week draft, else plan default (`weeklySkipDays`). */
 function getSkipDaysForWeekFromDraft(
   planWeek: number,
@@ -1137,34 +1155,22 @@ export default function MealPlanViewPage() {
     
     setAddingWeek(true)
     try {
-      // Check total days across all weeks - limit to plan days
-      const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
-      const maxDays = mealPlan.days || 22
-      
-      if (totalDays >= maxDays) {
-        toast.warning(`Cannot add another week. The meal plan is limited to ${maxDays} active days.`)
-        setAddingWeek(false)
-        return
-      }
-      
-      const nextWeek = Math.max(...visibleWeeks, 0) + 1
-      const skipForNewWeek = getSkipDaysForWeekFromDraft(
-        nextWeek,
-        weeklySkipByWeekDraft,
-        normalizeWeeklySkipDays(mealPlan.weeklySkipDays)
-      )
+      const totalMealsAllowed = mealPlan.totalMeals || mealPlan.days * mealPlan.mealsPerDay
 
-      const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
-      const mealsPerDay = mealPlan.mealsPerDay
-      const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-
-      if (activeMealSlots + mealsPerDay > totalMealsAllowed) {
+      if (!canAddAnotherWeekOnPlan(mealPlan)) {
         toast.warning(
           `Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`
         )
         setAddingWeek(false)
         return
       }
+
+      const nextWeek = Math.max(...visibleWeeks, 0) + 1
+      const skipForNewWeek = getSkipDaysForWeekFromDraft(
+        nextWeek,
+        weeklySkipByWeekDraft,
+        normalizeWeeklySkipDays(mealPlan.weeklySkipDays)
+      )
 
       // New week = next calendar Mon–Sun block (Monday first)
       const weekMonday = getMondayOfPlanWeek(mealPlan.startDate, nextWeek)
@@ -1915,14 +1921,7 @@ export default function MealPlanViewPage() {
             <MealPlanViewImportControls importApi={mealPlanImport} />
           {(() => {
             if (!mealPlan) return null
-            const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
-            const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-            const mealsPerDay = mealPlan.mealsPerDay
-
-            const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
-            const maxDays = mealPlan.days || 22
-
-            const canAddMoreWeeks = totalDays < maxDays && activeMealSlots + mealsPerDay <= totalMealsAllowed
+            const canAddMoreWeeks = canAddAnotherWeekOnPlan(mealPlan)
             
             return canAddMoreWeeks ? (
               <button
