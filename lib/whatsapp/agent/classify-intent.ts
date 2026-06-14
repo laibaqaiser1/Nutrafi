@@ -1,5 +1,10 @@
 import { whatsappAgentConfig } from './config'
-import type { IntentClassification, MealAgentIntent } from './types'
+import { openAiJsonCompletion } from './openai-client'
+import type {
+  IntentClassification,
+  IntentClassificationResult,
+  MealAgentIntent,
+} from './types'
 
 const MEAL_SIGNALS =
   /\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun|meal|meals|breakfast|lunch|dinner|add|update|change|replace|instead|don't want|dont want|do not want|next week|\d{1,2}[\/\-]\d{1,2})\b/i
@@ -15,43 +20,64 @@ const CONFIRM_SIGNALS =
 const NOT_MEAL_SIGNALS =
   /\b(payment|pay|bill|invoice|delivery status|where is|track|refund|complaint|support|help me|hello|hi there|good morning|thanks|thank you)\b/i
 
+const VALID_INTENTS = new Set<MealAgentIntent>([
+  'ADD_MEALS',
+  'UPDATE_MEAL',
+  'CONFIRM',
+  'CANCEL',
+  'NOT_MEAL',
+  'AMBIGUOUS',
+])
+
 export async function classifyMealIntent(
   body: string,
   hasOpenPending: boolean
-): Promise<IntentClassification> {
+): Promise<IntentClassificationResult> {
   const trimmed = body.trim()
   if (!trimmed) {
     return {
-      intent: 'AMBIGUOUS',
-      isMealPlanRelated: false,
-      confidence: 1,
-      reason: 'empty',
+      classification: {
+        intent: 'AMBIGUOUS',
+        isMealPlanRelated: false,
+        confidence: 1,
+        reason: 'empty',
+      },
+      source: 'rules',
     }
   }
 
   if (hasOpenPending) {
     if (CANCEL_SIGNALS.test(trimmed)) {
       return {
-        intent: 'CANCEL',
-        isMealPlanRelated: true,
-        confidence: 0.95,
-        reason: 'cancel while pending',
+        classification: {
+          intent: 'CANCEL',
+          isMealPlanRelated: true,
+          confidence: 0.95,
+          reason: 'cancel while pending',
+        },
+        source: 'rules',
       }
     }
     return {
-      intent: 'CONFIRM',
-      isMealPlanRelated: true,
-      confidence: 0.9,
-      reason: 'follow-up to pending action',
+      classification: {
+        intent: 'CONFIRM',
+        isMealPlanRelated: true,
+        confidence: 0.9,
+        reason: 'follow-up to pending action',
+      },
+      source: 'rules',
     }
   }
 
   if (CANCEL_SIGNALS.test(trimmed)) {
     return {
-      intent: 'CANCEL',
-      isMealPlanRelated: true,
-      confidence: 0.9,
-      reason: 'cancel keyword',
+      classification: {
+        intent: 'CANCEL',
+        isMealPlanRelated: true,
+        confidence: 0.9,
+        reason: 'cancel keyword',
+      },
+      source: 'rules',
     }
   }
 
@@ -61,12 +87,13 @@ export async function classifyMealIntent(
     if (ai) return ai
   }
 
-  return classifyWithRules(trimmed)
+  return {
+    classification: classifyWithRules(trimmed),
+    source: 'rules',
+  }
 }
 
 function classifyWithRules(body: string): IntentClassification {
-  const lower = body.toLowerCase()
-
   if (CONFIRM_SIGNALS.test(body.trim()) && !MEAL_SIGNALS.test(body)) {
     return {
       intent: 'AMBIGUOUS',
@@ -109,13 +136,15 @@ function classifyWithRules(body: string): IntentClassification {
     }
   }
 
+  const lower = body.toLowerCase()
   if (
     lower.includes('burger') ||
     lower.includes('chicken') ||
     lower.includes('beef') ||
     lower.includes('rice') ||
     lower.includes('wrap') ||
-    lower.includes('salad')
+    lower.includes('salad') ||
+    lower.includes('pasta')
   ) {
     return {
       intent: 'ADD_MEALS',
@@ -137,38 +166,27 @@ async function classifyWithOpenAi(
   body: string,
   apiKey: string,
   model: string
-): Promise<IntentClassification | null> {
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: `Classify WhatsApp messages for a meal delivery service.
+): Promise<IntentClassificationResult | null> {
+  const result = await openAiJsonCompletion<IntentClassification>({
+    apiKey,
+    model,
+    system: `Classify WhatsApp messages for a meal delivery service (Nutrafi).
 Return JSON: { "intent": "ADD_MEALS"|"UPDATE_MEAL"|"CONFIRM"|"CANCEL"|"NOT_MEAL"|"AMBIGUOUS", "isMealPlanRelated": boolean, "confidence": number, "reason": string }
-NOT_MEAL = payments, delivery tracking, greetings, general support.
-ADD_MEALS / UPDATE_MEAL = choosing or changing meals only.`,
-          },
-          { role: 'user', content: body },
-        ],
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    const content = data.choices?.[0]?.message?.content
-    if (!content) return null
-    const parsed = JSON.parse(content) as IntentClassification
-    if (!parsed.intent) return null
-    return parsed
-  } catch {
-    return null
+
+ADD_MEALS = customer listing meals or days to add.
+UPDATE_MEAL = swap/change/remove a meal ("don't want X, want Y").
+NOT_MEAL = delivery tracking, payment, general support, greetings only.
+CONFIRM/CANCEL = only when clearly confirming or cancelling (not used for new meal lists).`,
+    user: body,
+  })
+
+  if (!result.ok || !result.data) return null
+  if (!VALID_INTENTS.has(result.data.intent)) return null
+
+  return {
+    classification: result.data,
+    source: 'openai',
+    model: result.model,
+    openAiRaw: result.raw,
   }
 }

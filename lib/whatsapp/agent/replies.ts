@@ -69,7 +69,7 @@ export function dishChoiceQuestion(
 ): string {
   const dateLabel = formatDateLabel(slot.dateYmd)
   const lines = [
-    `For ${dateLabel}, meal ${slot.slotIndex + 1}, which dish did you mean for "${slot.customerPhrase}"?`,
+    `For ${dateLabel}, which dish did you mean for "${slot.customerPhrase}"?`,
     '',
   ]
   candidates.slice(0, 6).forEach((c, i) => {
@@ -123,6 +123,14 @@ export function pendingOpenReply(): string {
 
 export function agentDisabledReply(): string {
   return supportOnlyReply()
+}
+
+export function openAiUnavailableReply(): string {
+  return [
+    'Our meal assistant is temporarily unavailable.',
+    'Please try again shortly or contact customer support to add your meals.',
+    supportLine(),
+  ].join('\n\n')
 }
 
 export function parseFailedReply(): string {

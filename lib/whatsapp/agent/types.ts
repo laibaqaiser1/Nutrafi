@@ -35,6 +35,24 @@ export interface MealMessageExtraction {
   replace?: ParsedReplaceMeal
 }
 
+export type ExtractionSource = 'openai' | 'rules'
+
+export interface ParseMealResult {
+  extraction: MealMessageExtraction
+  source: ExtractionSource
+  model?: string
+  openAiRaw?: unknown
+  openAiError?: string
+}
+
+export interface IntentClassificationResult {
+  classification: IntentClassification
+  source: ExtractionSource
+  model?: string
+  openAiRaw?: unknown
+  openAiError?: string
+}
+
 export interface DishCandidate {
   dishId: number
   name: string

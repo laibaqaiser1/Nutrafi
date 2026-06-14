@@ -7,15 +7,38 @@ export function stringSimilarity(a: string, b: string): number {
 
   const tokenScore = tokenOverlapScore(na, nb)
   const levScore = 1 - levenshteinRatio(na, nb)
-  return 0.5 * tokenScore + 0.5 * levScore
+  const subsetScore = phraseContainedInNameScore(na, nb)
+  return Math.max(
+    0.5 * tokenScore + 0.5 * levScore,
+    subsetScore
+  )
 }
 
-function normalizeForCompare(s: string): string {
+export function normalizeForCompare(s: string): string {
   return s
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+/** "beef pasta" inside "beef pasta red sauce" → high score */
+export function phraseContainedInNameScore(phrase: string, dishName: string): number {
+  const p = normalizeForCompare(phrase)
+  const d = normalizeForCompare(dishName)
+  if (!p || !d) return 0
+  if (d.includes(p)) return 0.95
+  const tokens = significantTokens(phrase)
+  if (tokens.length === 0) return 0
+  const matched = tokens.filter((t) => d.includes(t)).length
+  return matched / tokens.length
+}
+
+export function allSignificantTokensInName(phrase: string, dishName: string): boolean {
+  const tokens = significantTokens(phrase)
+  if (tokens.length === 0) return false
+  const d = normalizeForCompare(dishName)
+  return tokens.every((t) => d.includes(t))
 }
 
 function tokenOverlapScore(a: string, b: string): number {
@@ -67,6 +90,9 @@ export function significantTokens(phrase: string): string[] {
     'rice',
     'light',
     'cream',
+    'tomorrow',
+    'tommorow',
+    'today',
   ])
   return normalizeForCompare(phrase)
     .split(' ')

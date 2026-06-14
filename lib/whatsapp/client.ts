@@ -6,6 +6,7 @@ import {
   serializeError,
 } from './log'
 import { normalizeWhatsAppPhone } from './normalize-phone'
+import { WHATSAPP_TEMPLATES } from './templates'
 
 export interface SendTextResult {
   ok: boolean
@@ -15,7 +16,18 @@ export interface SendTextResult {
   fbtraceId?: string
 }
 
-export async function sendWhatsAppText(to: string, body: string): Promise<SendTextResult> {
+export interface SendTemplateParams {
+  to: string
+  templateName: string
+  languageCode?: string
+  /** Body variable values in order: {{1}}, {{2}}, … */
+  bodyParameters?: string[]
+}
+
+async function postWhatsAppMessage(
+  toNorm: string,
+  payload: Record<string, unknown>
+): Promise<SendTextResult> {
   const { accessToken, phoneNumberId, isConfigured } = whatsappConfig()
   if (!isConfigured || !accessToken || !phoneNumberId) {
     logWhatsAppError('send_not_configured', {
@@ -23,12 +35,6 @@ export async function sendWhatsAppText(to: string, body: string): Promise<SendTe
       hasPhoneNumberId: Boolean(phoneNumberId),
     })
     return { ok: false, error: 'WhatsApp is not configured' }
-  }
-
-  const toNorm = normalizeWhatsAppPhone(to)
-  if (!toNorm) {
-    logWhatsAppError('send_invalid_recipient', { to })
-    return { ok: false, error: 'Invalid recipient phone' }
   }
 
   const url = whatsappGraphUrl(`${phoneNumberId}/messages`)
@@ -43,8 +49,7 @@ export async function sendWhatsAppText(to: string, body: string): Promise<SendTe
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         to: toNorm,
-        type: 'text',
-        text: { body },
+        ...payload,
       }),
     })
   } catch (error) {
@@ -69,7 +74,11 @@ export async function sendWhatsAppText(to: string, body: string): Promise<SendTe
       to: toNorm,
       phoneNumberId,
       httpStatus: res.status,
-      bodyLength: body.length,
+      payloadType: payload.type,
+      templateName:
+        payload.type === 'template'
+          ? (payload.template as { name?: string } | undefined)?.name
+          : undefined,
       ...metaGraphErrorFields(metaError),
     })
     return {
@@ -85,7 +94,67 @@ export async function sendWhatsAppText(to: string, body: string): Promise<SendTe
     to: toNorm,
     phoneNumberId,
     messageId,
-    bodyLength: body.length,
+    payloadType: payload.type,
+    templateName:
+      payload.type === 'template'
+        ? (payload.template as { name?: string } | undefined)?.name
+        : undefined,
   })
   return { ok: true, messageId }
+}
+
+export async function sendWhatsAppTemplate(params: SendTemplateParams): Promise<SendTextResult> {
+  const toNorm = normalizeWhatsAppPhone(params.to)
+  if (!toNorm) {
+    logWhatsAppError('send_invalid_recipient', { to: params.to })
+    return { ok: false, error: 'Invalid recipient phone' }
+  }
+
+  const languageCode = params.languageCode ?? 'en'
+  const bodyParams = params.bodyParameters ?? []
+  const components =
+    bodyParams.length > 0
+      ? [
+          {
+            type: 'body',
+            parameters: bodyParams.map((text) => ({ type: 'text', text })),
+          },
+        ]
+      : undefined
+
+  return postWhatsAppMessage(toNorm, {
+    type: 'template',
+    template: {
+      name: params.templateName,
+      language: { code: languageCode },
+      ...(components ? { components } : {}),
+    },
+  })
+}
+
+/** Send the approved add-meals-for-tomorrow reminder template. */
+export async function sendAddMealsReminder(
+  to: string,
+  customerName: string,
+  tomorrowDate: string
+): Promise<SendTextResult> {
+  return sendWhatsAppTemplate({
+    to,
+    templateName: WHATSAPP_TEMPLATES.addMealsReminder,
+    languageCode: 'en',
+    bodyParameters: [customerName, tomorrowDate],
+  })
+}
+
+export async function sendWhatsAppText(to: string, body: string): Promise<SendTextResult> {
+  const toNorm = normalizeWhatsAppPhone(to)
+  if (!toNorm) {
+    logWhatsAppError('send_invalid_recipient', { to })
+    return { ok: false, error: 'Invalid recipient phone' }
+  }
+
+  return postWhatsAppMessage(toNorm, {
+    type: 'text',
+    text: { body },
+  })
 }

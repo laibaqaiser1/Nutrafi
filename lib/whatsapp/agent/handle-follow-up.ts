@@ -1,10 +1,12 @@
-import { prisma } from '@/lib/prisma'
 import {
   applyAgentMealItems,
   type AgentMealApplyItem,
 } from './apply-meal-changes'
 import { logAgentAction, updateAgentRun } from './audit-log'
-import { resolveDishFromReply } from './dish-matcher'
+import {
+  loadCandidatesInOrder,
+  resolveDishFromReply,
+} from './dish-matcher'
 import {
   getOpenPendingAction,
   parsePendingContext,
@@ -17,21 +19,7 @@ import {
   partialApplyReply,
 } from './replies'
 import { sendAgentReply } from './record-outbound'
-import type { AgentProcessResult, DishCandidate } from './types'
-
-async function loadCandidates(ids: number[]): Promise<DishCandidate[]> {
-  if (ids.length === 0) return []
-  const dishes = await prisma.dish.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, name: true },
-  })
-  const byId = new Map(dishes.map((d) => [d.id, d.name]))
-  return ids.map((id, i) => ({
-    dishId: id,
-    name: byId.get(id) ?? `Option ${i + 1}`,
-    score: 0,
-  }))
-}
+import type { AgentProcessResult } from './types'
 
 export async function handleFollowUpMessage(params: {
   runId: number
@@ -82,8 +70,8 @@ export async function handleFollowUpMessage(params: {
   })
 
   if (!resolution || resolution.status !== 'resolved' || !resolution.dishId) {
-    const candidates = await loadCandidates(candidateIds)
-    const question = dishChoiceQuestion(slot, resolution?.candidates ?? candidates)
+    const candidates = await loadCandidatesInOrder(candidateIds)
+    const question = dishChoiceQuestion(slot, candidates)
     const replyBody = partialApplyReply(0, question)
     await sendAgentReply({
       runId: params.runId,
@@ -144,11 +132,13 @@ export async function handleFollowUpMessage(params: {
 
   const nextIdx = ctx.meals.findIndex((m) => m.status === 'waiting_dish')
   ctx.currentQuestionIndex = nextIdx >= 0 ? nextIdx : idx
+  await updatePendingContext(pending.id, ctx)
 
   if (nextIdx >= 0) {
-    await updatePendingContext(pending.id, ctx)
     const nextSlot = ctx.meals[nextIdx]!
-    const candidates = await loadCandidates(nextSlot.candidateDishIds ?? [])
+    const candidates = await loadCandidatesInOrder(
+      nextSlot.candidateDishIds ?? []
+    )
     const question = dishChoiceQuestion(nextSlot, candidates)
     const replyBody = partialApplyReply(1, question)
     await sendAgentReply({

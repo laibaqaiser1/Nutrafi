@@ -59,6 +59,8 @@ export async function updateAgentRun(
     payload?: unknown
     customerId?: number
     mealPlanId?: number
+    model?: string
+    modelRawResponse?: unknown
   }
 ) {
   return prisma.whatsAppAgentRun.update({
@@ -70,6 +72,8 @@ export async function updateAgentRun(
       payload: data.payload as Prisma.InputJsonValue | undefined,
       customerId: data.customerId,
       mealPlanId: data.mealPlanId,
+      model: data.model,
+      modelRawResponse: data.modelRawResponse as Prisma.InputJsonValue | undefined,
     },
   })
 }

@@ -10,7 +10,7 @@ import { classifyMealIntent } from './classify-intent'
 import { findCustomerByPhoneExact } from './find-customer'
 import { handleCancelPending, handleFollowUpMessage } from './handle-follow-up'
 import { parseMealMessage } from './parse-meal-message'
-import { resolveDishFromPhrase } from './dish-matcher'
+import { resolveDishFromPhrase, candidateIdsForDisplay, loadCandidatesInOrder } from './dish-matcher'
 import {
   createPendingAction,
   getOpenPendingAction,
@@ -28,6 +28,7 @@ import {
   mealsAddedConfirmation,
   noCustomerReply,
   noMealPlanReply,
+  openAiUnavailableReply,
   parseFailedReply,
   partialApplyReply,
   supportOnlyReply,
@@ -65,10 +66,30 @@ export async function processInboundAgentMessage(
   })
   if (conversation?.agentMode === 'MANUAL') return null
 
+  if (cfg.requireOpenAi && !cfg.openAiKey) {
+    const run = await createAgentRun({
+      conversationId: params.conversationId,
+      inboundMessageId: params.inboundMessageId,
+      trigger: 'INBOUND_MESSAGE',
+      status: 'FAILED',
+      rawMessageBody: trimmed,
+      errorMessage: 'OPENAI_API_KEY required but not configured',
+    })
+    const replyBody = openAiUnavailableReply()
+    await sendAgentReply({
+      runId: run.id,
+      phoneE164: params.phoneE164,
+      conversationId: params.conversationId,
+      body: replyBody,
+    })
+    return { runId: run.id, status: 'FAILED', replyBody }
+  }
+
   const openPending = await getOpenPendingAction(params.conversationId)
   const hasOpenPending = openPending != null
 
-  const classification = await classifyMealIntent(trimmed, hasOpenPending)
+  const intentResult = await classifyMealIntent(trimmed, hasOpenPending)
+  const classification = intentResult.classification
 
   const run = await createAgentRun({
     conversationId: params.conversationId,
@@ -76,7 +97,9 @@ export async function processInboundAgentMessage(
     trigger: 'INBOUND_MESSAGE',
     status: 'SKIPPED',
     rawMessageBody: trimmed,
-    parsedIntent: classification,
+    parsedIntent: { ...classification, _source: intentResult.source },
+    model: intentResult.model,
+    modelRawResponse: intentResult.openAiRaw as object | undefined,
     parentRunId: openPending?.createdFromRunId ?? undefined,
     pendingActionId: openPending?.id,
   })
@@ -86,7 +109,7 @@ export async function processInboundAgentMessage(
     actionType: 'CLASSIFY_INTENT',
     status: 'OK',
     input: { body: trimmed, hasOpenPending },
-    output: classification,
+    output: intentResult,
     confidence: classification.confidence,
   })
 
@@ -179,17 +202,24 @@ export async function processInboundAgentMessage(
 
   const intent =
     classification.intent === 'UPDATE_MEAL' ? 'UPDATE_MEAL' : 'ADD_MEALS'
-  const extraction = await parseMealMessage(trimmed, intent)
+  const parseResult = await parseMealMessage(trimmed, intent)
 
   await logAgentAction({
     runId: run.id,
     actionType: 'PARSE_MESSAGE',
-    status: extraction ? 'OK' : 'FAILED',
+    status: parseResult ? 'OK' : 'FAILED',
     input: { body: trimmed, intent },
-    output: extraction ?? undefined,
+    output: parseResult ?? undefined,
   })
 
-  if (!extraction) {
+  if (parseResult?.model) {
+    await updateAgentRun(run.id, {
+      model: parseResult.model,
+      modelRawResponse: parseResult.openAiRaw as object | undefined,
+    })
+  }
+
+  if (!parseResult) {
     const replyBody = parseFailedReply()
     await sendAgentReply({
       runId: run.id,
@@ -197,9 +227,17 @@ export async function processInboundAgentMessage(
       conversationId: params.conversationId,
       body: replyBody,
     })
-    await updateAgentRun(run.id, { status: 'FAILED', errorMessage: 'Parse failed' })
+    await updateAgentRun(run.id, {
+      status: 'FAILED',
+      errorMessage:
+        cfg.openAiKey && cfg.requireOpenAi
+          ? 'OpenAI parse failed'
+          : 'Parse failed',
+    })
     return { runId: run.id, status: 'FAILED', replyBody }
   }
+
+  const extraction = parseResult.extraction
 
   if (extraction.kind === 'UPDATE' && extraction.replace) {
     return processReplaceMeal({
@@ -295,7 +333,7 @@ async function processAddMeals(params: {
         customerPhrase: meal.customerPhrase,
         customNote: meal.customNote,
         status: 'waiting_dish',
-        candidateDishIds: resolution.candidates.map((c) => c.dishId),
+        candidateDishIds: candidateIdsForDisplay(resolution.candidates),
       })
     } else {
       pendingSlots.push({
@@ -305,7 +343,7 @@ async function processAddMeals(params: {
         customerPhrase: meal.customerPhrase,
         customNote: meal.customNote,
         status: 'waiting_dish',
-        candidateDishIds: resolution.candidates.map((c) => c.dishId),
+        candidateDishIds: candidateIdsForDisplay(resolution.candidates),
       })
     }
   }
@@ -369,8 +407,8 @@ async function processAddMeals(params: {
     })
 
     const slot = pendingSlots[waitingIdx]!
-    const resolution = await resolveDishFromPhrase(slot.customerPhrase)
-    const question = dishChoiceQuestion(slot, resolution.candidates)
+    const candidates = await loadCandidatesInOrder(slot.candidateDishIds ?? [])
+    const question = dishChoiceQuestion(slot, candidates)
     const replyBody =
       appliedSummary.length > 0
         ? partialApplyReply(appliedSummary.length, question)
@@ -463,7 +501,7 @@ async function processReplaceMeal(params: {
           customerPhrase: params.replace.addPhrase,
           customNote: params.replace.customNote,
           status: 'waiting_dish',
-          candidateDishIds: resolution.candidates.map((c) => c.dishId),
+          candidateDishIds: candidateIdsForDisplay(resolution.candidates),
         },
       ],
       currentQuestionIndex: 0,
@@ -479,7 +517,7 @@ async function processReplaceMeal(params: {
       type: 'REPLACE_MEAL',
       context: ctx,
     })
-    const question = dishChoiceQuestion(ctx.meals[0]!, resolution.candidates)
+    const question = dishChoiceQuestion(ctx.meals[0]!, resolution.candidates.slice(0, 6))
     await sendAgentReply({
       runId: params.runId,
       phoneE164: params.phoneE164,

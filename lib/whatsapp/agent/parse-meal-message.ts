@@ -5,7 +5,13 @@ import {
   isValid,
 } from 'date-fns'
 import { whatsappAgentConfig } from './config'
-import type { MealMessageExtraction, ParsedMealSlot, ParsedReplaceMeal } from './types'
+import { openAiJsonCompletion } from './openai-client'
+import type {
+  MealMessageExtraction,
+  ParseMealResult,
+  ParsedMealSlot,
+  ParsedReplaceMeal,
+} from './types'
 
 const WEEKDAYS: Record<string, number> = {
   monday: 1,
@@ -25,6 +31,40 @@ const WEEKDAYS: Record<string, number> = {
   sunday: 0,
   sun: 0,
 }
+
+const MEAL_PARSE_SYSTEM_PROMPT = (today: string, timezone: string) =>
+  `You extract structured meal orders from WhatsApp messages for a meal delivery service (Nutrafi).
+Today is ${today} (${timezone}).
+
+Return ONLY valid JSON:
+{
+  "kind": "ADD" | "UPDATE",
+  "meals": [
+    {
+      "dateYmd": "yyyy-MM-dd",
+      "dateSource": "tomorrow|today|Tuesday|12/06|…",
+      "slotIndex": 0,
+      "customerPhrase": "dish name as customer wrote it",
+      "customNote": "optional e.g. without onions"
+    }
+  ],
+  "replace": {
+    "dateYmd": "yyyy-MM-dd",
+    "dateSource": "string",
+    "removePhrase": "old dish",
+    "addPhrase": "new dish",
+    "customNote": "optional"
+  }
+}
+
+Rules:
+- Resolve "tomorrow", "today", weekdays, and DD/MM dates to dateYmd.
+- slotIndex 0 = first meal of the day, 1 = second, 2 = third.
+- Split multi-day messages into separate meals per day.
+- For "don't want X want Y tomorrow" use kind UPDATE with replace filled.
+- customerPhrase = the dish wording only (not the date).
+- Ignore greetings/thanks; extract meals only.
+- If no meals found, return { "kind": "ADD", "meals": [] }.`
 
 function todayInTz(): Date {
   const { timezone } = whatsappAgentConfig()
@@ -236,30 +276,93 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
   return meals
 }
 
-export async function parseMealMessage(
-  body: string,
-  intent: 'ADD_MEALS' | 'UPDATE_MEAL'
-): Promise<MealMessageExtraction | null> {
-  const base = todayInTz()
-  const trimmed = body.trim()
-  if (!trimmed) return null
+function sanitizeYmd(value: unknown, base: Date): string | null {
+  if (typeof value !== 'string') return null
+  const ymd = value.slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null
+  const d = parse(ymd, 'yyyy-MM-dd', new Date())
+  return isValid(d) ? ymd : null
+}
 
-  const cfg = whatsappAgentConfig()
-  if (cfg.openAiKey) {
-    const ai = await parseWithOpenAi(trimmed, intent, base, cfg.openAiKey, cfg.openAiModel)
-    if (ai) return ai
+function normalizeAiExtraction(
+  raw: MealMessageExtraction,
+  base: Date,
+  intent: 'ADD_MEALS' | 'UPDATE_MEAL'
+): MealMessageExtraction | null {
+  const kind =
+    raw.kind === 'UPDATE' || intent === 'UPDATE_MEAL' ? 'UPDATE' : 'ADD'
+
+  const meals: ParsedMealSlot[] = []
+  if (Array.isArray(raw.meals)) {
+    for (const m of raw.meals) {
+      if (!m || typeof m !== 'object') continue
+      const phrase = String(m.customerPhrase ?? '').trim()
+      if (phrase.length < 2) continue
+      let dateYmd = sanitizeYmd(m.dateYmd, base)
+      if (!dateYmd && m.dateSource) {
+        dateYmd =
+          resolveRelativeDate(String(m.dateSource), base) ??
+          parseDdMm(String(m.dateSource), base) ??
+          resolveWeekday(String(m.dateSource), base)
+      }
+      if (!dateYmd) dateYmd = ymdFromDate(addDays(base, 1))
+      meals.push({
+        dateYmd,
+        dateSource: String(m.dateSource ?? 'openai'),
+        slotIndex:
+          typeof m.slotIndex === 'number' && m.slotIndex >= 0
+            ? m.slotIndex
+            : 0,
+        customerPhrase: phrase,
+        customNote:
+          m.customNote != null ? String(m.customNote).trim() : undefined,
+      })
+    }
   }
 
+  let replace: ParsedReplaceMeal | undefined
+  if (raw.replace && typeof raw.replace === 'object') {
+    const r = raw.replace
+    const dateYmd =
+      sanitizeYmd(r.dateYmd, base) ??
+      resolveRelativeDate(String(r.dateSource ?? 'tomorrow'), base) ??
+      ymdFromDate(addDays(base, 1))
+    const removePhrase = String(r.removePhrase ?? '').trim()
+    const addPhrase = String(r.addPhrase ?? '').trim()
+    if (removePhrase && addPhrase) {
+      replace = {
+        dateYmd,
+        dateSource: String(r.dateSource ?? 'openai'),
+        removePhrase,
+        addPhrase,
+        customNote:
+          r.customNote != null ? String(r.customNote).trim() : undefined,
+      }
+    }
+  }
+
+  if (kind === 'UPDATE' && replace) {
+    return { kind: 'UPDATE', meals, replace }
+  }
+  if (meals.length === 0) return null
+  return { kind: 'ADD', meals }
+}
+
+function parseWithRules(
+  body: string,
+  intent: 'ADD_MEALS' | 'UPDATE_MEAL',
+  base: Date
+): MealMessageExtraction | null {
   if (intent === 'UPDATE_MEAL') {
-    const replace = parseReplacePattern(trimmed, base)
+    const replace = parseReplacePattern(body, base)
     if (replace) {
       return { kind: 'UPDATE', meals: [], replace }
     }
   }
 
-  let meals = parseWeekdayLines(trimmed, base)
-  if (meals.length === 0) meals = parseDatedBlocks(trimmed, base)
-  if (meals.length === 0) meals = parseSimpleAdd(trimmed, base)
+  let meals = parseWeekdayLines(body, base)
+  if (meals.length === 0) meals = parseDatedBlocks(body, base)
+  if (meals.length === 0) meals = parseSimpleAdd(body, base)
 
   if (meals.length === 0) return null
 
@@ -271,41 +374,74 @@ export async function parseMealMessage(
 
 async function parseWithOpenAi(
   body: string,
-  intent: string,
+  intent: 'ADD_MEALS' | 'UPDATE_MEAL',
   base: Date,
   apiKey: string,
-  model: string
-): Promise<MealMessageExtraction | null> {
-  try {
-    const today = ymdFromDate(base)
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: `Parse meal plan WhatsApp messages. Today is ${today}.
-Return JSON: { "kind": "ADD"|"UPDATE", "meals": [{ "dateYmd": "yyyy-MM-dd", "dateSource": string, "slotIndex": number, "customerPhrase": string, "customNote"?: string }], "replace"?: { "dateYmd", "dateSource", "removePhrase", "addPhrase", "customNote"?: string } }
-Intent hint: ${intent}. Resolve tomorrow/today/weekdays to dates.`,
-          },
-          { role: 'user', content: body },
-        ],
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    const content = data.choices?.[0]?.message?.content
-    if (!content) return null
-    return JSON.parse(content) as MealMessageExtraction
-  } catch {
+  model: string,
+  timezone: string
+): Promise<ParseMealResult | null> {
+  const today = ymdFromDate(base)
+  const result = await openAiJsonCompletion<MealMessageExtraction>({
+    apiKey,
+    model,
+    system: MEAL_PARSE_SYSTEM_PROMPT(today, timezone),
+    user: `Intent hint: ${intent}\n\nMessage:\n${body}`,
+  })
+
+  if (!result.ok || !result.data) {
     return null
+  }
+
+  const normalized = normalizeAiExtraction(result.data, base, intent)
+  if (!normalized) {
+    return null
+  }
+
+  return {
+    extraction: normalized,
+    source: 'openai',
+    model: result.model,
+    openAiRaw: result.raw,
+  }
+}
+
+/**
+ * Parse customer message into structured meals.
+ * Production: OpenAI first (required when WHATSAPP_AGENT_REQUIRE_OPENAI=true).
+ * Rules used only as fallback if OpenAI fails.
+ */
+export async function parseMealMessage(
+  body: string,
+  intent: 'ADD_MEALS' | 'UPDATE_MEAL'
+): Promise<ParseMealResult | null> {
+  const base = todayInTz()
+  const trimmed = body.trim()
+  if (!trimmed) return null
+
+  const cfg = whatsappAgentConfig()
+
+  if (cfg.openAiKey) {
+    const ai = await parseWithOpenAi(
+      trimmed,
+      intent,
+      base,
+      cfg.openAiKey,
+      cfg.openAiModel,
+      cfg.timezone
+    )
+    if (ai) return ai
+  }
+
+  if (cfg.requireOpenAi && cfg.openAiKey) {
+    return null
+  }
+
+  const rules = parseWithRules(trimmed, intent, base)
+  if (!rules) return null
+
+  return {
+    extraction: rules,
+    source: 'rules',
   }
 }
 

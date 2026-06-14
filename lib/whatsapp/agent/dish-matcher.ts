@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import { whatsappAgentConfig } from './config'
-import { significantTokens, stringSimilarity } from './string-similarity'
+import {
+  allSignificantTokensInName,
+  phraseContainedInNameScore,
+  significantTokens,
+  stringSimilarity,
+} from './string-similarity'
 import type { DishCandidate, DishResolution } from './types'
 
 interface MenuDish {
@@ -11,6 +16,9 @@ interface MenuDish {
 
 let menuCache: { loadedAt: number; dishes: MenuDish[] } | null = null
 const CACHE_MS = 5 * 60 * 1000
+
+const FOLLOW_UP_MATCH_THRESHOLD = 0.55
+const DISPLAY_CANDIDATE_LIMIT = 6
 
 async function loadActiveDishes(): Promise<MenuDish[]> {
   const now = Date.now()
@@ -26,12 +34,32 @@ async function loadActiveDishes(): Promise<MenuDish[]> {
   return dishes
 }
 
+/** Preserve exact list order — used for numbered replies and stable WhatsApp lists. */
+export async function loadCandidatesInOrder(
+  dishIds: number[]
+): Promise<DishCandidate[]> {
+  if (dishIds.length === 0) return []
+  const dishes = await prisma.dish.findMany({
+    where: { id: { in: dishIds } },
+    select: { id: true, name: true },
+  })
+  const byId = new Map(dishes.map((d) => [d.id, d.name]))
+  return dishIds.map((id, i) => ({
+    dishId: id,
+    name: byId.get(id) ?? `Option ${i + 1}`,
+    score: 0,
+  }))
+}
+
 function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
   const tokens = significantTokens(phrase)
   const scored: DishCandidate[] = []
 
   for (const dish of dishes) {
-    const score = stringSimilarity(phrase, dish.name)
+    const score = Math.max(
+      stringSimilarity(phrase, dish.name),
+      phraseContainedInNameScore(phrase, dish.name)
+    )
     const nameLower = dish.name.toLowerCase()
     const tokenHit = tokens.some((t) => nameLower.includes(t))
     if (score >= 0.35 || tokenHit) {
@@ -41,6 +69,46 @@ function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
 
   scored.sort((a, b) => b.score - a.score)
   return scored.slice(0, 10)
+}
+
+/** One menu item contains all customer tokens (e.g. "chicken burger" → only Chicken Buffalo Burger). */
+function findUniqueMenuMatchByTokens(
+  phrase: string,
+  dishes: MenuDish[]
+): MenuDish | null {
+  const tokens = significantTokens(phrase)
+  if (tokens.length === 0) return null
+  const matches = dishes.filter((d) => allSignificantTokensInName(phrase, d.name))
+  if (matches.length === 1) return matches[0]!
+  return null
+}
+
+/** Among a fixed candidate list, pick the only dish that contains all reply tokens. */
+function findUniqueCandidateByTokens(
+  phrase: string,
+  candidates: DishCandidate[]
+): DishCandidate | null {
+  const matches = candidates.filter((c) =>
+    allSignificantTokensInName(phrase, c.name)
+  )
+  if (matches.length === 1) return matches[0]!
+  return null
+}
+
+function scoreReplyAgainstCandidates(
+  phrase: string,
+  candidates: DishCandidate[]
+): DishCandidate | null {
+  let best: DishCandidate | null = null
+  for (const c of candidates) {
+    const score = Math.max(
+      stringSimilarity(phrase, c.name),
+      phraseContainedInNameScore(phrase, c.name)
+    )
+    const scored = { ...c, score }
+    if (!best || scored.score > best.score) best = scored
+  }
+  return best
 }
 
 async function pickWithOpenAi(
@@ -105,11 +173,35 @@ function isAmbiguousTop(candidates: DishCandidate[]): boolean {
   return candidates[0]!.score - candidates[1]!.score < 0.05
 }
 
+/** Stable id list for pending state — order never changes after first ask. */
+export function candidateIdsForDisplay(candidates: DishCandidate[]): number[] {
+  return candidates.slice(0, DISPLAY_CANDIDATE_LIMIT).map((c) => c.dishId)
+}
+
 export async function resolveDishFromPhrase(
   customerPhrase: string
 ): Promise<DishResolution> {
   const cfg = whatsappAgentConfig()
   const dishes = await loadActiveDishes()
+
+  const uniqueTokenMatch = findUniqueMenuMatchByTokens(customerPhrase, dishes)
+  if (uniqueTokenMatch) {
+    return {
+      customerPhrase,
+      status: 'resolved',
+      confidence: 0.92,
+      dishId: uniqueTokenMatch.id,
+      dishName: uniqueTokenMatch.name,
+      candidates: [
+        {
+          dishId: uniqueTokenMatch.id,
+          name: uniqueTokenMatch.name,
+          score: 0.92,
+        },
+      ],
+    }
+  }
+
   const candidates = shortlistDishes(customerPhrase, dishes)
 
   if (candidates.length === 0) {
@@ -118,6 +210,33 @@ export async function resolveDishFromPhrase(
       status: 'no_match',
       confidence: 0,
       candidates: [],
+    }
+  }
+
+  if (candidates.length === 1) {
+    const only = candidates[0]!
+    return {
+      customerPhrase,
+      status: 'resolved',
+      confidence: Math.max(only.score, 0.85),
+      dishId: only.dishId,
+      dishName: only.name,
+      candidates,
+    }
+  }
+
+  const uniqueAmongShortlist = findUniqueCandidateByTokens(
+    customerPhrase,
+    candidates
+  )
+  if (uniqueAmongShortlist) {
+    return {
+      customerPhrase,
+      status: 'resolved',
+      confidence: 0.9,
+      dishId: uniqueAmongShortlist.dishId,
+      dishName: uniqueAmongShortlist.name,
+      candidates,
     }
   }
 
@@ -180,50 +299,51 @@ export async function resolveDishFromReply(
   const trimmed = reply.trim()
   if (!trimmed || candidateDishIds.length === 0) return null
 
+  const displayIds = candidateDishIds.slice(0, DISPLAY_CANDIDATE_LIMIT)
+  const candidates = await loadCandidatesInOrder(displayIds)
+
   const num = trimmed.match(/^(\d{1,2})$/)
   if (num) {
     const idx = parseInt(num[1]!, 10) - 1
-    if (idx >= 0 && idx < candidateDishIds.length) {
-      const dish = await prisma.dish.findUnique({
-        where: { id: candidateDishIds[idx]! },
-        select: { id: true, name: true },
-      })
-      if (dish) {
-        return {
-          customerPhrase: trimmed,
-          status: 'resolved',
-          confidence: 1,
-          dishId: dish.id,
-          dishName: dish.name,
-          candidates: [],
-        }
+    if (idx >= 0 && idx < candidates.length) {
+      const picked = candidates[idx]!
+      return {
+        customerPhrase: trimmed,
+        status: 'resolved',
+        confidence: 1,
+        dishId: picked.dishId,
+        dishName: picked.name,
+        candidates,
       }
     }
   }
 
-  const dishes = await prisma.dish.findMany({
-    where: { id: { in: candidateDishIds } },
-    select: { id: true, name: true },
-  })
-
-  let best: { id: number; name: string; score: number } | null = null
-  for (const d of dishes) {
-    const score = stringSimilarity(trimmed, d.name)
-    if (!best || score > best.score) {
-      best = { id: d.id, name: d.name, score }
+  const uniqueToken = findUniqueCandidateByTokens(trimmed, candidates)
+  if (uniqueToken) {
+    return {
+      customerPhrase: trimmed,
+      status: 'resolved',
+      confidence: 0.95,
+      dishId: uniqueToken.dishId,
+      dishName: uniqueToken.name,
+      candidates,
     }
   }
 
+  const best = scoreReplyAgainstCandidates(trimmed, candidates)
   if (!best) return null
+
   const cfg = whatsappAgentConfig()
-  if (best.score >= cfg.dishAutoConfidence) {
+  const threshold = Math.min(cfg.dishAutoConfidence, FOLLOW_UP_MATCH_THRESHOLD)
+
+  if (best.score >= threshold) {
     return {
       customerPhrase: trimmed,
       status: 'resolved',
       confidence: best.score,
-      dishId: best.id,
+      dishId: best.dishId,
       dishName: best.name,
-      candidates: [],
+      candidates,
     }
   }
 
@@ -231,13 +351,9 @@ export async function resolveDishFromReply(
     customerPhrase: trimmed,
     status: 'needs_confirm',
     confidence: best.score,
-    dishId: best.id,
+    dishId: best.dishId,
     dishName: best.name,
-    candidates: dishes.map((d) => ({
-      dishId: d.id,
-      name: d.name,
-      score: stringSimilarity(trimmed, d.name),
-    })),
+    candidates,
   }
 }
 

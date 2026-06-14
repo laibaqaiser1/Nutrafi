@@ -17,6 +17,12 @@ export function whatsappAgentConfig() {
   const timezone = process.env.WHATSAPP_AGENT_TIMEZONE?.trim() || 'Asia/Dubai'
   const cronSecret = process.env.WHATSAPP_AGENT_CRON_SECRET?.trim()
 
+  const requireOpenAiExplicit = process.env.WHATSAPP_AGENT_REQUIRE_OPENAI?.trim()
+  const requireOpenAi =
+    requireOpenAiExplicit === 'true' ||
+    (requireOpenAiExplicit !== 'false' &&
+      process.env.NODE_ENV === 'production')
+
   return {
     enabled,
     supportPhone,
@@ -28,6 +34,7 @@ export function whatsappAgentConfig() {
       : 0.5,
     openAiKey,
     openAiModel,
+    requireOpenAi,
     pendingExpiryHours: Number.isFinite(pendingExpiryHours)
       ? pendingExpiryHours
       : 24,

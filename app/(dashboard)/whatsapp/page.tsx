@@ -125,13 +125,18 @@ export default function WhatsAppInboxPage() {
     <div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
         <h1 className="text-lg lg:text-2xl font-bold text-gray-900">WhatsApp Inbox</h1>
-        <button
-          type="button"
-          onClick={() => void loadInbox()}
-          className="text-sm text-nutrafi-primary hover:underline"
-        >
-          Refresh
-        </button>
+        <div className="flex gap-3 text-sm">
+          <Link href="/whatsapp/agent" className="text-nutrafi-primary hover:underline">
+            AI history
+          </Link>
+          <button
+            type="button"
+            onClick={() => void loadInbox()}
+            className="text-nutrafi-primary hover:underline"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {summary && (
