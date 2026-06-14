@@ -287,8 +287,8 @@ async function processAddMeals(params: {
   }> = []
 
   for (const meal of params.parsedMeals) {
-    const slotIndex = Math.min(meal.slotIndex, params.timeSlots.length - 1)
-    const timeSlot = params.timeSlots[slotIndex] ?? params.timeSlots[0] ?? '08:00'
+    const slotIndex = meal.slotIndex
+    const timeSlot = params.timeSlots[0] ?? '12:00'
 
     const resolution = await resolveDishFromPhrase(meal.customerPhrase)
 
@@ -542,6 +542,7 @@ async function processReplaceMeal(params: {
         dishId: resolution.dishId,
         dishName: resolution.dishName,
         customNote: params.replace.customNote,
+        replaceItemId: existing.id,
       },
     ])
     for (const row of applied) {

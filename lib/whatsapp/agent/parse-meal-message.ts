@@ -32,9 +32,41 @@ const WEEKDAYS: Record<string, number> = {
   sun: 0,
 }
 
-const MEAL_PARSE_SYSTEM_PROMPT = (today: string, timezone: string) =>
-  `You extract structured meal orders from WhatsApp messages for a meal delivery service (Nutrafi).
-Today is ${today} (${timezone}).
+const WEEKDAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const
+
+function weekdayNameFromYmd(ymd: string): string {
+  return WEEKDAY_NAMES[weekdayIndexFromYmd(ymd)] ?? 'Unknown'
+}
+
+/** Reference calendar injected into OpenAI prompt so dates are unambiguous. */
+function formatDateContextForPrompt(base: Date, timezone: string): string {
+  const todayYmd = ymdFromDate(base)
+  const todayName = weekdayNameFromYmd(todayYmd)
+  const lines = [
+    `REFERENCE CALENDAR (${timezone}) — use these exact yyyy-MM-dd values:`,
+    `TODAY = ${todayYmd} (${todayName})`,
+    `TOMORROW = ${addDaysToYmd(todayYmd, 1)} (${weekdayNameFromYmd(addDaysToYmd(todayYmd, 1))})`,
+    'Next 7 days:',
+  ]
+  for (let i = 0; i < 7; i++) {
+    const ymd = addDaysToYmd(todayYmd, i)
+    lines.push(`  ${weekdayNameFromYmd(ymd)} → ${ymd}`)
+  }
+  return lines.join('\n')
+}
+
+const MEAL_PARSE_SYSTEM_PROMPT = (dateContext: string, timezone: string) =>
+  `You extract structured meal orders from WhatsApp messages for Nutrafi (meal delivery).
+
+${dateContext}
 
 Return ONLY valid JSON:
 {
@@ -42,29 +74,35 @@ Return ONLY valid JSON:
   "meals": [
     {
       "dateYmd": "yyyy-MM-dd",
-      "dateSource": "tomorrow|today|Tuesday|12/06|…",
+      "dateSource": "exact words customer used for the date, e.g. monday|tomorrow|today|15/06",
       "slotIndex": 0,
-      "customerPhrase": "dish name as customer wrote it",
-      "customNote": "optional e.g. without onions"
+      "customerPhrase": "dish name only",
+      "customNote": "optional"
     }
   ],
-  "replace": {
-    "dateYmd": "yyyy-MM-dd",
-    "dateSource": "string",
-    "removePhrase": "old dish",
-    "addPhrase": "new dish",
-    "customNote": "optional"
-  }
+  "replace": { "dateYmd", "dateSource", "removePhrase", "addPhrase", "customNote" }
 }
 
-Rules:
-- Resolve "tomorrow", "today", weekdays, and DD/MM dates to dateYmd.
+DATE RULES (critical — double-check dateYmd against the reference calendar above):
+1. Copy dateYmd exactly from the reference calendar. Do NOT guess or compute dates yourself.
+2. Weekday names → nearest matching day on or AFTER today. If today IS that weekday, use TODAY's date.
+3. "today" → TODAY. "tomorrow" → TOMORROW.
+4. dateYmd must match the weekday: if dateSource is "monday", dateYmd MUST be a Monday from the list above.
+5. Never return a past date. Never return a date whose weekday does not match dateSource.
+
+EXAMPLES (adapt dates to the reference calendar above):
+- Today Monday, "add pasta and beef rice to my monday meal" → two meals, BOTH dateYmd = TODAY (Monday), slotIndex 0 and 1, phrases "pasta" and "beef rice".
+- Today Sunday, "monday chicken biryani" → dateYmd = the Monday on or after today (usually tomorrow), NOT Saturday or any other day.
+- "tomorrow: meal 1 beef, meal 2 chicken" → dateYmd = TOMORROW, two meals slotIndex 0 and 1.
+
+OTHER RULES:
 - slotIndex 0 = first meal of the day, 1 = second, 2 = third.
 - Split multi-day messages into separate meals per day.
-- For "don't want X want Y tomorrow" use kind UPDATE with replace filled.
-- customerPhrase = the dish wording only (not the date).
-- Ignore greetings/thanks; extract meals only.
-- If no meals found, return { "kind": "ADD", "meals": [] }.`
+- UPDATE kind only for "don't want X want Y" / replace requests.
+- customerPhrase = dish wording only (no date, no "meal 1").
+- Ignore greetings; extract meals only.
+- If no meals found: { "kind": "ADD", "meals": [] }.
+- Timezone for all dates: ${timezone}.`
 
 function todayInTz(): Date {
   const { timezone } = whatsappAgentConfig()
@@ -85,22 +123,62 @@ function ymdFromDate(d: Date): string {
   return format(d, 'yyyy-MM-dd')
 }
 
+/** Day of week (0=Sun … 6=Sat) from yyyy-MM-dd — timezone-safe. */
+function weekdayIndexFromYmd(ymd: string): number {
+  const [y, mo, d] = ymd.slice(0, 10).split('-').map((n) => parseInt(n, 10))
+  return new Date(Date.UTC(y, mo - 1, d)).getUTCDay()
+}
+
+function addDaysToYmd(ymd: string, days: number): string {
+  return ymdFromDate(addDays(parse(ymd, 'yyyy-MM-dd', new Date()), days))
+}
+
 function resolveRelativeDate(source: string, base: Date): string | null {
   const s = source.toLowerCase()
-  if (s.includes('tomorrow')) return ymdFromDate(addDays(base, 1))
-  if (s.includes('today')) return ymdFromDate(base)
+  const baseYmd = ymdFromDate(base)
+  if (s.includes('tomorrow')) return addDaysToYmd(baseYmd, 1)
+  if (s.includes('today')) return baseYmd
   return null
 }
 
 function resolveWeekday(name: string, base: Date): string {
   const key = name.toLowerCase().replace(/[^a-z]/g, '')
   const target = WEEKDAYS[key]
-  if (target === undefined) return ymdFromDate(base)
-  const dayIndex = base.getDay()
+  const baseYmd = ymdFromDate(base)
+  if (target === undefined) return baseYmd
+  const dayIndex = weekdayIndexFromYmd(baseYmd)
   let diff = target - dayIndex
-  if (diff <= 0) diff += 7
-  return ymdFromDate(addDays(base, diff))
+  // Same weekday as today → use today; otherwise next occurrence (never past)
+  if (diff < 0) diff += 7
+  return addDaysToYmd(baseYmd, diff)
 }
+
+function ensureNotPast(ymd: string, base: Date): string {
+  const baseYmd = ymdFromDate(base)
+  return ymd >= baseYmd ? ymd : baseYmd
+}
+
+/** Resolve date from dateSource text (today / tomorrow / weekday / DD/MM). */
+function resolveDateFromSource(source: string, base: Date): string | null {
+  const s = source.trim()
+  if (!s) return null
+
+  const relative = resolveRelativeDate(s, base)
+  if (relative) return relative
+
+  const ddmm = parseDdMm(s, base)
+  if (ddmm) return ensureNotPast(ddmm, base)
+
+  const key = s.toLowerCase().replace(/[^a-z]/g, '')
+  if (WEEKDAYS[key] !== undefined) {
+    return resolveWeekday(s, base)
+  }
+
+  return null
+}
+
+const WEEKDAY_NAME =
+  /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|fri|sat|sun)\b/i
 
 function parseDdMm(text: string, base: Date): string | null {
   const m = text.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/)
@@ -229,7 +307,39 @@ function parseDatedBlocks(body: string, base: Date): ParsedMealSlot[] {
   return meals
 }
 
+function parseInlineWeekdayMeals(body: string, base: Date): ParsedMealSlot[] {
+  const dayMatch = body.match(
+    /\b(?:for|on|to)\s+(?:my\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|fri|sat|sun)(?:\s+meal[s]?)?\b/i
+  ) ?? body.match(WEEKDAY_NAME)
+  if (!dayMatch) return []
+
+  const dateYmd = resolveWeekday(dayMatch[1]!, base)
+  const dateSource = dayMatch[1]!
+
+  const afterDay = body.slice(dayMatch.index! + dayMatch[0].length)
+  const beforeDay = body.slice(0, dayMatch.index!)
+  const dishText = `${beforeDay} ${afterDay}`
+    .replace(/\b(hello|hi|please|add|my|meal|meals|for|on|to)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const phrases = splitMealPhrases(dishText).filter((p) => {
+    const lower = p.toLowerCase()
+    return !WEEKDAY_NAME.test(lower) && lower.length > 1
+  })
+
+  return phrases.map((phrase, slotIndex) => ({
+    dateYmd,
+    dateSource,
+    slotIndex,
+    customerPhrase: phrase,
+  }))
+}
+
 function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
+  const inlineWeekday = parseInlineWeekdayMeals(body, base)
+  if (inlineWeekday.length > 0) return inlineWeekday
+
   const meals: ParsedMealSlot[] = []
   const lower = body.toLowerCase()
 
@@ -242,10 +352,16 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
     dateYmd = ymdFromDate(addDays(base, 1))
     dateSource = 'tomorrow'
   } else {
-    const ddmm = parseDdMm(body, base)
-    if (ddmm) {
-      dateYmd = ddmm
-      dateSource = 'date in message'
+    const dayMatch = body.match(WEEKDAY_NAME)
+    if (dayMatch) {
+      dateYmd = resolveWeekday(dayMatch[1]!, base)
+      dateSource = dayMatch[1]!
+    } else {
+      const ddmm = parseDdMm(body, base)
+      if (ddmm) {
+        dateYmd = ensureNotPast(ddmm, base)
+        dateSource = 'date in message'
+      }
     }
   }
 
@@ -284,6 +400,44 @@ function sanitizeYmd(value: unknown, base: Date): string | null {
   return isValid(d) ? ymd : null
 }
 
+/** Pick final date: prefer rules-based resolution from dateSource; validate AI dateYmd. */
+function resolveMealDate(
+  aiYmd: unknown,
+  dateSource: string,
+  base: Date
+): { dateYmd: string; dateSource: string; aiCorrected: boolean } {
+  const source = dateSource.trim()
+  const fromSource = resolveDateFromSource(source, base)
+  const aiSanitized = sanitizeYmd(aiYmd, base)
+  const aiNormalized = aiSanitized ? ensureNotPast(aiSanitized, base) : null
+
+  if (fromSource) {
+    const aiCorrected = aiNormalized != null && aiNormalized !== fromSource
+    return {
+      dateYmd: fromSource,
+      dateSource: aiCorrected
+        ? `${source || 'date'} (AI had ${aiNormalized}, corrected to ${fromSource})`
+        : source || weekdayNameFromYmd(fromSource).toLowerCase(),
+      aiCorrected,
+    }
+  }
+
+  if (aiNormalized) {
+    return {
+      dateYmd: aiNormalized,
+      dateSource: source || 'openai',
+      aiCorrected: false,
+    }
+  }
+
+  const fallback = addDaysToYmd(ymdFromDate(base), 1)
+  return {
+    dateYmd: fallback,
+    dateSource: source || 'tomorrow (fallback)',
+    aiCorrected: true,
+  }
+}
+
 function normalizeAiExtraction(
   raw: MealMessageExtraction,
   base: Date,
@@ -298,17 +452,11 @@ function normalizeAiExtraction(
       if (!m || typeof m !== 'object') continue
       const phrase = String(m.customerPhrase ?? '').trim()
       if (phrase.length < 2) continue
-      let dateYmd = sanitizeYmd(m.dateYmd, base)
-      if (!dateYmd && m.dateSource) {
-        dateYmd =
-          resolveRelativeDate(String(m.dateSource), base) ??
-          parseDdMm(String(m.dateSource), base) ??
-          resolveWeekday(String(m.dateSource), base)
-      }
-      if (!dateYmd) dateYmd = ymdFromDate(addDays(base, 1))
+      const rawDateSource = String(m.dateSource ?? '').trim()
+      const resolved = resolveMealDate(m.dateYmd, rawDateSource, base)
       meals.push({
-        dateYmd,
-        dateSource: String(m.dateSource ?? 'openai'),
+        dateYmd: resolved.dateYmd,
+        dateSource: resolved.dateSource,
         slotIndex:
           typeof m.slotIndex === 'number' && m.slotIndex >= 0
             ? m.slotIndex
@@ -323,16 +471,15 @@ function normalizeAiExtraction(
   let replace: ParsedReplaceMeal | undefined
   if (raw.replace && typeof raw.replace === 'object') {
     const r = raw.replace
-    const dateYmd =
-      sanitizeYmd(r.dateYmd, base) ??
-      resolveRelativeDate(String(r.dateSource ?? 'tomorrow'), base) ??
-      ymdFromDate(addDays(base, 1))
+    const replaceSource = String(r.dateSource ?? 'tomorrow').trim()
+    const resolved = resolveMealDate(r.dateYmd, replaceSource, base)
+    const dateYmd = resolved.dateYmd
     const removePhrase = String(r.removePhrase ?? '').trim()
     const addPhrase = String(r.addPhrase ?? '').trim()
     if (removePhrase && addPhrase) {
       replace = {
         dateYmd,
-        dateSource: String(r.dateSource ?? 'openai'),
+        dateSource: resolved.dateSource,
         removePhrase,
         addPhrase,
         customNote:
@@ -362,6 +509,7 @@ function parseWithRules(
 
   let meals = parseWeekdayLines(body, base)
   if (meals.length === 0) meals = parseDatedBlocks(body, base)
+  if (meals.length === 0) meals = parseInlineWeekdayMeals(body, base)
   if (meals.length === 0) meals = parseSimpleAdd(body, base)
 
   if (meals.length === 0) return null
@@ -380,12 +528,19 @@ async function parseWithOpenAi(
   model: string,
   timezone: string
 ): Promise<ParseMealResult | null> {
-  const today = ymdFromDate(base)
+  const dateContext = formatDateContextForPrompt(base, timezone)
   const result = await openAiJsonCompletion<MealMessageExtraction>({
     apiKey,
     model,
-    system: MEAL_PARSE_SYSTEM_PROMPT(today, timezone),
-    user: `Intent hint: ${intent}\n\nMessage:\n${body}`,
+    system: MEAL_PARSE_SYSTEM_PROMPT(dateContext, timezone),
+    user: [
+      `Intent hint: ${intent}`,
+      '',
+      dateContext,
+      '',
+      'Customer message:',
+      body,
+    ].join('\n'),
   })
 
   if (!result.ok || !result.data) {

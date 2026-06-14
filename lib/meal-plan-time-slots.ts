@@ -43,6 +43,18 @@ export function formatMealPlanTime12Hour(timeSlot: string): string {
   return `${hours}:${minutes} ${period}`
 }
 
+/** Per-meal slot times for a plan (cycles when fewer slots than mealsPerDay). */
+export function expandMealTimeSlotTemplate(
+  mealsPerDay: number,
+  planTimeSlots: string[]
+): string[] {
+  const n = Math.max(mealsPerDay, 1)
+  if (planTimeSlots.length > 0) {
+    return Array.from({ length: n }, (_, i) => planTimeSlots[i % planTimeSlots.length]!)
+  }
+  return Array.from({ length: n }, () => '12:00')
+}
+
 /** Include a saved slot in the list when it is not one of the standard 30-minute options. */
 export function mealPlanTimeOptionsForSlot(slot: string, standard: string[]): string[] {
   const s = slot.trim()

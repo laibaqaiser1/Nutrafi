@@ -1,4 +1,4 @@
-import type { Dish, Prisma } from '@/lib/generated/prisma/client'
+import type { Dish } from '@/lib/generated/prisma/client'
 import { prisma, withRetry } from '@/lib/prisma'
 import { mealPlanDateFromYmd, mealPlanDateYmd } from '@/lib/meal-plan-calendar-date'
 import { planEndYmd } from '@/lib/import-default-plan/suggest-start-date'
@@ -22,6 +22,8 @@ export interface AgentMealApplyItem {
   dishId?: number
   dishName?: string
   customNote?: string
+  /** Replace flow — update this exact row instead of adding a new meal. */
+  replaceItemId?: number
 }
 
 export interface AgentMealApplyResult {
@@ -49,6 +51,15 @@ function isActiveRow(row: { isSkipped: boolean; wrongDelivery: boolean }): boole
   return !row.isSkipped && !row.wrongDelivery
 }
 
+/** Empty / inactive placeholder rows can be filled; active meals with a dish cannot. */
+function isFillableEmptyRow(row: ExistingItemRow): boolean {
+  if (row.wrongDelivery) return false
+  if (row.isSkipped) return true
+  if (row.dishId != null) return false
+  const name = row.dishName?.trim()
+  return !name
+}
+
 function groupExistingRowsByDateYmd(
   rows: ExistingItemRow[]
 ): Map<string, ExistingItemRow[]> {
@@ -60,73 +71,49 @@ function groupExistingRowsByDateYmd(
     byDate.set(ymd, list)
   }
   for (const list of byDate.values()) {
-    list.sort((a, b) => a.timeSlot.localeCompare(b.timeSlot))
+    list.sort((a, b) => a.timeSlot.localeCompare(b.timeSlot) || a.id - b.id)
   }
   return byDate
 }
 
-function indexExistingByPlanSlotOrder(
+function findFillableEmptyRow(
+  ymd: string,
+  rowsByDate: Map<string, ExistingItemRow[]>,
+  usedRowIds: Set<number>,
+  preferredTimeSlot: string
+): ExistingItemRow | undefined {
+  const onDate = (rowsByDate.get(ymd) ?? []).filter(
+    (r) => !usedRowIds.has(r.id) && isFillableEmptyRow(r)
+  )
+  if (onDate.length === 0) return undefined
+
+  const norm = normalizeMealPlanTimeSlotForKey(preferredTimeSlot)
+  const match = onDate.find(
+    (r) => normalizeMealPlanTimeSlotForKey(r.timeSlot) === norm
+  )
+  if (match) return match
+
+  return onDate[0]
+}
+
+/** Customer's delivery time for a day — same slot for every meal that day. */
+function resolveCustomerDayTimeSlot(
+  ymd: string,
   rowsByDate: Map<string, ExistingItemRow[]>,
   planTimeSlots: string[]
-): Map<string, Map<number, ExistingItemRow>> {
-  const indexed = new Map<string, Map<number, ExistingItemRow>>()
-  if (planTimeSlots.length === 0) return indexed
-  const normalizedPlan = planTimeSlots.map(normalizeMealPlanTimeSlotForKey)
-  for (const [ymd, list] of rowsByDate) {
-    const slotMap = new Map<number, ExistingItemRow>()
-    const unmatched = [...list]
-    for (let i = 0; i < normalizedPlan.length; i++) {
-      const idx = unmatched.findIndex(
-        (r) => normalizeMealPlanTimeSlotForKey(r.timeSlot) === normalizedPlan[i]
-      )
-      if (idx >= 0) {
-        slotMap.set(i, unmatched[idx]!)
-        unmatched.splice(idx, 1)
-      }
-    }
-    unmatched.sort((a, b) => a.timeSlot.localeCompare(b.timeSlot))
-    let nextIdx = normalizedPlan.length
-    for (const row of unmatched) {
-      while (slotMap.has(nextIdx)) nextIdx++
-      slotMap.set(nextIdx, row)
-      nextIdx++
-    }
-    indexed.set(ymd, slotMap)
-  }
-  return indexed
-}
-
-function indexExistingByDateTimeSlot(
-  rowsByDate: Map<string, ExistingItemRow[]>
-): Map<string, Map<string, ExistingItemRow>> {
-  const indexed = new Map<string, Map<string, ExistingItemRow>>()
-  for (const [ymd, list] of rowsByDate) {
-    const slotMap = new Map<string, ExistingItemRow>()
-    for (const row of list) {
-      slotMap.set(normalizeMealPlanTimeSlotForKey(row.timeSlot), row)
-    }
-    indexed.set(ymd, slotMap)
-  }
-  return indexed
-}
-
-function resolveExistingRow(
-  ymd: string,
-  slotIndex: number,
-  timeSlot: string,
-  byPlanSlot: Map<string, Map<number, ExistingItemRow>>,
-  byTimeSlot: Map<string, Map<string, ExistingItemRow>>,
-  rowsByDate: Map<string, ExistingItemRow[]>,
-  usedRowIds: Set<number>
-): ExistingItemRow | undefined {
-  const pick = (row: ExistingItemRow | undefined) =>
-    row && !usedRowIds.has(row.id) ? row : undefined
-  let row = pick(byPlanSlot.get(ymd)?.get(slotIndex))
-  if (row) return row
-  row = pick(byTimeSlot.get(ymd)?.get(normalizeMealPlanTimeSlotForKey(timeSlot)))
-  if (row) return row
+): string {
   const onDate = rowsByDate.get(ymd) ?? []
-  return onDate.find((r) => !usedRowIds.has(r.id))
+  const activeWithDish = onDate.find(
+    (r) => isActiveRow(r) && (r.dishId != null || Boolean(r.dishName?.trim()))
+  )
+  if (activeWithDish?.timeSlot.trim()) return activeWithDish.timeSlot.trim()
+
+  const anyOnDay = onDate.find((r) => r.timeSlot.trim())
+  if (anyOnDay?.timeSlot.trim()) return anyOnDay.timeSlot.trim()
+
+  if (planTimeSlots.length > 0) return planTimeSlots[0]!
+
+  return '12:00'
 }
 
 function snapshotRow(row: ExistingItemRow): Record<string, unknown> {
@@ -189,13 +176,11 @@ export async function applyAgentMealItems(
       dishName: true,
       customNote: true,
     },
-    orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }],
+    orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { id: 'asc' }],
   })
 
   const rowsByDate = groupExistingRowsByDateYmd(existingRows)
   const planTimeSlots = parseMealPlanTimeSlots(mealPlanRow.timeSlots)
-  const existingByPlanSlot = indexExistingByPlanSlotOrder(rowsByDate, planTimeSlots)
-  const existingByTimeSlot = indexExistingByDateTimeSlot(rowsByDate)
   const activeByDate = new Map<string, number>()
   let activeCount = 0
   for (const row of existingRows) {
@@ -222,22 +207,49 @@ export async function applyAgentMealItems(
         for (const data of items) {
           const ymd = data.dateYmd
           if (planEnd && ymd > planEnd) {
-            throw new Error(
-              `${ymd} is after the plan end date (${planEnd}).`
-            )
+            throw new Error(`${ymd} is after the plan end date (${planEnd}).`)
           }
 
-          const slotIndex = data.slotIndex
-          const timeSlot = data.timeSlot.trim()
-          let existingRow = resolveExistingRow(
+          const activeOnDate = activeByDate.get(ymd) ?? 0
+          const customerDayTimeSlot = resolveCustomerDayTimeSlot(
             ymd,
-            slotIndex,
-            timeSlot,
-            existingByPlanSlot,
-            existingByTimeSlot,
             rowsByDate,
-            usedExistingRowIds
+            planTimeSlots
           )
+
+          let existingRow: ExistingItemRow | undefined
+          let slotIndex = data.slotIndex
+          let timeSlot = customerDayTimeSlot
+
+          if (data.replaceItemId) {
+            existingRow = existingRows.find((r) => r.id === data.replaceItemId)
+            if (!existingRow) {
+              throw new Error(`Meal item #${data.replaceItemId} not found.`)
+            }
+            timeSlot = existingRow.timeSlot
+          } else {
+            const fillable = findFillableEmptyRow(
+              ymd,
+              rowsByDate,
+              usedExistingRowIds,
+              customerDayTimeSlot
+            )
+
+            if (fillable) {
+              existingRow = fillable
+              timeSlot = fillable.timeSlot
+            } else {
+              if (mealPlanRow.mealsPerDay > 0 && activeOnDate >= mealPlanRow.mealsPerDay) {
+                throw new Error(
+                  `${ymd} already has ${mealPlanRow.mealsPerDay} active meal(s).`
+                )
+              }
+
+              slotIndex = activeOnDate
+              timeSlot = customerDayTimeSlot
+              existingRow = undefined
+            }
+          }
 
           if (totalMealsCap > 0 && !existingRow) {
             const overCap = activeCount + 1 > totalMealsCap
@@ -246,23 +258,7 @@ export async function applyAgentMealItems(
               mealPlanRow.remainingMeals > 0 &&
               activeCount <= totalMealsCap
             if (overCap && !allowWhenAtCapButContractLeft) {
-              throw new Error(
-                `Plan allows at most ${totalMealsCap} active meals.`
-              )
-            }
-          }
-
-          if (mealPlanRow.mealsPerDay > 0 && !existingRow) {
-            const onDate = activeByDate.get(ymd) ?? 0
-            if (onDate >= mealPlanRow.mealsPerDay) {
-              existingRow = (rowsByDate.get(ymd) ?? []).find(
-                (r) => !usedExistingRowIds.has(r.id)
-              )
-              if (!existingRow) {
-                throw new Error(
-                  `${ymd} already has ${mealPlanRow.mealsPerDay} active meal(s).`
-                )
-              }
+              throw new Error(`Plan allows at most ${totalMealsCap} active meals.`)
             }
           }
 
