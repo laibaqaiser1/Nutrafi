@@ -78,23 +78,52 @@ function levenshtein(a: string, b: string): number {
   return dp[m]![n]!
 }
 
+const TOKEN_STOP = new Set([
+  'with',
+  'and',
+  'the',
+  'for',
+  'please',
+  'no',
+  'without',
+  'tomorrow',
+  'tommorow',
+  'today',
+  'meal',
+  'meals',
+  'my',
+  'add',
+])
+
+/** Food-type words — if present in the customer phrase, dish name should include them. */
+const FOOD_TYPE_TOKENS = new Set([
+  'rice',
+  'pasta',
+  'pizza',
+  'biryani',
+  'burger',
+  'kofta',
+  'salad',
+  'wrap',
+  'potato',
+  'mince',
+  'sauce',
+  'soup',
+  'steak',
+  'fish',
+  'salmon',
+  'wraps',
+])
+
 export function significantTokens(phrase: string): string[] {
-  const stop = new Set([
-    'with',
-    'and',
-    'the',
-    'for',
-    'please',
-    'no',
-    'without',
-    'rice',
-    'light',
-    'cream',
-    'tomorrow',
-    'tommorow',
-    'today',
-  ])
   return normalizeForCompare(phrase)
     .split(' ')
-    .filter((t) => t.length > 2 && !stop.has(t))
+    .filter((t) => t.length > 2 && !TOKEN_STOP.has(t))
+}
+
+/** All meaningful tokens from the customer phrase (includes rice, pasta, beef, …). */
+export function mustContainTokens(phrase: string): string[] {
+  return normalizeForCompare(phrase)
+    .split(' ')
+    .filter((t) => t.length > 1 && !TOKEN_STOP.has(t))
 }

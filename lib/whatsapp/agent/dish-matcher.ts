@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { whatsappAgentConfig } from './config'
 import {
-  allSignificantTokensInName,
+  mustContainTokens,
+  normalizeForCompare,
   phraseContainedInNameScore,
   significantTokens,
   stringSimilarity,
@@ -19,6 +20,24 @@ const CACHE_MS = 5 * 60 * 1000
 
 const FOLLOW_UP_MATCH_THRESHOLD = 0.55
 const DISPLAY_CANDIDATE_LIMIT = 6
+
+const FOOD_TYPE_TOKENS = new Set([
+  'rice',
+  'pasta',
+  'pizza',
+  'biryani',
+  'burger',
+  'kofta',
+  'salad',
+  'wrap',
+  'potato',
+  'mince',
+  'sauce',
+  'soup',
+  'steak',
+  'fish',
+  'salmon',
+])
 
 async function loadActiveDishes(): Promise<MenuDish[]> {
   const now = Date.now()
@@ -51,11 +70,64 @@ export async function loadCandidatesInOrder(
   }))
 }
 
+function dishNameNorm(name: string): string {
+  return name.toLowerCase()
+}
+
+/** Narrow menu to dishes compatible with what the customer actually said. */
+function filterDishesByPhraseConstraints(
+  phrase: string,
+  dishes: MenuDish[]
+): MenuDish[] {
+  const tokens = mustContainTokens(phrase)
+  if (tokens.length === 0) return dishes
+
+  const nameHasAll = (d: MenuDish, required: string[]) => {
+    const n = dishNameNorm(d.name)
+    return required.every((t) => n.includes(t))
+  }
+
+  // "beef rice" → must contain both beef AND rice
+  if (tokens.length >= 2) {
+    const strict = dishes.filter((d) => nameHasAll(d, tokens))
+    if (strict.length > 0) return strict
+
+    // Fall back: require food-type tokens (rice, pasta, …) if customer named them
+    const foodTypes = tokens.filter((t) => FOOD_TYPE_TOKENS.has(t))
+    if (foodTypes.length > 0) {
+      const typed = dishes.filter((d) => nameHasAll(d, foodTypes))
+      if (typed.length > 0) {
+        const proteins = tokens.filter((t) => !FOOD_TYPE_TOKENS.has(t))
+        if (proteins.length > 0) {
+          const typedAndProtein = typed.filter((d) => nameHasAll(d, proteins))
+          if (typedAndProtein.length > 0) return typedAndProtein
+        }
+        return typed
+      }
+    }
+  }
+
+  // Single token e.g. "pasta"
+  if (tokens.length === 1) {
+    const narrowed = dishes.filter((d) => dishNameNorm(d.name).includes(tokens[0]!))
+    if (narrowed.length > 0) return narrowed
+  }
+
+  return dishes
+}
+
 function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
+  const pool = filterDishesByPhraseConstraints(phrase, dishes)
   const tokens = significantTokens(phrase)
+  const required = mustContainTokens(phrase)
   const scored: DishCandidate[] = []
 
-  for (const dish of dishes) {
+  for (const dish of pool) {
+    const nameNorm = normalizeForCompare(dish.name)
+    if (required.length >= 2 && !required.every((t) => nameNorm.includes(t))) {
+      continue
+    }
+
     const score = Math.max(
       stringSimilarity(phrase, dish.name),
       phraseContainedInNameScore(phrase, dish.name)
@@ -71,14 +143,33 @@ function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
   return scored.slice(0, 10)
 }
 
-/** One menu item contains all customer tokens (e.g. "chicken burger" → only Chicken Buffalo Burger). */
+/** Customer phrase matches menu name exactly (ignoring case/punctuation). */
+function findExactMenuMatch(phrase: string, dishes: MenuDish[]): MenuDish | null {
+  const p = normalizeForCompare(phrase)
+  if (!p || p.length < 4) return null
+
+  const exact = dishes.filter((d) => normalizeForCompare(d.name) === p)
+  if (exact.length === 1) return exact[0]!
+  if (exact.length > 1) return null
+
+  const contained = dishes.filter((d) => normalizeForCompare(d.name).includes(p))
+  if (contained.length === 1) return contained[0]!
+
+  return null
+}
+
+/** One menu item contains all customer tokens (e.g. "beef rice" → Beef Kofta with Rice). */
 function findUniqueMenuMatchByTokens(
   phrase: string,
   dishes: MenuDish[]
 ): MenuDish | null {
-  const tokens = significantTokens(phrase)
+  const pool = filterDishesByPhraseConstraints(phrase, dishes)
+  const tokens = mustContainTokens(phrase)
   if (tokens.length === 0) return null
-  const matches = dishes.filter((d) => allSignificantTokensInName(phrase, d.name))
+  const matches = pool.filter((d) => {
+    const n = dishNameNorm(d.name)
+    return tokens.every((t) => n.includes(t))
+  })
   if (matches.length === 1) return matches[0]!
   return null
 }
@@ -88,9 +179,12 @@ function findUniqueCandidateByTokens(
   phrase: string,
   candidates: DishCandidate[]
 ): DishCandidate | null {
-  const matches = candidates.filter((c) =>
-    allSignificantTokensInName(phrase, c.name)
-  )
+  const tokens = mustContainTokens(phrase)
+  if (tokens.length === 0) return null
+  const matches = candidates.filter((c) => {
+    const n = normalizeForCompare(c.name)
+    return tokens.every((t) => n.includes(t))
+  })
   if (matches.length === 1) return matches[0]!
   return null
 }
@@ -133,6 +227,8 @@ async function pickWithOpenAi(
           {
             role: 'system',
             content: `Pick the best menu dish for the customer phrase. Must pick from candidates only or null.
+If the phrase names a food type (rice, pasta, pizza, burger, …), NEVER pick a dish that contradicts it (e.g. phrase "beef rice" → only dishes with rice, not pizza).
+Prefer dishes that contain ALL words from the phrase in the dish name.
 Return JSON: { "dishId": number|null, "confidence": number }`,
           },
           {
@@ -168,8 +264,11 @@ function blendConfidence(
   return 0.4 * candidateScore + 0.6 * aiConfidence
 }
 
-function isAmbiguousTop(candidates: DishCandidate[]): boolean {
+function isAmbiguousTop(candidates: DishCandidate[], phrase: string): boolean {
   if (candidates.length < 2) return false
+  const p = normalizeForCompare(phrase)
+  const topNorm = normalizeForCompare(candidates[0]!.name)
+  if (p && topNorm === p) return false
   return candidates[0]!.score - candidates[1]!.score < 0.05
 }
 
@@ -183,6 +282,24 @@ export async function resolveDishFromPhrase(
 ): Promise<DishResolution> {
   const cfg = whatsappAgentConfig()
   const dishes = await loadActiveDishes()
+
+  const exactMatch = findExactMenuMatch(customerPhrase, dishes)
+  if (exactMatch) {
+    return {
+      customerPhrase,
+      status: 'resolved',
+      confidence: 0.98,
+      dishId: exactMatch.id,
+      dishName: exactMatch.name,
+      candidates: [
+        {
+          dishId: exactMatch.id,
+          name: exactMatch.name,
+          score: 1,
+        },
+      ],
+    }
+  }
 
   const uniqueTokenMatch = findUniqueMenuMatchByTokens(customerPhrase, dishes)
   if (uniqueTokenMatch) {
@@ -259,7 +376,7 @@ export async function resolveDishFromPhrase(
     }
   }
 
-  const ambiguous = isAmbiguousTop(candidates)
+  const ambiguous = isAmbiguousTop(candidates, customerPhrase)
   const autoThreshold = cfg.dishAutoConfidence
 
   if (confidence >= autoThreshold && !ambiguous) {
