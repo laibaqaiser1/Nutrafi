@@ -1,7 +1,9 @@
 export function whatsappAgentConfig() {
   const enabled = process.env.WHATSAPP_AGENT_ENABLED?.trim() !== 'false'
   const supportPhone =
-    process.env.WHATSAPP_SUPPORT_PHONE?.trim() || '971000000000'
+    process.env.WHATSAPP_CUSTOMER_SUPPORT_PHONE?.trim() ||
+    process.env.WHATSAPP_SUPPORT_PHONE?.trim() ||
+    '971000000000'
   const dishAutoConfidence = parseFloat(
     process.env.WHATSAPP_AGENT_DISH_CONFIDENCE_AUTO ?? '0.8'
   )
@@ -16,6 +18,9 @@ export function whatsappAgentConfig() {
   )
   const timezone = process.env.WHATSAPP_AGENT_TIMEZONE?.trim() || 'Asia/Dubai'
   const cronSecret = process.env.WHATSAPP_AGENT_CRON_SECRET?.trim()
+  const cronReminderCustomerIds = parseCustomerIdAllowlist(
+    process.env.WHATSAPP_AGENT_CRON_REMINDER_CUSTOMER_IDS
+  )
 
   const requireOpenAiExplicit = process.env.WHATSAPP_AGENT_REQUIRE_OPENAI?.trim()
   const requireOpenAi =
@@ -40,5 +45,18 @@ export function whatsappAgentConfig() {
       : 24,
     timezone,
     cronSecret,
+    cronReminderCustomerIds,
   }
+}
+
+/** Comma-separated customer ids, e.g. "12,45,78". Empty = all eligible customers. */
+function parseCustomerIdAllowlist(raw: string | undefined): Set<number> | null {
+  const text = raw?.trim()
+  if (!text) return null
+  const ids = text
+    .split(/[,;\s]+/)
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => Number.isFinite(n) && n > 0)
+  if (ids.length === 0) return null
+  return new Set(ids)
 }

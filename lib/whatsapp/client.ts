@@ -140,7 +140,7 @@ export async function sendAddMealsReminder(
 ): Promise<SendTextResult> {
   return sendWhatsAppTemplate({
     to,
-    templateName: WHATSAPP_TEMPLATES.addMealsReminder,
+    templateName: WHATSAPP_TEMPLATES.daily_meals_reminder,
     languageCode: 'en',
     bodyParameters: [customerName, tomorrowDate],
   })
