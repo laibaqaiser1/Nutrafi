@@ -403,7 +403,10 @@ export const ModelName = {
   MealPlanItem: 'MealPlanItem',
   Payment: 'Payment',
   WhatsAppConversation: 'WhatsAppConversation',
-  WhatsAppMessage: 'WhatsAppMessage'
+  WhatsAppMessage: 'WhatsAppMessage',
+  WhatsAppAgentRun: 'WhatsAppAgentRun',
+  WhatsAppAgentAction: 'WhatsAppAgentAction',
+  WhatsAppPendingAction: 'WhatsAppPendingAction'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -419,7 +422,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "permission" | "rolePermission" | "dish" | "mealPlanTemplate" | "mealPlanTemplateItem" | "customer" | "customerLocation" | "plan" | "mealPlan" | "mealPlanItem" | "payment" | "whatsAppConversation" | "whatsAppMessage"
+    modelProps: "user" | "permission" | "rolePermission" | "dish" | "mealPlanTemplate" | "mealPlanTemplateItem" | "customer" | "customerLocation" | "plan" | "mealPlan" | "mealPlanItem" | "payment" | "whatsAppConversation" | "whatsAppMessage" | "whatsAppAgentRun" | "whatsAppAgentAction" | "whatsAppPendingAction"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1459,6 +1462,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    WhatsAppAgentRun: {
+      payload: Prisma.$WhatsAppAgentRunPayload<ExtArgs>
+      fields: Prisma.WhatsAppAgentRunFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.WhatsAppAgentRunFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.WhatsAppAgentRunFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>
+        }
+        findFirst: {
+          args: Prisma.WhatsAppAgentRunFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.WhatsAppAgentRunFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>
+        }
+        findMany: {
+          args: Prisma.WhatsAppAgentRunFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>[]
+        }
+        create: {
+          args: Prisma.WhatsAppAgentRunCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>
+        }
+        createMany: {
+          args: Prisma.WhatsAppAgentRunCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.WhatsAppAgentRunCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>[]
+        }
+        delete: {
+          args: Prisma.WhatsAppAgentRunDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>
+        }
+        update: {
+          args: Prisma.WhatsAppAgentRunUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>
+        }
+        deleteMany: {
+          args: Prisma.WhatsAppAgentRunDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.WhatsAppAgentRunUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.WhatsAppAgentRunUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>[]
+        }
+        upsert: {
+          args: Prisma.WhatsAppAgentRunUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentRunPayload>
+        }
+        aggregate: {
+          args: Prisma.WhatsAppAgentRunAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateWhatsAppAgentRun>
+        }
+        groupBy: {
+          args: Prisma.WhatsAppAgentRunGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WhatsAppAgentRunGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.WhatsAppAgentRunCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WhatsAppAgentRunCountAggregateOutputType> | number
+        }
+      }
+    }
+    WhatsAppAgentAction: {
+      payload: Prisma.$WhatsAppAgentActionPayload<ExtArgs>
+      fields: Prisma.WhatsAppAgentActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.WhatsAppAgentActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.WhatsAppAgentActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>
+        }
+        findFirst: {
+          args: Prisma.WhatsAppAgentActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.WhatsAppAgentActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>
+        }
+        findMany: {
+          args: Prisma.WhatsAppAgentActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>[]
+        }
+        create: {
+          args: Prisma.WhatsAppAgentActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>
+        }
+        createMany: {
+          args: Prisma.WhatsAppAgentActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.WhatsAppAgentActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>[]
+        }
+        delete: {
+          args: Prisma.WhatsAppAgentActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>
+        }
+        update: {
+          args: Prisma.WhatsAppAgentActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.WhatsAppAgentActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.WhatsAppAgentActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.WhatsAppAgentActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.WhatsAppAgentActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppAgentActionPayload>
+        }
+        aggregate: {
+          args: Prisma.WhatsAppAgentActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateWhatsAppAgentAction>
+        }
+        groupBy: {
+          args: Prisma.WhatsAppAgentActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WhatsAppAgentActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.WhatsAppAgentActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WhatsAppAgentActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    WhatsAppPendingAction: {
+      payload: Prisma.$WhatsAppPendingActionPayload<ExtArgs>
+      fields: Prisma.WhatsAppPendingActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.WhatsAppPendingActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.WhatsAppPendingActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>
+        }
+        findFirst: {
+          args: Prisma.WhatsAppPendingActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.WhatsAppPendingActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>
+        }
+        findMany: {
+          args: Prisma.WhatsAppPendingActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>[]
+        }
+        create: {
+          args: Prisma.WhatsAppPendingActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>
+        }
+        createMany: {
+          args: Prisma.WhatsAppPendingActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.WhatsAppPendingActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>[]
+        }
+        delete: {
+          args: Prisma.WhatsAppPendingActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>
+        }
+        update: {
+          args: Prisma.WhatsAppPendingActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.WhatsAppPendingActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.WhatsAppPendingActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.WhatsAppPendingActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.WhatsAppPendingActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppPendingActionPayload>
+        }
+        aggregate: {
+          args: Prisma.WhatsAppPendingActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateWhatsAppPendingAction>
+        }
+        groupBy: {
+          args: Prisma.WhatsAppPendingActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WhatsAppPendingActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.WhatsAppPendingActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WhatsAppPendingActionCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1725,6 +1950,7 @@ export const WhatsAppConversationScalarFieldEnum = {
   lastMessageAt: 'lastMessageAt',
   lastMessagePreview: 'lastMessagePreview',
   unreadCount: 'unreadCount',
+  agentMode: 'agentMode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1748,6 +1974,61 @@ export const WhatsAppMessageScalarFieldEnum = {
 export type WhatsAppMessageScalarFieldEnum = (typeof WhatsAppMessageScalarFieldEnum)[keyof typeof WhatsAppMessageScalarFieldEnum]
 
 
+export const WhatsAppAgentRunScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  customerId: 'customerId',
+  mealPlanId: 'mealPlanId',
+  inboundMessageId: 'inboundMessageId',
+  parentRunId: 'parentRunId',
+  pendingActionId: 'pendingActionId',
+  trigger: 'trigger',
+  status: 'status',
+  rawMessageBody: 'rawMessageBody',
+  parsedIntent: 'parsedIntent',
+  model: 'model',
+  modelRawResponse: 'modelRawResponse',
+  errorMessage: 'errorMessage',
+  payload: 'payload',
+  createdAt: 'createdAt'
+} as const
+
+export type WhatsAppAgentRunScalarFieldEnum = (typeof WhatsAppAgentRunScalarFieldEnum)[keyof typeof WhatsAppAgentRunScalarFieldEnum]
+
+
+export const WhatsAppAgentActionScalarFieldEnum = {
+  id: 'id',
+  runId: 'runId',
+  actionType: 'actionType',
+  status: 'status',
+  input: 'input',
+  output: 'output',
+  confidence: 'confidence',
+  beforeSnapshot: 'beforeSnapshot',
+  afterSnapshot: 'afterSnapshot',
+  createdAt: 'createdAt'
+} as const
+
+export type WhatsAppAgentActionScalarFieldEnum = (typeof WhatsAppAgentActionScalarFieldEnum)[keyof typeof WhatsAppAgentActionScalarFieldEnum]
+
+
+export const WhatsAppPendingActionScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  customerId: 'customerId',
+  mealPlanId: 'mealPlanId',
+  createdFromRunId: 'createdFromRunId',
+  type: 'type',
+  status: 'status',
+  context: 'context',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type WhatsAppPendingActionScalarFieldEnum = (typeof WhatsAppPendingActionScalarFieldEnum)[keyof typeof WhatsAppPendingActionScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1762,6 +2043,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
@@ -1929,6 +2217,20 @@ export type ListEnumCustomerStatusFieldRefInput<$PrismaModel> = FieldRefInputTyp
 
 
 /**
+ * Reference to a field of type 'WhatsAppAgentMode'
+ */
+export type EnumWhatsAppAgentModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppAgentMode'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppAgentMode[]'
+ */
+export type ListEnumWhatsAppAgentModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppAgentMode[]'>
+    
+
+
+/**
  * Reference to a field of type 'WhatsAppMessageDirection'
  */
 export type EnumWhatsAppMessageDirectionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppMessageDirection'>
@@ -1953,6 +2255,62 @@ export type EnumWhatsAppMessageStatusFieldRefInput<$PrismaModel> = FieldRefInput
  * Reference to a field of type 'WhatsAppMessageStatus[]'
  */
 export type ListEnumWhatsAppMessageStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppMessageStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppAgentTrigger'
+ */
+export type EnumWhatsAppAgentTriggerFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppAgentTrigger'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppAgentTrigger[]'
+ */
+export type ListEnumWhatsAppAgentTriggerFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppAgentTrigger[]'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppAgentRunStatus'
+ */
+export type EnumWhatsAppAgentRunStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppAgentRunStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppAgentRunStatus[]'
+ */
+export type ListEnumWhatsAppAgentRunStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppAgentRunStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppPendingActionType'
+ */
+export type EnumWhatsAppPendingActionTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppPendingActionType'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppPendingActionType[]'
+ */
+export type ListEnumWhatsAppPendingActionTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppPendingActionType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppPendingActionStatus'
+ */
+export type EnumWhatsAppPendingActionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppPendingActionStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'WhatsAppPendingActionStatus[]'
+ */
+export type ListEnumWhatsAppPendingActionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WhatsAppPendingActionStatus[]'>
     
 
 /**
@@ -2056,6 +2414,9 @@ export type GlobalOmitConfig = {
   payment?: Prisma.PaymentOmit
   whatsAppConversation?: Prisma.WhatsAppConversationOmit
   whatsAppMessage?: Prisma.WhatsAppMessageOmit
+  whatsAppAgentRun?: Prisma.WhatsAppAgentRunOmit
+  whatsAppAgentAction?: Prisma.WhatsAppAgentActionOmit
+  whatsAppPendingAction?: Prisma.WhatsAppPendingActionOmit
 }
 
 /* Types for Logging */

@@ -28,6 +28,53 @@ export const WhatsAppMessageStatus = {
 export type WhatsAppMessageStatus = (typeof WhatsAppMessageStatus)[keyof typeof WhatsAppMessageStatus]
 
 
+export const WhatsAppAgentMode = {
+  AUTO: 'AUTO',
+  MANUAL: 'MANUAL'
+} as const
+
+export type WhatsAppAgentMode = (typeof WhatsAppAgentMode)[keyof typeof WhatsAppAgentMode]
+
+
+export const WhatsAppAgentTrigger = {
+  INBOUND_MESSAGE: 'INBOUND_MESSAGE',
+  CRON_REMINDER: 'CRON_REMINDER',
+  MANUAL: 'MANUAL'
+} as const
+
+export type WhatsAppAgentTrigger = (typeof WhatsAppAgentTrigger)[keyof typeof WhatsAppAgentTrigger]
+
+
+export const WhatsAppAgentRunStatus = {
+  SUCCESS: 'SUCCESS',
+  PARTIAL: 'PARTIAL',
+  FAILED: 'FAILED',
+  NEEDS_CONFIRMATION: 'NEEDS_CONFIRMATION',
+  SKIPPED: 'SKIPPED'
+} as const
+
+export type WhatsAppAgentRunStatus = (typeof WhatsAppAgentRunStatus)[keyof typeof WhatsAppAgentRunStatus]
+
+
+export const WhatsAppPendingActionStatus = {
+  OPEN: 'OPEN',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED'
+} as const
+
+export type WhatsAppPendingActionStatus = (typeof WhatsAppPendingActionStatus)[keyof typeof WhatsAppPendingActionStatus]
+
+
+export const WhatsAppPendingActionType = {
+  DISH_CHOICE: 'DISH_CHOICE',
+  MEAL_BATCH: 'MEAL_BATCH',
+  REPLACE_MEAL: 'REPLACE_MEAL'
+} as const
+
+export type WhatsAppPendingActionType = (typeof WhatsAppPendingActionType)[keyof typeof WhatsAppPendingActionType]
+
+
 export const UserRole = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',

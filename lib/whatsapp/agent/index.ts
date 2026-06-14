@@ -1,0 +1,5 @@
+export { whatsappAgentConfig } from './config'
+export { processInboundAgentMessage } from './handle-inbound'
+export { triggerAgentAfterInbound } from './trigger-after-inbound'
+export { findCustomerByPhoneExact } from './find-customer'
+export { phonesMatchExact, exactPhoneKeys } from './phone-match-exact'

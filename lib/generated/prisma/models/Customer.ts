@@ -268,6 +268,8 @@ export type CustomerWhereInput = {
   payments?: Prisma.PaymentListRelationFilter
   locations?: Prisma.CustomerLocationListRelationFilter
   whatsappConversations?: Prisma.WhatsAppConversationListRelationFilter
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunListRelationFilter
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionListRelationFilter
 }
 
 export type CustomerOrderByWithRelationInput = {
@@ -286,6 +288,8 @@ export type CustomerOrderByWithRelationInput = {
   payments?: Prisma.PaymentOrderByRelationAggregateInput
   locations?: Prisma.CustomerLocationOrderByRelationAggregateInput
   whatsappConversations?: Prisma.WhatsAppConversationOrderByRelationAggregateInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunOrderByRelationAggregateInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionOrderByRelationAggregateInput
 }
 
 export type CustomerWhereUniqueInput = Prisma.AtLeast<{
@@ -307,6 +311,8 @@ export type CustomerWhereUniqueInput = Prisma.AtLeast<{
   payments?: Prisma.PaymentListRelationFilter
   locations?: Prisma.CustomerLocationListRelationFilter
   whatsappConversations?: Prisma.WhatsAppConversationListRelationFilter
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunListRelationFilter
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionListRelationFilter
 }, "id">
 
 export type CustomerOrderByWithAggregationInput = {
@@ -360,6 +366,8 @@ export type CustomerCreateInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
   whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateInput = {
@@ -378,6 +386,8 @@ export type CustomerUncheckedCreateInput = {
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
   whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUpdateInput = {
@@ -395,6 +405,8 @@ export type CustomerUpdateInput = {
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
   whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateInput = {
@@ -413,6 +425,8 @@ export type CustomerUncheckedUpdateInput = {
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
   whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateManyInput = {
@@ -578,6 +592,38 @@ export type CustomerUpdateOneWithoutWhatsappConversationsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutWhatsappConversationsInput, Prisma.CustomerUpdateWithoutWhatsappConversationsInput>, Prisma.CustomerUncheckedUpdateWithoutWhatsappConversationsInput>
 }
 
+export type CustomerCreateNestedOneWithoutWhatsappAgentRunsInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappAgentRunsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappAgentRunsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutWhatsappAgentRunsInput
+  connect?: Prisma.CustomerWhereUniqueInput
+}
+
+export type CustomerUpdateOneWithoutWhatsappAgentRunsNestedInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappAgentRunsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappAgentRunsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutWhatsappAgentRunsInput
+  upsert?: Prisma.CustomerUpsertWithoutWhatsappAgentRunsInput
+  disconnect?: Prisma.CustomerWhereInput | boolean
+  delete?: Prisma.CustomerWhereInput | boolean
+  connect?: Prisma.CustomerWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutWhatsappAgentRunsInput, Prisma.CustomerUpdateWithoutWhatsappAgentRunsInput>, Prisma.CustomerUncheckedUpdateWithoutWhatsappAgentRunsInput>
+}
+
+export type CustomerCreateNestedOneWithoutWhatsappPendingActionsInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappPendingActionsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappPendingActionsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutWhatsappPendingActionsInput
+  connect?: Prisma.CustomerWhereUniqueInput
+}
+
+export type CustomerUpdateOneWithoutWhatsappPendingActionsNestedInput = {
+  create?: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappPendingActionsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappPendingActionsInput>
+  connectOrCreate?: Prisma.CustomerCreateOrConnectWithoutWhatsappPendingActionsInput
+  upsert?: Prisma.CustomerUpsertWithoutWhatsappPendingActionsInput
+  disconnect?: Prisma.CustomerWhereInput | boolean
+  delete?: Prisma.CustomerWhereInput | boolean
+  connect?: Prisma.CustomerWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CustomerUpdateToOneWithWhereWithoutWhatsappPendingActionsInput, Prisma.CustomerUpdateWithoutWhatsappPendingActionsInput>, Prisma.CustomerUncheckedUpdateWithoutWhatsappPendingActionsInput>
+}
+
 export type CustomerCreateWithoutLocationsInput = {
   fullName: string
   phone: string
@@ -592,6 +638,8 @@ export type CustomerCreateWithoutLocationsInput = {
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
   whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutLocationsInput = {
@@ -609,6 +657,8 @@ export type CustomerUncheckedCreateWithoutLocationsInput = {
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
   whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutLocationsInput = {
@@ -641,6 +691,8 @@ export type CustomerUpdateWithoutLocationsInput = {
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
   whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutLocationsInput = {
@@ -658,6 +710,8 @@ export type CustomerUncheckedUpdateWithoutLocationsInput = {
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
   whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateWithoutMealPlansInput = {
@@ -674,6 +728,8 @@ export type CustomerCreateWithoutMealPlansInput = {
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
   whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutMealPlansInput = {
@@ -691,6 +747,8 @@ export type CustomerUncheckedCreateWithoutMealPlansInput = {
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
   whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutMealPlansInput = {
@@ -723,6 +781,8 @@ export type CustomerUpdateWithoutMealPlansInput = {
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
   whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutMealPlansInput = {
@@ -740,6 +800,8 @@ export type CustomerUncheckedUpdateWithoutMealPlansInput = {
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
   whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateWithoutPaymentsInput = {
@@ -756,6 +818,8 @@ export type CustomerCreateWithoutPaymentsInput = {
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
   whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutPaymentsInput = {
@@ -773,6 +837,8 @@ export type CustomerUncheckedCreateWithoutPaymentsInput = {
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
   whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutPaymentsInput = {
@@ -805,6 +871,8 @@ export type CustomerUpdateWithoutPaymentsInput = {
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
   whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutPaymentsInput = {
@@ -822,6 +890,8 @@ export type CustomerUncheckedUpdateWithoutPaymentsInput = {
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
   whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerCreateWithoutWhatsappConversationsInput = {
@@ -838,6 +908,8 @@ export type CustomerCreateWithoutWhatsappConversationsInput = {
   mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerUncheckedCreateWithoutWhatsappConversationsInput = {
@@ -855,6 +927,8 @@ export type CustomerUncheckedCreateWithoutWhatsappConversationsInput = {
   mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
   locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutCustomerInput
 }
 
 export type CustomerCreateOrConnectWithoutWhatsappConversationsInput = {
@@ -887,6 +961,8 @@ export type CustomerUpdateWithoutWhatsappConversationsInput = {
   mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutCustomerNestedInput
 }
 
 export type CustomerUncheckedUpdateWithoutWhatsappConversationsInput = {
@@ -904,6 +980,188 @@ export type CustomerUncheckedUpdateWithoutWhatsappConversationsInput = {
   mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
   locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerCreateWithoutWhatsappAgentRunsInput = {
+  fullName: string
+  phone: string
+  email?: string | null
+  address: string
+  deliveryArea: string
+  status?: $Enums.CustomerStatus
+  notes?: string | null
+  instructions?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerUncheckedCreateWithoutWhatsappAgentRunsInput = {
+  id?: number
+  fullName: string
+  phone: string
+  email?: string | null
+  address: string
+  deliveryArea: string
+  status?: $Enums.CustomerStatus
+  notes?: string | null
+  instructions?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerCreateOrConnectWithoutWhatsappAgentRunsInput = {
+  where: Prisma.CustomerWhereUniqueInput
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappAgentRunsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappAgentRunsInput>
+}
+
+export type CustomerUpsertWithoutWhatsappAgentRunsInput = {
+  update: Prisma.XOR<Prisma.CustomerUpdateWithoutWhatsappAgentRunsInput, Prisma.CustomerUncheckedUpdateWithoutWhatsappAgentRunsInput>
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappAgentRunsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappAgentRunsInput>
+  where?: Prisma.CustomerWhereInput
+}
+
+export type CustomerUpdateToOneWithWhereWithoutWhatsappAgentRunsInput = {
+  where?: Prisma.CustomerWhereInput
+  data: Prisma.XOR<Prisma.CustomerUpdateWithoutWhatsappAgentRunsInput, Prisma.CustomerUncheckedUpdateWithoutWhatsappAgentRunsInput>
+}
+
+export type CustomerUpdateWithoutWhatsappAgentRunsInput = {
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerUncheckedUpdateWithoutWhatsappAgentRunsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerCreateWithoutWhatsappPendingActionsInput = {
+  fullName: string
+  phone: string
+  email?: string | null
+  address: string
+  deliveryArea: string
+  status?: $Enums.CustomerStatus
+  notes?: string | null
+  instructions?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlans?: Prisma.MealPlanCreateNestedManyWithoutCustomerInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerUncheckedCreateWithoutWhatsappPendingActionsInput = {
+  id?: number
+  fullName: string
+  phone: string
+  email?: string | null
+  address: string
+  deliveryArea: string
+  status?: $Enums.CustomerStatus
+  notes?: string | null
+  instructions?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  mealPlans?: Prisma.MealPlanUncheckedCreateNestedManyWithoutCustomerInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutCustomerInput
+  locations?: Prisma.CustomerLocationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedCreateNestedManyWithoutCustomerInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutCustomerInput
+}
+
+export type CustomerCreateOrConnectWithoutWhatsappPendingActionsInput = {
+  where: Prisma.CustomerWhereUniqueInput
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappPendingActionsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappPendingActionsInput>
+}
+
+export type CustomerUpsertWithoutWhatsappPendingActionsInput = {
+  update: Prisma.XOR<Prisma.CustomerUpdateWithoutWhatsappPendingActionsInput, Prisma.CustomerUncheckedUpdateWithoutWhatsappPendingActionsInput>
+  create: Prisma.XOR<Prisma.CustomerCreateWithoutWhatsappPendingActionsInput, Prisma.CustomerUncheckedCreateWithoutWhatsappPendingActionsInput>
+  where?: Prisma.CustomerWhereInput
+}
+
+export type CustomerUpdateToOneWithWhereWithoutWhatsappPendingActionsInput = {
+  where?: Prisma.CustomerWhereInput
+  data: Prisma.XOR<Prisma.CustomerUpdateWithoutWhatsappPendingActionsInput, Prisma.CustomerUncheckedUpdateWithoutWhatsappPendingActionsInput>
+}
+
+export type CustomerUpdateWithoutWhatsappPendingActionsInput = {
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlans?: Prisma.MealPlanUpdateManyWithoutCustomerNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutCustomerNestedInput
+}
+
+export type CustomerUncheckedUpdateWithoutWhatsappPendingActionsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryArea?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumCustomerStatusFieldUpdateOperationsInput | $Enums.CustomerStatus
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  mealPlans?: Prisma.MealPlanUncheckedUpdateManyWithoutCustomerNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutCustomerNestedInput
+  locations?: Prisma.CustomerLocationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappConversations?: Prisma.WhatsAppConversationUncheckedUpdateManyWithoutCustomerNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutCustomerNestedInput
 }
 
 
@@ -916,6 +1174,8 @@ export type CustomerCountOutputType = {
   payments: number
   locations: number
   whatsappConversations: number
+  whatsappAgentRuns: number
+  whatsappPendingActions: number
 }
 
 export type CustomerCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -923,6 +1183,8 @@ export type CustomerCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensio
   payments?: boolean | CustomerCountOutputTypeCountPaymentsArgs
   locations?: boolean | CustomerCountOutputTypeCountLocationsArgs
   whatsappConversations?: boolean | CustomerCountOutputTypeCountWhatsappConversationsArgs
+  whatsappAgentRuns?: boolean | CustomerCountOutputTypeCountWhatsappAgentRunsArgs
+  whatsappPendingActions?: boolean | CustomerCountOutputTypeCountWhatsappPendingActionsArgs
 }
 
 /**
@@ -963,6 +1225,20 @@ export type CustomerCountOutputTypeCountWhatsappConversationsArgs<ExtArgs extend
   where?: Prisma.WhatsAppConversationWhereInput
 }
 
+/**
+ * CustomerCountOutputType without action
+ */
+export type CustomerCountOutputTypeCountWhatsappAgentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WhatsAppAgentRunWhereInput
+}
+
+/**
+ * CustomerCountOutputType without action
+ */
+export type CustomerCountOutputTypeCountWhatsappPendingActionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WhatsAppPendingActionWhereInput
+}
+
 
 export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -980,6 +1256,8 @@ export type CustomerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   payments?: boolean | Prisma.Customer$paymentsArgs<ExtArgs>
   locations?: boolean | Prisma.Customer$locationsArgs<ExtArgs>
   whatsappConversations?: boolean | Prisma.Customer$whatsappConversationsArgs<ExtArgs>
+  whatsappAgentRuns?: boolean | Prisma.Customer$whatsappAgentRunsArgs<ExtArgs>
+  whatsappPendingActions?: boolean | Prisma.Customer$whatsappPendingActionsArgs<ExtArgs>
   _count?: boolean | Prisma.CustomerCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["customer"]>
 
@@ -1031,6 +1309,8 @@ export type CustomerInclude<ExtArgs extends runtime.Types.Extensions.InternalArg
   payments?: boolean | Prisma.Customer$paymentsArgs<ExtArgs>
   locations?: boolean | Prisma.Customer$locationsArgs<ExtArgs>
   whatsappConversations?: boolean | Prisma.Customer$whatsappConversationsArgs<ExtArgs>
+  whatsappAgentRuns?: boolean | Prisma.Customer$whatsappAgentRunsArgs<ExtArgs>
+  whatsappPendingActions?: boolean | Prisma.Customer$whatsappPendingActionsArgs<ExtArgs>
   _count?: boolean | Prisma.CustomerCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type CustomerIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -1043,6 +1323,8 @@ export type $CustomerPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     payments: Prisma.$PaymentPayload<ExtArgs>[]
     locations: Prisma.$CustomerLocationPayload<ExtArgs>[]
     whatsappConversations: Prisma.$WhatsAppConversationPayload<ExtArgs>[]
+    whatsappAgentRuns: Prisma.$WhatsAppAgentRunPayload<ExtArgs>[]
+    whatsappPendingActions: Prisma.$WhatsAppPendingActionPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -1457,6 +1739,8 @@ export interface Prisma__CustomerClient<T, Null = never, ExtArgs extends runtime
   payments<T extends Prisma.Customer$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   locations<T extends Prisma.Customer$locationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$locationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CustomerLocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   whatsappConversations<T extends Prisma.Customer$whatsappConversationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$whatsappConversationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WhatsAppConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  whatsappAgentRuns<T extends Prisma.Customer$whatsappAgentRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$whatsappAgentRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WhatsAppAgentRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  whatsappPendingActions<T extends Prisma.Customer$whatsappPendingActionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Customer$whatsappPendingActionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WhatsAppPendingActionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1978,6 +2262,54 @@ export type Customer$whatsappConversationsArgs<ExtArgs extends runtime.Types.Ext
   take?: number
   skip?: number
   distinct?: Prisma.WhatsAppConversationScalarFieldEnum | Prisma.WhatsAppConversationScalarFieldEnum[]
+}
+
+/**
+ * Customer.whatsappAgentRuns
+ */
+export type Customer$whatsappAgentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WhatsAppAgentRun
+   */
+  select?: Prisma.WhatsAppAgentRunSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WhatsAppAgentRun
+   */
+  omit?: Prisma.WhatsAppAgentRunOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WhatsAppAgentRunInclude<ExtArgs> | null
+  where?: Prisma.WhatsAppAgentRunWhereInput
+  orderBy?: Prisma.WhatsAppAgentRunOrderByWithRelationInput | Prisma.WhatsAppAgentRunOrderByWithRelationInput[]
+  cursor?: Prisma.WhatsAppAgentRunWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WhatsAppAgentRunScalarFieldEnum | Prisma.WhatsAppAgentRunScalarFieldEnum[]
+}
+
+/**
+ * Customer.whatsappPendingActions
+ */
+export type Customer$whatsappPendingActionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WhatsAppPendingAction
+   */
+  select?: Prisma.WhatsAppPendingActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WhatsAppPendingAction
+   */
+  omit?: Prisma.WhatsAppPendingActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WhatsAppPendingActionInclude<ExtArgs> | null
+  where?: Prisma.WhatsAppPendingActionWhereInput
+  orderBy?: Prisma.WhatsAppPendingActionOrderByWithRelationInput | Prisma.WhatsAppPendingActionOrderByWithRelationInput[]
+  cursor?: Prisma.WhatsAppPendingActionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WhatsAppPendingActionScalarFieldEnum | Prisma.WhatsAppPendingActionScalarFieldEnum[]
 }
 
 /**

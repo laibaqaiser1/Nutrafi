@@ -130,6 +130,8 @@ model Customer {
   payments     Payment[]
   locations    CustomerLocation[]
   whatsappConversations WhatsAppConversation[]
+  whatsappAgentRuns     WhatsAppAgentRun[]
+  whatsappPendingActions WhatsAppPendingAction[]
 
   @@index([status])
   @@index([deliveryArea])
@@ -204,6 +206,8 @@ model MealPlan {
   plan            Plan?          @relation(fields: [planId], references: [id])
   mealPlanItems   MealPlanItem[]
   payments        Payment[]
+  whatsappAgentRuns WhatsAppAgentRun[]
+  whatsappPendingActions WhatsAppPendingAction[]
 
   @@index([customerId])
   @@index([startDate])
@@ -286,10 +290,14 @@ model WhatsAppConversation {
   lastMessageAt      DateTime
   lastMessagePreview String?
   unreadCount        Int                @default(0)
+  /// When MANUAL, the meal agent does not auto-process inbound messages.
+  agentMode          WhatsAppAgentMode  @default(AUTO)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   customer           Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
   messages           WhatsAppMessage[]
+  agentRuns          WhatsAppAgentRun[]
+  pendingActions     WhatsAppPendingAction[]
 
   @@index([lastMessageAt])
   @@index([customerId])
@@ -307,9 +315,85 @@ model WhatsAppMessage {
   rawPayload     Json?
   createdAt      DateTime                 @default(now())
   conversation   WhatsAppConversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  agentRuns      WhatsAppAgentRun[]
 
   @@index([conversationId])
   @@index([timestamp])
+}
+
+/// One automated processing pass (inbound message, cron, or manual retry).
+model WhatsAppAgentRun {
+  id               Int                    @id @default(autoincrement())
+  conversationId   Int?
+  customerId       Int?
+  mealPlanId       Int?
+  inboundMessageId Int?
+  parentRunId      Int?
+  pendingActionId  Int?
+  trigger          WhatsAppAgentTrigger
+  status           WhatsAppAgentRunStatus
+  rawMessageBody   String?
+  parsedIntent     Json?
+  model            String?
+  modelRawResponse Json?
+  errorMessage     String?
+  payload          Json?
+  createdAt        DateTime               @default(now())
+  conversation     WhatsAppConversation?  @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  customer         Customer?              @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  mealPlan         MealPlan?              @relation(fields: [mealPlanId], references: [id], onDelete: SetNull)
+  inboundMessage   WhatsAppMessage?       @relation(fields: [inboundMessageId], references: [id], onDelete: SetNull)
+  parentRun        WhatsAppAgentRun?      @relation("AgentRunFollowUp", fields: [parentRunId], references: [id], onDelete: SetNull)
+  followUpRuns     WhatsAppAgentRun[]     @relation("AgentRunFollowUp")
+  pendingAction    WhatsAppPendingAction? @relation(fields: [pendingActionId], references: [id], onDelete: SetNull)
+  actions          WhatsAppAgentAction[]
+
+  @@index([conversationId])
+  @@index([customerId])
+  @@index([mealPlanId])
+  @@index([inboundMessageId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WhatsAppAgentAction {
+  id             Int              @id @default(autoincrement())
+  runId          Int
+  actionType     String
+  status         String
+  input          Json?
+  output         Json?
+  confidence     Float?
+  beforeSnapshot Json?
+  afterSnapshot  Json?
+  createdAt      DateTime         @default(now())
+  run            WhatsAppAgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([actionType])
+}
+
+/// Multi-turn state: dish choice, batch clarifications, replace meal.
+model WhatsAppPendingAction {
+  id               Int                         @id @default(autoincrement())
+  conversationId   Int
+  customerId       Int?
+  mealPlanId       Int?
+  createdFromRunId Int?
+  type             WhatsAppPendingActionType
+  status           WhatsAppPendingActionStatus @default(OPEN)
+  context          Json
+  expiresAt        DateTime
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  conversation     WhatsAppConversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  customer         Customer?                   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  mealPlan         MealPlan?                   @relation(fields: [mealPlanId], references: [id], onDelete: SetNull)
+  agentRuns        WhatsAppAgentRun[]
+
+  @@index([conversationId])
+  @@index([status])
+  @@index([expiresAt])
 }
 
 enum WhatsAppMessageDirection {
@@ -323,6 +407,38 @@ enum WhatsAppMessageStatus {
   DELIVERED
   READ
   FAILED
+}
+
+enum WhatsAppAgentMode {
+  AUTO
+  MANUAL
+}
+
+enum WhatsAppAgentTrigger {
+  INBOUND_MESSAGE
+  CRON_REMINDER
+  MANUAL
+}
+
+enum WhatsAppAgentRunStatus {
+  SUCCESS
+  PARTIAL
+  FAILED
+  NEEDS_CONFIRMATION
+  SKIPPED
+}
+
+enum WhatsAppPendingActionStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum WhatsAppPendingActionType {
+  DISH_CHOICE
+  MEAL_BATCH
+  REPLACE_MEAL
 }
 
 enum UserRole {

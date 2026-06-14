@@ -257,6 +257,7 @@ export type WhatsAppMessageWhereInput = {
   rawPayload?: Prisma.JsonNullableFilter<"WhatsAppMessage">
   createdAt?: Prisma.DateTimeFilter<"WhatsAppMessage"> | Date | string
   conversation?: Prisma.XOR<Prisma.WhatsAppConversationScalarRelationFilter, Prisma.WhatsAppConversationWhereInput>
+  agentRuns?: Prisma.WhatsAppAgentRunListRelationFilter
 }
 
 export type WhatsAppMessageOrderByWithRelationInput = {
@@ -271,6 +272,7 @@ export type WhatsAppMessageOrderByWithRelationInput = {
   rawPayload?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   conversation?: Prisma.WhatsAppConversationOrderByWithRelationInput
+  agentRuns?: Prisma.WhatsAppAgentRunOrderByRelationAggregateInput
 }
 
 export type WhatsAppMessageWhereUniqueInput = Prisma.AtLeast<{
@@ -288,6 +290,7 @@ export type WhatsAppMessageWhereUniqueInput = Prisma.AtLeast<{
   rawPayload?: Prisma.JsonNullableFilter<"WhatsAppMessage">
   createdAt?: Prisma.DateTimeFilter<"WhatsAppMessage"> | Date | string
   conversation?: Prisma.XOR<Prisma.WhatsAppConversationScalarRelationFilter, Prisma.WhatsAppConversationWhereInput>
+  agentRuns?: Prisma.WhatsAppAgentRunListRelationFilter
 }, "id" | "externalId">
 
 export type WhatsAppMessageOrderByWithAggregationInput = {
@@ -334,6 +337,7 @@ export type WhatsAppMessageCreateInput = {
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   conversation: Prisma.WhatsAppConversationCreateNestedOneWithoutMessagesInput
+  agentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutInboundMessageInput
 }
 
 export type WhatsAppMessageUncheckedCreateInput = {
@@ -347,6 +351,7 @@ export type WhatsAppMessageUncheckedCreateInput = {
   timestamp: Date | string
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
+  agentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutInboundMessageInput
 }
 
 export type WhatsAppMessageUpdateInput = {
@@ -359,6 +364,7 @@ export type WhatsAppMessageUpdateInput = {
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.WhatsAppConversationUpdateOneRequiredWithoutMessagesNestedInput
+  agentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutInboundMessageNestedInput
 }
 
 export type WhatsAppMessageUncheckedUpdateInput = {
@@ -372,6 +378,7 @@ export type WhatsAppMessageUncheckedUpdateInput = {
   timestamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  agentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutInboundMessageNestedInput
 }
 
 export type WhatsAppMessageCreateManyInput = {
@@ -468,6 +475,11 @@ export type WhatsAppMessageSumOrderByAggregateInput = {
   conversationId?: Prisma.SortOrder
 }
 
+export type WhatsAppMessageNullableScalarRelationFilter = {
+  is?: Prisma.WhatsAppMessageWhereInput | null
+  isNot?: Prisma.WhatsAppMessageWhereInput | null
+}
+
 export type WhatsAppMessageCreateNestedManyWithoutConversationInput = {
   create?: Prisma.XOR<Prisma.WhatsAppMessageCreateWithoutConversationInput, Prisma.WhatsAppMessageUncheckedCreateWithoutConversationInput> | Prisma.WhatsAppMessageCreateWithoutConversationInput[] | Prisma.WhatsAppMessageUncheckedCreateWithoutConversationInput[]
   connectOrCreate?: Prisma.WhatsAppMessageCreateOrConnectWithoutConversationInput | Prisma.WhatsAppMessageCreateOrConnectWithoutConversationInput[]
@@ -518,6 +530,22 @@ export type EnumWhatsAppMessageStatusFieldUpdateOperationsInput = {
   set?: $Enums.WhatsAppMessageStatus
 }
 
+export type WhatsAppMessageCreateNestedOneWithoutAgentRunsInput = {
+  create?: Prisma.XOR<Prisma.WhatsAppMessageCreateWithoutAgentRunsInput, Prisma.WhatsAppMessageUncheckedCreateWithoutAgentRunsInput>
+  connectOrCreate?: Prisma.WhatsAppMessageCreateOrConnectWithoutAgentRunsInput
+  connect?: Prisma.WhatsAppMessageWhereUniqueInput
+}
+
+export type WhatsAppMessageUpdateOneWithoutAgentRunsNestedInput = {
+  create?: Prisma.XOR<Prisma.WhatsAppMessageCreateWithoutAgentRunsInput, Prisma.WhatsAppMessageUncheckedCreateWithoutAgentRunsInput>
+  connectOrCreate?: Prisma.WhatsAppMessageCreateOrConnectWithoutAgentRunsInput
+  upsert?: Prisma.WhatsAppMessageUpsertWithoutAgentRunsInput
+  disconnect?: Prisma.WhatsAppMessageWhereInput | boolean
+  delete?: Prisma.WhatsAppMessageWhereInput | boolean
+  connect?: Prisma.WhatsAppMessageWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.WhatsAppMessageUpdateToOneWithWhereWithoutAgentRunsInput, Prisma.WhatsAppMessageUpdateWithoutAgentRunsInput>, Prisma.WhatsAppMessageUncheckedUpdateWithoutAgentRunsInput>
+}
+
 export type WhatsAppMessageCreateWithoutConversationInput = {
   externalId?: string | null
   direction: $Enums.WhatsAppMessageDirection
@@ -527,6 +555,7 @@ export type WhatsAppMessageCreateWithoutConversationInput = {
   timestamp: Date | string
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
+  agentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutInboundMessageInput
 }
 
 export type WhatsAppMessageUncheckedCreateWithoutConversationInput = {
@@ -539,6 +568,7 @@ export type WhatsAppMessageUncheckedCreateWithoutConversationInput = {
   timestamp: Date | string
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
+  agentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutInboundMessageInput
 }
 
 export type WhatsAppMessageCreateOrConnectWithoutConversationInput = {
@@ -583,6 +613,72 @@ export type WhatsAppMessageScalarWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"WhatsAppMessage"> | Date | string
 }
 
+export type WhatsAppMessageCreateWithoutAgentRunsInput = {
+  externalId?: string | null
+  direction: $Enums.WhatsAppMessageDirection
+  messageType?: string
+  body?: string | null
+  status?: $Enums.WhatsAppMessageStatus
+  timestamp: Date | string
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  conversation: Prisma.WhatsAppConversationCreateNestedOneWithoutMessagesInput
+}
+
+export type WhatsAppMessageUncheckedCreateWithoutAgentRunsInput = {
+  id?: number
+  conversationId: number
+  externalId?: string | null
+  direction: $Enums.WhatsAppMessageDirection
+  messageType?: string
+  body?: string | null
+  status?: $Enums.WhatsAppMessageStatus
+  timestamp: Date | string
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+}
+
+export type WhatsAppMessageCreateOrConnectWithoutAgentRunsInput = {
+  where: Prisma.WhatsAppMessageWhereUniqueInput
+  create: Prisma.XOR<Prisma.WhatsAppMessageCreateWithoutAgentRunsInput, Prisma.WhatsAppMessageUncheckedCreateWithoutAgentRunsInput>
+}
+
+export type WhatsAppMessageUpsertWithoutAgentRunsInput = {
+  update: Prisma.XOR<Prisma.WhatsAppMessageUpdateWithoutAgentRunsInput, Prisma.WhatsAppMessageUncheckedUpdateWithoutAgentRunsInput>
+  create: Prisma.XOR<Prisma.WhatsAppMessageCreateWithoutAgentRunsInput, Prisma.WhatsAppMessageUncheckedCreateWithoutAgentRunsInput>
+  where?: Prisma.WhatsAppMessageWhereInput
+}
+
+export type WhatsAppMessageUpdateToOneWithWhereWithoutAgentRunsInput = {
+  where?: Prisma.WhatsAppMessageWhereInput
+  data: Prisma.XOR<Prisma.WhatsAppMessageUpdateWithoutAgentRunsInput, Prisma.WhatsAppMessageUncheckedUpdateWithoutAgentRunsInput>
+}
+
+export type WhatsAppMessageUpdateWithoutAgentRunsInput = {
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  direction?: Prisma.EnumWhatsAppMessageDirectionFieldUpdateOperationsInput | $Enums.WhatsAppMessageDirection
+  messageType?: Prisma.StringFieldUpdateOperationsInput | string
+  body?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumWhatsAppMessageStatusFieldUpdateOperationsInput | $Enums.WhatsAppMessageStatus
+  timestamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversation?: Prisma.WhatsAppConversationUpdateOneRequiredWithoutMessagesNestedInput
+}
+
+export type WhatsAppMessageUncheckedUpdateWithoutAgentRunsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  conversationId?: Prisma.IntFieldUpdateOperationsInput | number
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  direction?: Prisma.EnumWhatsAppMessageDirectionFieldUpdateOperationsInput | $Enums.WhatsAppMessageDirection
+  messageType?: Prisma.StringFieldUpdateOperationsInput | string
+  body?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumWhatsAppMessageStatusFieldUpdateOperationsInput | $Enums.WhatsAppMessageStatus
+  timestamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type WhatsAppMessageCreateManyConversationInput = {
   id?: number
   externalId?: string | null
@@ -604,6 +700,7 @@ export type WhatsAppMessageUpdateWithoutConversationInput = {
   timestamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  agentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutInboundMessageNestedInput
 }
 
 export type WhatsAppMessageUncheckedUpdateWithoutConversationInput = {
@@ -616,6 +713,7 @@ export type WhatsAppMessageUncheckedUpdateWithoutConversationInput = {
   timestamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  agentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutInboundMessageNestedInput
 }
 
 export type WhatsAppMessageUncheckedUpdateManyWithoutConversationInput = {
@@ -631,6 +729,35 @@ export type WhatsAppMessageUncheckedUpdateManyWithoutConversationInput = {
 }
 
 
+/**
+ * Count Type WhatsAppMessageCountOutputType
+ */
+
+export type WhatsAppMessageCountOutputType = {
+  agentRuns: number
+}
+
+export type WhatsAppMessageCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  agentRuns?: boolean | WhatsAppMessageCountOutputTypeCountAgentRunsArgs
+}
+
+/**
+ * WhatsAppMessageCountOutputType without action
+ */
+export type WhatsAppMessageCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WhatsAppMessageCountOutputType
+   */
+  select?: Prisma.WhatsAppMessageCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * WhatsAppMessageCountOutputType without action
+ */
+export type WhatsAppMessageCountOutputTypeCountAgentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WhatsAppAgentRunWhereInput
+}
+
 
 export type WhatsAppMessageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -644,6 +771,8 @@ export type WhatsAppMessageSelect<ExtArgs extends runtime.Types.Extensions.Inter
   rawPayload?: boolean
   createdAt?: boolean
   conversation?: boolean | Prisma.WhatsAppConversationDefaultArgs<ExtArgs>
+  agentRuns?: boolean | Prisma.WhatsAppMessage$agentRunsArgs<ExtArgs>
+  _count?: boolean | Prisma.WhatsAppMessageCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["whatsAppMessage"]>
 
 export type WhatsAppMessageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -690,6 +819,8 @@ export type WhatsAppMessageSelectScalar = {
 export type WhatsAppMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "externalId" | "direction" | "messageType" | "body" | "status" | "timestamp" | "rawPayload" | "createdAt", ExtArgs["result"]["whatsAppMessage"]>
 export type WhatsAppMessageInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.WhatsAppConversationDefaultArgs<ExtArgs>
+  agentRuns?: boolean | Prisma.WhatsAppMessage$agentRunsArgs<ExtArgs>
+  _count?: boolean | Prisma.WhatsAppMessageCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type WhatsAppMessageIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.WhatsAppConversationDefaultArgs<ExtArgs>
@@ -702,6 +833,7 @@ export type $WhatsAppMessagePayload<ExtArgs extends runtime.Types.Extensions.Int
   name: "WhatsAppMessage"
   objects: {
     conversation: Prisma.$WhatsAppConversationPayload<ExtArgs>
+    agentRuns: Prisma.$WhatsAppAgentRunPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -1109,6 +1241,7 @@ readonly fields: WhatsAppMessageFieldRefs;
 export interface Prisma__WhatsAppMessageClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   conversation<T extends Prisma.WhatsAppConversationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WhatsAppConversationDefaultArgs<ExtArgs>>): Prisma.Prisma__WhatsAppConversationClient<runtime.Types.Result.GetResult<Prisma.$WhatsAppConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  agentRuns<T extends Prisma.WhatsAppMessage$agentRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WhatsAppMessage$agentRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WhatsAppAgentRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1541,6 +1674,30 @@ export type WhatsAppMessageDeleteManyArgs<ExtArgs extends runtime.Types.Extensio
    * Limit how many WhatsAppMessages to delete.
    */
   limit?: number
+}
+
+/**
+ * WhatsAppMessage.agentRuns
+ */
+export type WhatsAppMessage$agentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WhatsAppAgentRun
+   */
+  select?: Prisma.WhatsAppAgentRunSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WhatsAppAgentRun
+   */
+  omit?: Prisma.WhatsAppAgentRunOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WhatsAppAgentRunInclude<ExtArgs> | null
+  where?: Prisma.WhatsAppAgentRunWhereInput
+  orderBy?: Prisma.WhatsAppAgentRunOrderByWithRelationInput | Prisma.WhatsAppAgentRunOrderByWithRelationInput[]
+  cursor?: Prisma.WhatsAppAgentRunWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WhatsAppAgentRunScalarFieldEnum | Prisma.WhatsAppAgentRunScalarFieldEnum[]
 }
 
 /**

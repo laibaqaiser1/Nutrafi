@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { whatsappConfig } from '@/lib/whatsapp/config'
+import { logWhatsAppError, logWhatsAppInfo, logWhatsAppWarn, serializeError } from '@/lib/whatsapp/log'
 import { processWhatsAppWebhook } from '@/lib/whatsapp/process-webhook'
 
 export const dynamic = 'force-dynamic'
@@ -20,9 +21,15 @@ export async function GET(request: NextRequest) {
     token === webhookVerifyToken &&
     challenge
   ) {
+    logWhatsAppInfo('webhook_verified')
     return new NextResponse(challenge, { status: 200 })
   }
 
+  logWhatsAppWarn('webhook_verify_failed', {
+    mode,
+    tokenPresent: Boolean(token),
+    verifyTokenConfigured: Boolean(webhookVerifyToken),
+  })
   return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 }
 
@@ -46,9 +53,13 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-      console.info('[whatsapp webhook]', {
+      const wabaIds = Array.isArray(root.entry)
+        ? root.entry.map((e) => (e as { id?: string })?.id).filter(Boolean)
+        : []
+      logWhatsAppInfo('webhook_received', {
         object: root.object,
         entries: root.entry?.length ?? 0,
+        wabaIds,
         messages: messageCount,
         statuses: statusCount,
       })
@@ -56,7 +67,7 @@ export async function POST(request: NextRequest) {
     await processWhatsAppWebhook(body)
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('[whatsapp webhook] processing failed:', error)
+    logWhatsAppError('webhook_processing_failed', serializeError(error))
     // Meta retries on non-200; still return 200 if we logged error to avoid retry storms
     return NextResponse.json({ ok: true })
   }

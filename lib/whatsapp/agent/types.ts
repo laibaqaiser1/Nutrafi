@@ -1,0 +1,82 @@
+export type MealAgentIntent =
+  | 'ADD_MEALS'
+  | 'UPDATE_MEAL'
+  | 'CONFIRM'
+  | 'CANCEL'
+  | 'NOT_MEAL'
+  | 'AMBIGUOUS'
+
+export interface IntentClassification {
+  intent: MealAgentIntent
+  isMealPlanRelated: boolean
+  confidence: number
+  reason?: string
+}
+
+export interface ParsedMealSlot {
+  dateYmd: string
+  dateSource: string
+  slotIndex: number
+  customerPhrase: string
+  customNote?: string
+}
+
+export interface ParsedReplaceMeal {
+  dateYmd: string
+  dateSource: string
+  removePhrase: string
+  addPhrase: string
+  customNote?: string
+}
+
+export interface MealMessageExtraction {
+  kind: 'ADD' | 'UPDATE'
+  meals: ParsedMealSlot[]
+  replace?: ParsedReplaceMeal
+}
+
+export interface DishCandidate {
+  dishId: number
+  name: string
+  score: number
+}
+
+export interface DishResolution {
+  customerPhrase: string
+  status: 'resolved' | 'needs_confirm' | 'no_match'
+  confidence: number
+  dishId?: number
+  dishName?: string
+  candidates: DishCandidate[]
+}
+
+export type PendingMealSlotStatus = 'waiting_dish' | 'resolved' | 'applied'
+
+export interface PendingMealSlot {
+  dateYmd: string
+  slotIndex: number
+  timeSlot: string
+  customerPhrase: string
+  customNote?: string
+  status: PendingMealSlotStatus
+  candidateDishIds?: number[]
+  resolvedDishId?: number
+  resolvedDishName?: string
+  mealPlanItemId?: number
+}
+
+export interface PendingBatchContext {
+  intent: 'ADD_MEALS' | 'UPDATE_MEAL'
+  meals: PendingMealSlot[]
+  currentQuestionIndex: number
+  replace?: ParsedReplaceMeal & {
+    targetItemId?: number
+    removeResolved?: boolean
+  }
+}
+
+export interface AgentProcessResult {
+  runId: number
+  status: string
+  replyBody?: string
+}
