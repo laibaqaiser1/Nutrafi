@@ -30,10 +30,33 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    if (body && typeof body === 'object') {
+      const root = body as { object?: string; entry?: unknown[] }
+      let messageCount = 0
+      let statusCount = 0
+      if (Array.isArray(root.entry)) {
+        for (const entry of root.entry) {
+          const changes = (entry as { changes?: unknown[] })?.changes
+          if (!Array.isArray(changes)) continue
+          for (const change of changes) {
+            const value = (change as { value?: Record<string, unknown> })?.value
+            if (!value) continue
+            if (Array.isArray(value.messages)) messageCount += value.messages.length
+            if (Array.isArray(value.statuses)) statusCount += value.statuses.length
+          }
+        }
+      }
+      console.info('[whatsapp webhook]', {
+        object: root.object,
+        entries: root.entry?.length ?? 0,
+        messages: messageCount,
+        statuses: statusCount,
+      })
+    }
     await processWhatsAppWebhook(body)
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('WhatsApp webhook error:', error)
+    console.error('[whatsapp webhook] processing failed:', error)
     // Meta retries on non-200; still return 200 if we logged error to avoid retry storms
     return NextResponse.json({ ok: true })
   }
