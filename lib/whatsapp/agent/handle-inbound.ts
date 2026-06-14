@@ -438,6 +438,10 @@ async function processAddMeals(params: {
     conversationId: params.conversationId,
     body: replyBody,
   })
+  await prisma.whatsAppPendingAction.updateMany({
+    where: { conversationId: params.conversationId, status: 'OPEN' },
+    data: { status: 'CANCELLED' },
+  })
   await updateAgentRun(params.runId, { status: 'SUCCESS', payload: { applied: appliedSummary } })
   return { runId: params.runId, status: 'SUCCESS', replyBody }
 }

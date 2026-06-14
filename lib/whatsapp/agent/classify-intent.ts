@@ -18,7 +18,10 @@ const CONFIRM_SIGNALS =
   /^(yes|yep|yeah|ok|okay|confirm|correct|\d{1,2})\.?$/i
 
 const NOT_MEAL_SIGNALS =
-  /\b(payment|pay|bill|invoice|delivery status|where is|track|refund|complaint|support|help me|hello|hi there|good morning|thanks|thank you)\b/i
+  /\b(payment|pay|bill|invoice|delivery|delivered|deliver|when will|what time|where is|track|refund|complaint|support|help me|hello|hi there|good morning|thanks|thank you)\b/i
+
+const DELIVERY_QUESTION =
+  /\b(when|what time|how long)\b[\s\S]{0,40}\b(deliver|delivered|delivery|arrive|arriving|coming|reach)\b/i
 
 const VALID_INTENTS = new Set<MealAgentIntent>([
   'ADD_MEALS',
@@ -28,6 +31,57 @@ const VALID_INTENTS = new Set<MealAgentIntent>([
   'NOT_MEAL',
   'AMBIGUOUS',
 ])
+
+/** General support / delivery questions — not dish follow-up replies. */
+export function isSupportQuestion(body: string): boolean {
+  const trimmed = body.trim()
+  if (!trimmed) return false
+
+  if (DELIVERY_QUESTION.test(trimmed)) return true
+  if (/\b(where is my|track my|order status|delivery status)\b/i.test(trimmed)) return true
+
+  const isQuestion =
+    trimmed.includes('?') ||
+    /^(when|what|where|how|why|can|could|will|is|are|do)\b/i.test(trimmed)
+
+  if (isQuestion && NOT_MEAL_SIGNALS.test(trimmed)) {
+    const looksLikeMealList =
+      /\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|meal \d|meal 1|meal 2)\s*:/i.test(
+        trimmed
+      )
+    if (!looksLikeMealList) return true
+  }
+
+  if (isQuestion && trimmed.length > 45 && !looksLikeDishFollowUpReply(trimmed)) {
+    return true
+  }
+
+  return false
+}
+
+function looksLikeDishFollowUpReply(body: string): boolean {
+  const trimmed = body.trim()
+  if (!trimmed) return false
+  if (CANCEL_SIGNALS.test(trimmed)) return false
+  if (CONFIRM_SIGNALS.test(trimmed)) return true
+  if (/^\d{1,2}$/.test(trimmed)) return true
+  if (trimmed.includes('?')) return false
+  if (DELIVERY_QUESTION.test(trimmed)) return false
+  if (trimmed.length > 56) return false
+  return true
+}
+
+function looksLikeNewMealRequest(body: string): boolean {
+  if (isSupportQuestion(body)) return false
+  const hasMealSignal = MEAL_SIGNALS.test(body)
+  const hasUpdate = UPDATE_SIGNALS.test(body)
+  if (!hasMealSignal && !hasUpdate) return false
+  return (
+    /\b(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/i.test(
+      body
+    ) || /\bmeal \d|meal 1|meal 2\b/i.test(body)
+  )
+}
 
 export async function classifyMealIntent(
   body: string,
@@ -58,12 +112,55 @@ export async function classifyMealIntent(
         source: 'rules',
       }
     }
+
+    if (isSupportQuestion(trimmed)) {
+      return {
+        classification: {
+          intent: 'NOT_MEAL',
+          isMealPlanRelated: false,
+          confidence: 0.92,
+          reason: 'support question during pending',
+        },
+        source: 'rules',
+      }
+    }
+
+    if (looksLikeNewMealRequest(trimmed)) {
+      return {
+        classification: {
+          intent: 'ADD_MEALS',
+          isMealPlanRelated: true,
+          confidence: 0.85,
+          reason: 'new meal request replaces pending',
+        },
+        source: 'rules',
+      }
+    }
+
+    const cfg = whatsappAgentConfig()
+    if (cfg.openAiKey) {
+      const ai = await classifyWithOpenAi(trimmed, cfg.openAiKey, cfg.openAiModel, true)
+      if (ai) return ai
+    }
+
+    if (looksLikeDishFollowUpReply(trimmed)) {
+      return {
+        classification: {
+          intent: 'CONFIRM',
+          isMealPlanRelated: true,
+          confidence: 0.88,
+          reason: 'dish follow-up reply',
+        },
+        source: 'rules',
+      }
+    }
+
     return {
       classification: {
-        intent: 'CONFIRM',
-        isMealPlanRelated: true,
-        confidence: 0.9,
-        reason: 'follow-up to pending action',
+        intent: 'NOT_MEAL',
+        isMealPlanRelated: false,
+        confidence: 0.8,
+        reason: 'not a dish reply while pending',
       },
       source: 'rules',
     }
@@ -94,6 +191,15 @@ export async function classifyMealIntent(
 }
 
 function classifyWithRules(body: string): IntentClassification {
+  if (isSupportQuestion(body)) {
+    return {
+      intent: 'NOT_MEAL',
+      isMealPlanRelated: false,
+      confidence: 0.9,
+      reason: 'support question',
+    }
+  }
+
   if (CONFIRM_SIGNALS.test(body.trim()) && !MEAL_SIGNALS.test(body)) {
     return {
       intent: 'AMBIGUOUS',
@@ -165,18 +271,24 @@ function classifyWithRules(body: string): IntentClassification {
 async function classifyWithOpenAi(
   body: string,
   apiKey: string,
-  model: string
+  model: string,
+  hasOpenPending = false
 ): Promise<IntentClassificationResult | null> {
+  const pendingNote = hasOpenPending
+    ? ` The customer has an OPEN pending dish choice (waiting for a number or dish name reply).`
+    : ''
+
   const result = await openAiJsonCompletion<IntentClassification>({
     apiKey,
     model,
-    system: `Classify WhatsApp messages for a meal delivery service (Nutrafi).
+    system: `Classify WhatsApp messages for a meal delivery service (Nutrafi).${pendingNote}
 Return JSON: { "intent": "ADD_MEALS"|"UPDATE_MEAL"|"CONFIRM"|"CANCEL"|"NOT_MEAL"|"AMBIGUOUS", "isMealPlanRelated": boolean, "confidence": number, "reason": string }
 
 ADD_MEALS = customer listing meals or days to add.
 UPDATE_MEAL = swap/change/remove a meal ("don't want X, want Y").
-NOT_MEAL = delivery tracking, payment, general support, greetings only.
-CONFIRM/CANCEL = only when clearly confirming or cancelling (not used for new meal lists).`,
+NOT_MEAL = delivery timing, tracking, payment, general support, greetings, unrelated questions — even if the word "meals" appears.
+CONFIRM = only when replying to a pending dish choice (number, yes, or short dish name).
+CANCEL = only when clearly cancelling.`,
     user: body,
   })
 

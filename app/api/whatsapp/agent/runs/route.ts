@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const customerId = searchParams.get('customerId')
     const conversationId = searchParams.get('conversationId')
+    const phoneE164 = searchParams.get('phoneE164')?.replace(/\D/g, '') || null
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 200)
 
     const where = {
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
       ...(conversationId
         ? { conversationId: parseInt(conversationId, 10) }
         : {}),
+      ...(phoneE164 ? { conversation: { phoneE164 } } : {}),
     }
 
     const [runs, statusCounts, openPending] = await Promise.all([

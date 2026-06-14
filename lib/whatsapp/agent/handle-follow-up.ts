@@ -13,10 +13,12 @@ import {
   setPendingStatus,
   updatePendingContext,
 } from './pending-actions'
+import { isSupportQuestion } from './classify-intent'
 import {
   dishChoiceQuestion,
   mealsAddedConfirmation,
   partialApplyReply,
+  supportOnlyReply,
 } from './replies'
 import { sendAgentReply } from './record-outbound'
 import type { AgentProcessResult } from './types'
@@ -70,6 +72,21 @@ export async function handleFollowUpMessage(params: {
   })
 
   if (!resolution || resolution.status !== 'resolved' || !resolution.dishId) {
+    if (isSupportQuestion(params.body)) {
+      const replyBody = supportOnlyReply()
+      await sendAgentReply({
+        runId: params.runId,
+        phoneE164: params.phoneE164,
+        conversationId: params.conversationId,
+        body: replyBody,
+      })
+      await updateAgentRun(params.runId, {
+        status: 'SKIPPED',
+        payload: { reason: 'support_question_during_pending' },
+      })
+      return { runId: params.runId, status: 'SKIPPED', replyBody }
+    }
+
     const candidates = await loadCandidatesInOrder(candidateIds)
     const question = dishChoiceQuestion(slot, candidates)
     const replyBody = partialApplyReply(0, question)
