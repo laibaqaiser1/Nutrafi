@@ -88,3 +88,18 @@ export type WhatsAppConversation = Prisma.WhatsAppConversationModel
  * 
  */
 export type WhatsAppMessage = Prisma.WhatsAppMessageModel
+/**
+ * Model WhatsAppAgentRun
+ * One automated processing pass (inbound message, cron, or manual retry).
+ */
+export type WhatsAppAgentRun = Prisma.WhatsAppAgentRunModel
+/**
+ * Model WhatsAppAgentAction
+ * 
+ */
+export type WhatsAppAgentAction = Prisma.WhatsAppAgentActionModel
+/**
+ * Model WhatsAppPendingAction
+ * Multi-turn state: dish choice, batch clarifications, replace meal.
+ */
+export type WhatsAppPendingAction = Prisma.WhatsAppPendingActionModel

@@ -380,6 +380,8 @@ export type MealPlanWhereInput = {
   plan?: Prisma.XOR<Prisma.PlanNullableScalarRelationFilter, Prisma.PlanWhereInput> | null
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
   payments?: Prisma.PaymentListRelationFilter
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunListRelationFilter
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionListRelationFilter
 }
 
 export type MealPlanOrderByWithRelationInput = {
@@ -408,6 +410,8 @@ export type MealPlanOrderByWithRelationInput = {
   plan?: Prisma.PlanOrderByWithRelationInput
   mealPlanItems?: Prisma.MealPlanItemOrderByRelationAggregateInput
   payments?: Prisma.PaymentOrderByRelationAggregateInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunOrderByRelationAggregateInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionOrderByRelationAggregateInput
 }
 
 export type MealPlanWhereUniqueInput = Prisma.AtLeast<{
@@ -439,6 +443,8 @@ export type MealPlanWhereUniqueInput = Prisma.AtLeast<{
   plan?: Prisma.XOR<Prisma.PlanNullableScalarRelationFilter, Prisma.PlanWhereInput> | null
   mealPlanItems?: Prisma.MealPlanItemListRelationFilter
   payments?: Prisma.PaymentListRelationFilter
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunListRelationFilter
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionListRelationFilter
 }, "id">
 
 export type MealPlanOrderByWithAggregationInput = {
@@ -520,6 +526,8 @@ export type MealPlanCreateInput = {
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanUncheckedCreateInput = {
@@ -546,6 +554,8 @@ export type MealPlanUncheckedCreateInput = {
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanUpdateInput = {
@@ -571,6 +581,8 @@ export type MealPlanUpdateInput = {
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanUncheckedUpdateInput = {
@@ -597,6 +609,8 @@ export type MealPlanUncheckedUpdateInput = {
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanCreateManyInput = {
@@ -911,6 +925,38 @@ export type MealPlanUpdateOneWithoutPaymentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MealPlanUpdateToOneWithWhereWithoutPaymentsInput, Prisma.MealPlanUpdateWithoutPaymentsInput>, Prisma.MealPlanUncheckedUpdateWithoutPaymentsInput>
 }
 
+export type MealPlanCreateNestedOneWithoutWhatsappAgentRunsInput = {
+  create?: Prisma.XOR<Prisma.MealPlanCreateWithoutWhatsappAgentRunsInput, Prisma.MealPlanUncheckedCreateWithoutWhatsappAgentRunsInput>
+  connectOrCreate?: Prisma.MealPlanCreateOrConnectWithoutWhatsappAgentRunsInput
+  connect?: Prisma.MealPlanWhereUniqueInput
+}
+
+export type MealPlanUpdateOneWithoutWhatsappAgentRunsNestedInput = {
+  create?: Prisma.XOR<Prisma.MealPlanCreateWithoutWhatsappAgentRunsInput, Prisma.MealPlanUncheckedCreateWithoutWhatsappAgentRunsInput>
+  connectOrCreate?: Prisma.MealPlanCreateOrConnectWithoutWhatsappAgentRunsInput
+  upsert?: Prisma.MealPlanUpsertWithoutWhatsappAgentRunsInput
+  disconnect?: Prisma.MealPlanWhereInput | boolean
+  delete?: Prisma.MealPlanWhereInput | boolean
+  connect?: Prisma.MealPlanWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MealPlanUpdateToOneWithWhereWithoutWhatsappAgentRunsInput, Prisma.MealPlanUpdateWithoutWhatsappAgentRunsInput>, Prisma.MealPlanUncheckedUpdateWithoutWhatsappAgentRunsInput>
+}
+
+export type MealPlanCreateNestedOneWithoutWhatsappPendingActionsInput = {
+  create?: Prisma.XOR<Prisma.MealPlanCreateWithoutWhatsappPendingActionsInput, Prisma.MealPlanUncheckedCreateWithoutWhatsappPendingActionsInput>
+  connectOrCreate?: Prisma.MealPlanCreateOrConnectWithoutWhatsappPendingActionsInput
+  connect?: Prisma.MealPlanWhereUniqueInput
+}
+
+export type MealPlanUpdateOneWithoutWhatsappPendingActionsNestedInput = {
+  create?: Prisma.XOR<Prisma.MealPlanCreateWithoutWhatsappPendingActionsInput, Prisma.MealPlanUncheckedCreateWithoutWhatsappPendingActionsInput>
+  connectOrCreate?: Prisma.MealPlanCreateOrConnectWithoutWhatsappPendingActionsInput
+  upsert?: Prisma.MealPlanUpsertWithoutWhatsappPendingActionsInput
+  disconnect?: Prisma.MealPlanWhereInput | boolean
+  delete?: Prisma.MealPlanWhereInput | boolean
+  connect?: Prisma.MealPlanWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MealPlanUpdateToOneWithWhereWithoutWhatsappPendingActionsInput, Prisma.MealPlanUpdateWithoutWhatsappPendingActionsInput>, Prisma.MealPlanUncheckedUpdateWithoutWhatsappPendingActionsInput>
+}
+
 export type MealPlanCreateWithoutCustomerInput = {
   startDate?: Date | string | null
   endDate?: Date | string | null
@@ -933,6 +979,8 @@ export type MealPlanCreateWithoutCustomerInput = {
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanUncheckedCreateWithoutCustomerInput = {
@@ -958,6 +1006,8 @@ export type MealPlanUncheckedCreateWithoutCustomerInput = {
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanCreateOrConnectWithoutCustomerInput = {
@@ -1035,6 +1085,8 @@ export type MealPlanCreateWithoutPlanInput = {
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanUncheckedCreateWithoutPlanInput = {
@@ -1060,6 +1112,8 @@ export type MealPlanUncheckedCreateWithoutPlanInput = {
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanCreateOrConnectWithoutPlanInput = {
@@ -1110,6 +1164,8 @@ export type MealPlanCreateWithoutMealPlanItemsInput = {
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanUncheckedCreateWithoutMealPlanItemsInput = {
@@ -1135,6 +1191,8 @@ export type MealPlanUncheckedCreateWithoutMealPlanItemsInput = {
   weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanCreateOrConnectWithoutMealPlanItemsInput = {
@@ -1175,6 +1233,8 @@ export type MealPlanUpdateWithoutMealPlanItemsInput = {
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanUncheckedUpdateWithoutMealPlanItemsInput = {
@@ -1200,6 +1260,8 @@ export type MealPlanUncheckedUpdateWithoutMealPlanItemsInput = {
   weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanCreateWithoutPaymentsInput = {
@@ -1224,6 +1286,8 @@ export type MealPlanCreateWithoutPaymentsInput = {
   customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
   plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
   mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanUncheckedCreateWithoutPaymentsInput = {
@@ -1249,6 +1313,8 @@ export type MealPlanUncheckedCreateWithoutPaymentsInput = {
   weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutMealPlanInput
 }
 
 export type MealPlanCreateOrConnectWithoutPaymentsInput = {
@@ -1289,6 +1355,8 @@ export type MealPlanUpdateWithoutPaymentsInput = {
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanUncheckedUpdateWithoutPaymentsInput = {
@@ -1314,6 +1382,252 @@ export type MealPlanUncheckedUpdateWithoutPaymentsInput = {
   weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutMealPlanNestedInput
+}
+
+export type MealPlanCreateWithoutWhatsappAgentRunsInput = {
+  startDate?: Date | string | null
+  endDate?: Date | string | null
+  mealsPerDay: number
+  status?: string
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
+  plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
+  mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionCreateNestedManyWithoutMealPlanInput
+}
+
+export type MealPlanUncheckedCreateWithoutWhatsappAgentRunsInput = {
+  id?: number
+  customerId: number
+  planId?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
+  mealsPerDay: number
+  status?: string
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedCreateNestedManyWithoutMealPlanInput
+}
+
+export type MealPlanCreateOrConnectWithoutWhatsappAgentRunsInput = {
+  where: Prisma.MealPlanWhereUniqueInput
+  create: Prisma.XOR<Prisma.MealPlanCreateWithoutWhatsappAgentRunsInput, Prisma.MealPlanUncheckedCreateWithoutWhatsappAgentRunsInput>
+}
+
+export type MealPlanUpsertWithoutWhatsappAgentRunsInput = {
+  update: Prisma.XOR<Prisma.MealPlanUpdateWithoutWhatsappAgentRunsInput, Prisma.MealPlanUncheckedUpdateWithoutWhatsappAgentRunsInput>
+  create: Prisma.XOR<Prisma.MealPlanCreateWithoutWhatsappAgentRunsInput, Prisma.MealPlanUncheckedCreateWithoutWhatsappAgentRunsInput>
+  where?: Prisma.MealPlanWhereInput
+}
+
+export type MealPlanUpdateToOneWithWhereWithoutWhatsappAgentRunsInput = {
+  where?: Prisma.MealPlanWhereInput
+  data: Prisma.XOR<Prisma.MealPlanUpdateWithoutWhatsappAgentRunsInput, Prisma.MealPlanUncheckedUpdateWithoutWhatsappAgentRunsInput>
+}
+
+export type MealPlanUpdateWithoutWhatsappAgentRunsInput = {
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
+  plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
+  mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutMealPlanNestedInput
+}
+
+export type MealPlanUncheckedUpdateWithoutWhatsappAgentRunsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutMealPlanNestedInput
+}
+
+export type MealPlanCreateWithoutWhatsappPendingActionsInput = {
+  startDate?: Date | string | null
+  endDate?: Date | string | null
+  mealsPerDay: number
+  status?: string
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customer: Prisma.CustomerCreateNestedOneWithoutMealPlansInput
+  plan?: Prisma.PlanCreateNestedOneWithoutMealPlansInput
+  mealPlanItems?: Prisma.MealPlanItemCreateNestedManyWithoutMealPlanInput
+  payments?: Prisma.PaymentCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunCreateNestedManyWithoutMealPlanInput
+}
+
+export type MealPlanUncheckedCreateWithoutWhatsappPendingActionsInput = {
+  id?: number
+  customerId: number
+  planId?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
+  mealsPerDay: number
+  status?: string
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  averageMealRate?: number | null
+  baseAmount?: number | null
+  days: number
+  planType: $Enums.PlanType
+  remainingMeals?: number | null
+  totalAmount?: number | null
+  totalMeals?: number | null
+  vatAmount?: number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanCreateweeklySkipDaysInput | number[]
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  mealPlanItems?: Prisma.MealPlanItemUncheckedCreateNestedManyWithoutMealPlanInput
+  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutMealPlanInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedCreateNestedManyWithoutMealPlanInput
+}
+
+export type MealPlanCreateOrConnectWithoutWhatsappPendingActionsInput = {
+  where: Prisma.MealPlanWhereUniqueInput
+  create: Prisma.XOR<Prisma.MealPlanCreateWithoutWhatsappPendingActionsInput, Prisma.MealPlanUncheckedCreateWithoutWhatsappPendingActionsInput>
+}
+
+export type MealPlanUpsertWithoutWhatsappPendingActionsInput = {
+  update: Prisma.XOR<Prisma.MealPlanUpdateWithoutWhatsappPendingActionsInput, Prisma.MealPlanUncheckedUpdateWithoutWhatsappPendingActionsInput>
+  create: Prisma.XOR<Prisma.MealPlanCreateWithoutWhatsappPendingActionsInput, Prisma.MealPlanUncheckedCreateWithoutWhatsappPendingActionsInput>
+  where?: Prisma.MealPlanWhereInput
+}
+
+export type MealPlanUpdateToOneWithWhereWithoutWhatsappPendingActionsInput = {
+  where?: Prisma.MealPlanWhereInput
+  data: Prisma.XOR<Prisma.MealPlanUpdateWithoutWhatsappPendingActionsInput, Prisma.MealPlanUncheckedUpdateWithoutWhatsappPendingActionsInput>
+}
+
+export type MealPlanUpdateWithoutWhatsappPendingActionsInput = {
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
+  plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
+  mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
+  payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutMealPlanNestedInput
+}
+
+export type MealPlanUncheckedUpdateWithoutWhatsappPendingActionsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  customerId?: Prisma.IntFieldUpdateOperationsInput | number
+  planId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  mealsPerDay?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  averageMealRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  baseAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  days?: Prisma.IntFieldUpdateOperationsInput | number
+  planType?: Prisma.EnumPlanTypeFieldUpdateOperationsInput | $Enums.PlanType
+  remainingMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  totalMeals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  vatAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  timeSlots?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  weeklySkipDays?: Prisma.MealPlanUpdateweeklySkipDaysInput | number[]
+  weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
+  payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanCreateManyCustomerInput = {
@@ -1361,6 +1675,8 @@ export type MealPlanUpdateWithoutCustomerInput = {
   plan?: Prisma.PlanUpdateOneWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanUncheckedUpdateWithoutCustomerInput = {
@@ -1386,6 +1702,8 @@ export type MealPlanUncheckedUpdateWithoutCustomerInput = {
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanUncheckedUpdateManyWithoutCustomerInput = {
@@ -1456,6 +1774,8 @@ export type MealPlanUpdateWithoutPlanInput = {
   customer?: Prisma.CustomerUpdateOneRequiredWithoutMealPlansNestedInput
   mealPlanItems?: Prisma.MealPlanItemUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanUncheckedUpdateWithoutPlanInput = {
@@ -1481,6 +1801,8 @@ export type MealPlanUncheckedUpdateWithoutPlanInput = {
   weeklySkipDaysByWeek?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   mealPlanItems?: Prisma.MealPlanItemUncheckedUpdateManyWithoutMealPlanNestedInput
   payments?: Prisma.PaymentUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappAgentRuns?: Prisma.WhatsAppAgentRunUncheckedUpdateManyWithoutMealPlanNestedInput
+  whatsappPendingActions?: Prisma.WhatsAppPendingActionUncheckedUpdateManyWithoutMealPlanNestedInput
 }
 
 export type MealPlanUncheckedUpdateManyWithoutPlanInput = {
@@ -1514,11 +1836,15 @@ export type MealPlanUncheckedUpdateManyWithoutPlanInput = {
 export type MealPlanCountOutputType = {
   mealPlanItems: number
   payments: number
+  whatsappAgentRuns: number
+  whatsappPendingActions: number
 }
 
 export type MealPlanCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   mealPlanItems?: boolean | MealPlanCountOutputTypeCountMealPlanItemsArgs
   payments?: boolean | MealPlanCountOutputTypeCountPaymentsArgs
+  whatsappAgentRuns?: boolean | MealPlanCountOutputTypeCountWhatsappAgentRunsArgs
+  whatsappPendingActions?: boolean | MealPlanCountOutputTypeCountWhatsappPendingActionsArgs
 }
 
 /**
@@ -1543,6 +1869,20 @@ export type MealPlanCountOutputTypeCountMealPlanItemsArgs<ExtArgs extends runtim
  */
 export type MealPlanCountOutputTypeCountPaymentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.PaymentWhereInput
+}
+
+/**
+ * MealPlanCountOutputType without action
+ */
+export type MealPlanCountOutputTypeCountWhatsappAgentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WhatsAppAgentRunWhereInput
+}
+
+/**
+ * MealPlanCountOutputType without action
+ */
+export type MealPlanCountOutputTypeCountWhatsappPendingActionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.WhatsAppPendingActionWhereInput
 }
 
 
@@ -1572,6 +1912,8 @@ export type MealPlanSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
   mealPlanItems?: boolean | Prisma.MealPlan$mealPlanItemsArgs<ExtArgs>
   payments?: boolean | Prisma.MealPlan$paymentsArgs<ExtArgs>
+  whatsappAgentRuns?: boolean | Prisma.MealPlan$whatsappAgentRunsArgs<ExtArgs>
+  whatsappPendingActions?: boolean | Prisma.MealPlan$whatsappPendingActionsArgs<ExtArgs>
   _count?: boolean | Prisma.MealPlanCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["mealPlan"]>
 
@@ -1657,6 +1999,8 @@ export type MealPlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArg
   plan?: boolean | Prisma.MealPlan$planArgs<ExtArgs>
   mealPlanItems?: boolean | Prisma.MealPlan$mealPlanItemsArgs<ExtArgs>
   payments?: boolean | Prisma.MealPlan$paymentsArgs<ExtArgs>
+  whatsappAgentRuns?: boolean | Prisma.MealPlan$whatsappAgentRunsArgs<ExtArgs>
+  whatsappPendingActions?: boolean | Prisma.MealPlan$whatsappPendingActionsArgs<ExtArgs>
   _count?: boolean | Prisma.MealPlanCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type MealPlanIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1675,6 +2019,8 @@ export type $MealPlanPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     plan: Prisma.$PlanPayload<ExtArgs> | null
     mealPlanItems: Prisma.$MealPlanItemPayload<ExtArgs>[]
     payments: Prisma.$PaymentPayload<ExtArgs>[]
+    whatsappAgentRuns: Prisma.$WhatsAppAgentRunPayload<ExtArgs>[]
+    whatsappPendingActions: Prisma.$WhatsAppPendingActionPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -2105,6 +2451,8 @@ export interface Prisma__MealPlanClient<T, Null = never, ExtArgs extends runtime
   plan<T extends Prisma.MealPlan$planArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MealPlan$planArgs<ExtArgs>>): Prisma.Prisma__PlanClient<runtime.Types.Result.GetResult<Prisma.$PlanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   mealPlanItems<T extends Prisma.MealPlan$mealPlanItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MealPlan$mealPlanItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MealPlanItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   payments<T extends Prisma.MealPlan$paymentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MealPlan$paymentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PaymentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  whatsappAgentRuns<T extends Prisma.MealPlan$whatsappAgentRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MealPlan$whatsappAgentRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WhatsAppAgentRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  whatsappPendingActions<T extends Prisma.MealPlan$whatsappPendingActionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MealPlan$whatsappPendingActionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WhatsAppPendingActionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2615,6 +2963,54 @@ export type MealPlan$paymentsArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   distinct?: Prisma.PaymentScalarFieldEnum | Prisma.PaymentScalarFieldEnum[]
+}
+
+/**
+ * MealPlan.whatsappAgentRuns
+ */
+export type MealPlan$whatsappAgentRunsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WhatsAppAgentRun
+   */
+  select?: Prisma.WhatsAppAgentRunSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WhatsAppAgentRun
+   */
+  omit?: Prisma.WhatsAppAgentRunOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WhatsAppAgentRunInclude<ExtArgs> | null
+  where?: Prisma.WhatsAppAgentRunWhereInput
+  orderBy?: Prisma.WhatsAppAgentRunOrderByWithRelationInput | Prisma.WhatsAppAgentRunOrderByWithRelationInput[]
+  cursor?: Prisma.WhatsAppAgentRunWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WhatsAppAgentRunScalarFieldEnum | Prisma.WhatsAppAgentRunScalarFieldEnum[]
+}
+
+/**
+ * MealPlan.whatsappPendingActions
+ */
+export type MealPlan$whatsappPendingActionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WhatsAppPendingAction
+   */
+  select?: Prisma.WhatsAppPendingActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WhatsAppPendingAction
+   */
+  omit?: Prisma.WhatsAppPendingActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WhatsAppPendingActionInclude<ExtArgs> | null
+  where?: Prisma.WhatsAppPendingActionWhereInput
+  orderBy?: Prisma.WhatsAppPendingActionOrderByWithRelationInput | Prisma.WhatsAppPendingActionOrderByWithRelationInput[]
+  cursor?: Prisma.WhatsAppPendingActionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.WhatsAppPendingActionScalarFieldEnum | Prisma.WhatsAppPendingActionScalarFieldEnum[]
 }
 
 /**

@@ -5,6 +5,7 @@ import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsAppText } from '@/lib/whatsapp/client'
+import { logWhatsAppError, serializeError } from '@/lib/whatsapp/log'
 import { formatPhoneDisplay } from '@/lib/whatsapp/normalize-phone'
 import { z } from 'zod'
 
@@ -51,7 +52,9 @@ export async function GET(
       unreadCount: 0,
     })
   } catch (error) {
-    console.error('WhatsApp conversation get error:', error)
+    logWhatsAppError('conversation_get_failed', {
+      ...serializeError(error),
+    })
     return NextResponse.json({ error: 'Failed to load conversation' }, { status: 500 })
   }
 }
@@ -84,6 +87,13 @@ export async function POST(
     const data = sendSchema.parse(await request.json())
     const result = await sendWhatsAppText(conversation.phoneE164, data.body)
     if (!result.ok) {
+      logWhatsAppError('inbox_send_failed', {
+        conversationId: conversation.id,
+        to: conversation.phoneE164,
+        error: result.error,
+        errorCode: result.errorCode,
+        fbtraceId: result.fbtraceId,
+      })
       return NextResponse.json({ error: result.error ?? 'Send failed' }, { status: 400 })
     }
 
@@ -113,7 +123,7 @@ export async function POST(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
     }
-    console.error('WhatsApp send error:', error)
+    logWhatsAppError('inbox_send_exception', serializeError(error))
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
   }
 }

@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { logWhatsAppError, logWhatsAppInfo, logWhatsAppWarn, serializeError } from './log'
+import { triggerAgentAfterInbound } from '@/lib/whatsapp/agent/trigger-after-inbound'
 import { findCustomerByWhatsAppPhone } from './match-customer'
 import { normalizeWhatsAppPhone } from './normalize-phone'
 
@@ -39,9 +41,14 @@ async function upsertInboundMessage(params: {
   contactName?: string
   rawPayload: unknown
   direction: 'INBOUND' | 'OUTBOUND'
-}) {
+}): Promise<{
+  conversationId: number
+  messageId: number
+  phoneE164: string
+  isNew: boolean
+} | null> {
   const phoneE164 = normalizeWhatsAppPhone(params.from)
-  if (!phoneE164) return
+  if (!phoneE164) return null
 
   const customer = await findCustomerByWhatsAppPhone(phoneE164)
 
@@ -89,9 +96,16 @@ async function upsertInboundMessage(params: {
   const existing = await prisma.whatsAppMessage.findUnique({
     where: { externalId: params.externalId },
   })
-  if (existing) return
+  if (existing) {
+    return {
+      conversationId: conversation.id,
+      messageId: existing.id,
+      phoneE164,
+      isNew: false,
+    }
+  }
 
-  await prisma.whatsAppMessage.create({
+  const created = await prisma.whatsAppMessage.create({
     data: {
       conversationId: conversation.id,
       externalId: params.externalId,
@@ -103,6 +117,13 @@ async function upsertInboundMessage(params: {
       rawPayload: params.rawPayload as object,
     },
   })
+
+  return {
+    conversationId: conversation.id,
+    messageId: created.id,
+    phoneE164,
+    isNew: true,
+  }
 }
 
 async function applyStatusUpdate(status: Record<string, unknown>) {
@@ -117,6 +138,16 @@ async function applyStatusUpdate(status: Record<string, unknown>) {
   }
   const mapped = map[st]
   if (!mapped) return
+
+  if (st === 'failed') {
+    logWhatsAppError('message_delivery_failed', {
+      externalId: id,
+      recipientId: status.recipient_id,
+      timestamp: status.timestamp,
+      errors: status.errors,
+    })
+  }
+
   await prisma.whatsAppMessage.updateMany({
     where: { externalId: id },
     data: { status: mapped },
@@ -125,9 +156,18 @@ async function applyStatusUpdate(status: Record<string, unknown>) {
 
 /** Process Meta WhatsApp webhook JSON body. */
 export async function processWhatsAppWebhook(body: unknown): Promise<void> {
-  if (!body || typeof body !== 'object') return
+  if (!body || typeof body !== 'object') {
+    logWhatsAppWarn('webhook_ignored_empty_body')
+    return
+  }
   const root = body as { object?: string; entry?: unknown[] }
-  if (root.object !== 'whatsapp_business_account' || !Array.isArray(root.entry)) return
+  if (root.object !== 'whatsapp_business_account' || !Array.isArray(root.entry)) {
+    logWhatsAppWarn('webhook_ignored_invalid_shape', {
+      object: root.object,
+      hasEntry: Array.isArray(root.entry),
+    })
+    return
+  }
 
   for (const entry of root.entry) {
     if (!entry || typeof entry !== 'object') continue
@@ -164,6 +204,24 @@ export async function processWhatsAppWebhook(body: unknown): Promise<void> {
             contactName: contactByWaId.get(from),
             rawPayload: msg,
             direction: 'INBOUND',
+          }).then((stored) => {
+            if (stored?.isNew) {
+              logWhatsAppInfo('inbound_message_stored', {
+                externalId: id,
+                from: stored.phoneE164,
+                conversationId: stored.conversationId,
+                messageId: stored.messageId,
+                messageType: String(msg.type ?? 'text'),
+              })
+              void triggerAgentAfterInbound({
+                conversationId: stored.conversationId,
+                inboundMessageId: stored.messageId,
+                phoneE164: stored.phoneE164,
+                body: messageBodyFromPayload(msg),
+                messageType: String(msg.type ?? 'text'),
+                direction: 'INBOUND',
+              })
+            }
           })
         }
       }

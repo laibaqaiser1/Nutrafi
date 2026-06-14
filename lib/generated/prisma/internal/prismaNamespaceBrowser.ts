@@ -62,7 +62,10 @@ export const ModelName = {
   MealPlanItem: 'MealPlanItem',
   Payment: 'Payment',
   WhatsAppConversation: 'WhatsAppConversation',
-  WhatsAppMessage: 'WhatsAppMessage'
+  WhatsAppMessage: 'WhatsAppMessage',
+  WhatsAppAgentRun: 'WhatsAppAgentRun',
+  WhatsAppAgentAction: 'WhatsAppAgentAction',
+  WhatsAppPendingAction: 'WhatsAppPendingAction'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -308,6 +311,7 @@ export const WhatsAppConversationScalarFieldEnum = {
   lastMessageAt: 'lastMessageAt',
   lastMessagePreview: 'lastMessagePreview',
   unreadCount: 'unreadCount',
+  agentMode: 'agentMode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -331,6 +335,61 @@ export const WhatsAppMessageScalarFieldEnum = {
 export type WhatsAppMessageScalarFieldEnum = (typeof WhatsAppMessageScalarFieldEnum)[keyof typeof WhatsAppMessageScalarFieldEnum]
 
 
+export const WhatsAppAgentRunScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  customerId: 'customerId',
+  mealPlanId: 'mealPlanId',
+  inboundMessageId: 'inboundMessageId',
+  parentRunId: 'parentRunId',
+  pendingActionId: 'pendingActionId',
+  trigger: 'trigger',
+  status: 'status',
+  rawMessageBody: 'rawMessageBody',
+  parsedIntent: 'parsedIntent',
+  model: 'model',
+  modelRawResponse: 'modelRawResponse',
+  errorMessage: 'errorMessage',
+  payload: 'payload',
+  createdAt: 'createdAt'
+} as const
+
+export type WhatsAppAgentRunScalarFieldEnum = (typeof WhatsAppAgentRunScalarFieldEnum)[keyof typeof WhatsAppAgentRunScalarFieldEnum]
+
+
+export const WhatsAppAgentActionScalarFieldEnum = {
+  id: 'id',
+  runId: 'runId',
+  actionType: 'actionType',
+  status: 'status',
+  input: 'input',
+  output: 'output',
+  confidence: 'confidence',
+  beforeSnapshot: 'beforeSnapshot',
+  afterSnapshot: 'afterSnapshot',
+  createdAt: 'createdAt'
+} as const
+
+export type WhatsAppAgentActionScalarFieldEnum = (typeof WhatsAppAgentActionScalarFieldEnum)[keyof typeof WhatsAppAgentActionScalarFieldEnum]
+
+
+export const WhatsAppPendingActionScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  customerId: 'customerId',
+  mealPlanId: 'mealPlanId',
+  createdFromRunId: 'createdFromRunId',
+  type: 'type',
+  status: 'status',
+  context: 'context',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type WhatsAppPendingActionScalarFieldEnum = (typeof WhatsAppPendingActionScalarFieldEnum)[keyof typeof WhatsAppPendingActionScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -345,6 +404,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
