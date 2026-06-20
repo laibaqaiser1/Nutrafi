@@ -1,6 +1,7 @@
 import { formatPhoneDisplay } from '@/lib/whatsapp/normalize-phone'
 import { whatsappAgentConfig } from './config'
 import type { DishCandidate, PendingMealSlot } from './types'
+import { isVagueDishPhrase } from './meal-phrases'
 import { format, parseISO } from 'date-fns'
 
 function supportLine(): string {
@@ -73,18 +74,43 @@ export function formatDateLabel(dateYmd: string): string {
 
 export function dishChoiceQuestion(
   slot: PendingMealSlot,
-  candidates: DishCandidate[]
+  candidates: DishCandidate[],
+  mealsPerDay = 2
 ): string {
+  if (candidates.length === 0 || isVagueDishPhrase(slot.customerPhrase)) {
+    return askWhichMealsReply(slot.dateYmd, mealsPerDay)
+  }
+
   const dateLabel = formatDateLabel(slot.dateYmd)
   const lines = [
-    `For ${dateLabel}, which dish did you mean for "${slot.customerPhrase}"?`,
+    `For ${dateLabel}, I found a few options for "${slot.customerPhrase}":`,
     '',
   ]
   candidates.slice(0, 6).forEach((c, i) => {
-    lines.push(`${i + 1}) ${c.name}`)
+    lines.push(`${i + 1}. ${c.name}`)
   })
   lines.push('')
-  lines.push('Reply with the number or exact dish name.')
+  lines.push('Which one would you like? Reply with the number (e.g. 1) or the dish name.')
+  return lines.join('\n')
+}
+
+export function askWhichMealsReply(dateYmd: string, mealsPerDay: number): string {
+  const dateLabel = formatDateLabel(dateYmd)
+  const lines = [
+    `Sure! What would you like for ${dateLabel}?`,
+    '',
+    'Please send the dish names, for example:',
+  ]
+
+  if (mealsPerDay <= 1) {
+    lines.push('Chicken Biryani')
+  } else {
+    lines.push('Meal 1: Chicken Biryani')
+    lines.push('Meal 2: Beef Kofta with Rice')
+  }
+
+  lines.push('')
+  lines.push('Or in one line: chicken biryani and beef kofta for tomorrow')
   return lines.join('\n')
 }
 

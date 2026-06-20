@@ -6,6 +6,8 @@ import { logAgentAction, updateAgentRun } from './audit-log'
 import {
   loadCandidatesInOrder,
   resolveDishFromReply,
+  resolveDishFromPhrase,
+  candidateIdsForDisplay,
 } from './dish-matcher'
 import {
   getOpenPendingAction,
@@ -18,8 +20,14 @@ import {
   dishChoiceQuestion,
   mealsAddedConfirmation,
   partialApplyReply,
+  askWhichMealsReply,
   supportOnlyReply,
 } from './replies'
+import { isVagueDishPhrase } from './meal-phrases'
+import {
+  isBrokenPendingContext,
+  looksLikeFreshDishInput,
+} from './pending-health'
 import { sendAgentReply } from './record-outbound'
 import type { AgentProcessResult } from './types'
 
@@ -60,7 +68,23 @@ export async function handleFollowUpMessage(params: {
   }
 
   const candidateIds = slot.candidateDishIds ?? []
-  const resolution = await resolveDishFromReply(params.body, candidateIds)
+  let resolution = await resolveDishFromReply(params.body, candidateIds)
+
+  if (
+    (!resolution || resolution.status !== 'resolved' || !resolution.dishId) &&
+    (candidateIds.length === 0 || isBrokenPendingContext(ctx)) &&
+    looksLikeFreshDishInput(params.body)
+  ) {
+    const direct = await resolveDishFromPhrase(params.body)
+    if (direct.status === 'resolved' && direct.dishId) {
+      resolution = direct
+    } else if (direct.status === 'needs_confirm' && direct.candidates.length > 0) {
+      slot.candidateDishIds = candidateIdsForDisplay(direct.candidates)
+      slot.customerPhrase = params.body.trim()
+      await updatePendingContext(pending.id, ctx)
+      resolution = null
+    }
+  }
 
   await logAgentAction({
     runId: params.runId,
@@ -87,9 +111,15 @@ export async function handleFollowUpMessage(params: {
       return { runId: params.runId, status: 'SKIPPED', replyBody }
     }
 
-    const candidates = await loadCandidatesInOrder(candidateIds)
-    const question = dishChoiceQuestion(slot, candidates)
-    const replyBody = partialApplyReply(0, question)
+    const candidates = await loadCandidatesInOrder(slot.candidateDishIds ?? candidateIds)
+    const question =
+      candidates.length === 0 || isVagueDishPhrase(slot.customerPhrase)
+        ? askWhichMealsReply(slot.dateYmd, ctx.meals.length || 2)
+        : dishChoiceQuestion(slot, candidates, ctx.meals.length || 2)
+    const replyBody =
+      candidates.length === 0 || isVagueDishPhrase(slot.customerPhrase)
+        ? question
+        : partialApplyReply(0, question)
     await sendAgentReply({
       runId: params.runId,
       phoneE164: params.phoneE164,
@@ -156,7 +186,7 @@ export async function handleFollowUpMessage(params: {
     const candidates = await loadCandidatesInOrder(
       nextSlot.candidateDishIds ?? []
     )
-    const question = dishChoiceQuestion(nextSlot, candidates)
+    const question = dishChoiceQuestion(nextSlot, candidates, ctx.meals.length || 2)
     const replyBody = partialApplyReply(1, question)
     await sendAgentReply({
       runId: params.runId,

@@ -8,6 +8,7 @@ import {
   stringSimilarity,
 } from './string-similarity'
 import type { DishCandidate, DishResolution } from './types'
+import { isVagueDishPhrase } from './meal-phrases'
 
 interface MenuDish {
   id: number
@@ -280,6 +281,15 @@ export function candidateIdsForDisplay(candidates: DishCandidate[]): number[] {
 export async function resolveDishFromPhrase(
   customerPhrase: string
 ): Promise<DishResolution> {
+  if (isVagueDishPhrase(customerPhrase)) {
+    return {
+      customerPhrase,
+      status: 'no_match',
+      confidence: 0,
+      candidates: [],
+    }
+  }
+
   const cfg = whatsappAgentConfig()
   const dishes = await loadActiveDishes()
 

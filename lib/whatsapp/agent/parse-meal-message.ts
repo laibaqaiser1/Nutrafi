@@ -12,6 +12,7 @@ import type {
   ParsedMealSlot,
   ParsedReplaceMeal,
 } from './types'
+import { filterActionableMealPhrases, isVagueDishPhrase } from './meal-phrases'
 
 const WEEKDAYS: Record<string, number> = {
   monday: 1,
@@ -387,7 +388,9 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
   }
 
   phrases.forEach((phrase, slotIndex) => {
-    meals.push({ dateYmd, dateSource, slotIndex, customerPhrase: phrase })
+    if (!isVagueDishPhrase(phrase)) {
+      meals.push({ dateYmd, dateSource, slotIndex, customerPhrase: phrase })
+    }
   })
   return meals
 }
@@ -451,7 +454,7 @@ function normalizeAiExtraction(
     for (const m of raw.meals) {
       if (!m || typeof m !== 'object') continue
       const phrase = String(m.customerPhrase ?? '').trim()
-      if (phrase.length < 2) continue
+      if (phrase.length < 2 || isVagueDishPhrase(phrase)) continue
       const rawDateSource = String(m.dateSource ?? '').trim()
       const resolved = resolveMealDate(m.dateYmd, rawDateSource, base)
       meals.push({
@@ -491,8 +494,9 @@ function normalizeAiExtraction(
   if (kind === 'UPDATE' && replace) {
     return { kind: 'UPDATE', meals, replace }
   }
-  if (meals.length === 0) return null
-  return { kind: 'ADD', meals }
+  const actionable = filterActionableMealPhrases(meals)
+  if (actionable.length === 0) return null
+  return { kind: 'ADD', meals: actionable }
 }
 
 function parseWithRules(
@@ -514,9 +518,12 @@ function parseWithRules(
 
   if (meals.length === 0) return null
 
+  const actionable = filterActionableMealPhrases(meals)
+  if (actionable.length === 0) return null
+
   return {
     kind: intent === 'UPDATE_MEAL' ? 'UPDATE' : 'ADD',
-    meals,
+    meals: actionable,
   }
 }
 
@@ -606,3 +613,31 @@ export async function parseMealMessage(
 }
 
 export { todayInTz, ymdFromDate }
+
+/** Best-effort date from message text when no dish names were parsed. */
+export function inferMealDateFromMessage(body: string, base?: Date): {
+  dateYmd: string
+  dateSource: string
+} | null {
+  const ref = base ?? todayInTz()
+  const lower = body.toLowerCase()
+  if (lower.includes('tomorrow') || lower.includes('tommorow')) {
+    return {
+      dateYmd: addDaysToYmd(ymdFromDate(ref), 1),
+      dateSource: 'tomorrow',
+    }
+  }
+  if (lower.includes('today')) {
+    return { dateYmd: ymdFromDate(ref), dateSource: 'today' }
+  }
+  const dayMatch = body.match(WEEKDAY_NAME)
+  if (dayMatch) {
+    const dateYmd = resolveWeekday(dayMatch[1]!, ref)
+    return { dateYmd, dateSource: dayMatch[1]! }
+  }
+  const ddmm = parseDdMm(body, ref)
+  if (ddmm) {
+    return { dateYmd: ensureNotPast(ddmm, ref), dateSource: 'date in message' }
+  }
+  return null
+}

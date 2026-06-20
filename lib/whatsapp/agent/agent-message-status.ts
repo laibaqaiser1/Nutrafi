@@ -32,6 +32,9 @@ export function agentStatusLabel(
     case 'PARTIAL':
       return { label: 'Partially applied', detail: errorMessage }
     case 'NEEDS_CONFIRMATION':
+      if (reason === 'missing_dish_names') {
+        return { label: 'Asked for meal names', detail: null }
+      }
       return { label: 'Waiting for dish choice', detail: reason }
     case 'FAILED':
       return {
