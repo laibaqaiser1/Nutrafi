@@ -1,7 +1,7 @@
 import { formatPhoneDisplay } from '@/lib/whatsapp/normalize-phone'
 import { whatsappAgentConfig } from './config'
 import type { DishCandidate, PendingMealSlot } from './types'
-import { isVagueDishPhrase } from './meal-phrases'
+import { isVagueDishPhrase, sanitizeDisplayPhrase } from './meal-phrases'
 import { format, parseISO } from 'date-fns'
 
 function supportLine(): string {
@@ -28,6 +28,15 @@ export function greetingReply(): string {
 
 export function farewellReply(): string {
   return 'Thanks for contacting Nutrafi! If you need to add or update meals later, just message us anytime.'
+}
+
+/** Detect our standard closing WhatsApp reply (for ignoring ok → sure duplicates). */
+export function isFarewellReplyBody(body: string | null | undefined): boolean {
+  if (!body?.trim()) return false
+  return (
+    body.includes('Thanks for contacting Nutrafi') ||
+    body.includes('just message us anytime')
+  )
 }
 
 export function noCustomerReply(): string {
@@ -82,8 +91,9 @@ export function dishChoiceQuestion(
   }
 
   const dateLabel = formatDateLabel(slot.dateYmd)
+  const displayPhrase = sanitizeDisplayPhrase(slot.customerPhrase)
   const lines = [
-    `For ${dateLabel}, I found a few options for "${slot.customerPhrase}":`,
+    `For ${dateLabel}, I found a few options for "${displayPhrase}":`,
     '',
   ]
   candidates.slice(0, 6).forEach((c, i) => {
@@ -111,6 +121,33 @@ export function askWhichMealsReply(dateYmd: string, mealsPerDay: number): string
 
   lines.push('')
   lines.push('Or in one line: chicken biryani and beef kofta for tomorrow')
+  return lines.join('\n')
+}
+
+export function nextMealPrompt(
+  dateYmd: string,
+  mealsSetCount: number,
+  mealsPerDay: number,
+  setMealNames: string[]
+): string {
+  const dateLabel = formatDateLabel(dateYmd)
+  const ordinals = ['first', 'second', 'third']
+  const lines: string[] = []
+
+  const lastName = setMealNames[setMealNames.length - 1]
+  if (lastName && mealsSetCount > 0) {
+    const setLabel = ordinals[mealsSetCount - 1] ?? `#${mealsSetCount}`
+    lines.push(`✅ Your ${setLabel} meal is set: ${lastName}`)
+    lines.push('')
+  }
+
+  if (mealsSetCount >= mealsPerDay) {
+    return lines.join('\n')
+  }
+
+  const nextLabel = ordinals[mealsSetCount] ?? `meal ${mealsSetCount + 1}`
+  lines.push(`What would you like for your ${nextLabel} meal on ${dateLabel}?`)
+  lines.push('Just send the dish name (e.g. beef burger).')
   return lines.join('\n')
 }
 

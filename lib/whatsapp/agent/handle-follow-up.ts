@@ -29,6 +29,7 @@ import {
   isBrokenPendingContext,
   looksLikeFreshDishInput,
 } from './pending-health'
+import { replyAfterMealsApplied } from './meal-update-reply'
 import { sendAgentReply } from './record-outbound'
 import type { AgentProcessResult } from './types'
 
@@ -108,24 +109,15 @@ export async function handleFollowUpMessage(params: {
         return { runId: params.runId, status: 'FAILED' }
       }
 
-      const replyBody = mealsAddedConfirmation([
-        {
-          dateYmd: slot.dateYmd,
-          dishName: direct.dishName ?? params.body.trim(),
-          slotIndex: slot.slotIndex,
-        },
-      ])
-      await sendAgentReply({
+      await setPendingStatus(pending.id, 'COMPLETED')
+      return replyAfterMealsApplied({
         runId: params.runId,
-        phoneE164: params.phoneE164,
         conversationId: params.conversationId,
-        body: replyBody,
+        phoneE164: params.phoneE164,
+        mealPlanId: pending.mealPlanId,
+        customerId: pending.customerId ?? undefined,
+        touchedDateYmds: [slot.dateYmd],
       })
-      await updateAgentRun(params.runId, {
-        status: 'SUCCESS',
-        payload: { recoveredFromBrokenPending: true },
-      })
-      return { runId: params.runId, status: 'SUCCESS', replyBody }
     }
   }
 
@@ -291,22 +283,14 @@ export async function handleFollowUpMessage(params: {
   }
 
   await setPendingStatus(pending.id, 'COMPLETED')
-  const allApplied = ctx.meals
-    .filter((m) => m.status === 'applied' || m.status === 'resolved')
-    .map((m) => ({
-      dateYmd: m.dateYmd,
-      dishName: m.resolvedDishName ?? m.customerPhrase,
-      slotIndex: m.slotIndex,
-    }))
-  const replyBody = mealsAddedConfirmation(allApplied)
-  await sendAgentReply({
+  return replyAfterMealsApplied({
     runId: params.runId,
-    phoneE164: params.phoneE164,
     conversationId: params.conversationId,
-    body: replyBody,
+    phoneE164: params.phoneE164,
+    mealPlanId,
+    customerId: pending.customerId ?? undefined,
+    touchedDateYmds: [...new Set(ctx.meals.map((m) => m.dateYmd))],
   })
-  await updateAgentRun(params.runId, { status: 'SUCCESS', payload: { ctx } })
-  return { runId: params.runId, status: 'SUCCESS', replyBody }
 }
 
 export async function handleCancelPending(params: {

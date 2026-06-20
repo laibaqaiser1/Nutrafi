@@ -7,7 +7,7 @@ const FAREWELL_THANKS_RE =
   /^(thanks?|thank\s*you|thx|ty|cheers|much\s+appreciated|appreciate\s+it)(\s+so\s+much|\s+a\s+lot|.*)?[!.?]*$/i
 
 const FAREWELL_SHORT_RE =
-  /^(ok|okay|k|cool|got\s*it|perfect|great|lovely|nice|sounds\s+good|alright|all\s+good|bye|goodbye|see\s+you|take\s+care|have\s+a\s+(good|nice)\s+(day|one))[!.?]*$/i
+  /^(ok|okay|k|sure|cool|got\s*it|perfect|great|lovely|nice|sounds\s+good|alright|all\s+good|bye|goodbye|see\s+you|take\s+care|have\s+a\s+(good|nice)\s+(day|one))[!.?]*$/i
 
 export type CasualMessageKind = 'greeting' | 'farewell'
 

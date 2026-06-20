@@ -7,6 +7,8 @@ import type { PendingBatchContext } from './types'
 
 /** Pending state that cannot be resolved via numbered dish choice (legacy / vague parse). */
 export function isBrokenPendingContext(ctx: PendingBatchContext): boolean {
+  if (ctx.awaitingNextMeal) return false
+
   const waiting = ctx.meals.filter((m) => m.status === 'waiting_dish')
   if (waiting.length === 0) return false
 
@@ -18,6 +20,9 @@ export function isBrokenPendingContext(ctx: PendingBatchContext): boolean {
 }
 
 export function pendingTargetDate(ctx: PendingBatchContext): { dateYmd: string } | null {
+  if (ctx.awaitingNextMeal) {
+    return { dateYmd: ctx.awaitingNextMeal.dateYmd }
+  }
   const slot = ctx.meals.find((m) => m.status === 'waiting_dish') ?? ctx.meals[0]
   if (!slot) return null
   return { dateYmd: slot.dateYmd }

@@ -28,3 +28,21 @@ export function filterActionableMealPhrases<T extends { customerPhrase: string }
 ): T[] {
   return meals.filter((m) => !isVagueDishPhrase(m.customerPhrase))
 }
+
+const PHRASE_META_WORDS =
+  /\b(my|the|a|an|for|on|to|please|add|update|meal|meals|tomorrow|tommorow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/gi
+
+/** Strip date/meta words so UI shows "chicken pasta" not "chicken pasta my tommorow meal". */
+export function sanitizeDisplayPhrase(phrase: string): string {
+  const cleaned = phrase
+    .replace(/^\s*and\s+/i, '')
+    .replace(PHRASE_META_WORDS, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return cleaned.length >= 2 ? cleaned : phrase.trim()
+}
+
+/** Normalize parsed customerPhrase before dish matching. */
+export function normalizeCustomerPhrase(phrase: string): string {
+  return sanitizeDisplayPhrase(phrase)
+}

@@ -415,6 +415,65 @@ export async function findMealItemForReplace(
   return best
 }
 
+export interface MealDaySummary {
+  dateYmd: string
+  dishName: string | null
+  slotIndex: number
+}
+
+export async function getActiveMealsSummaryForDate(
+  mealPlanId: number,
+  dateYmd: string
+): Promise<MealDaySummary[]> {
+  return getActiveMealsSummaryForDates(mealPlanId, [dateYmd])
+}
+
+/** Active meals on the given days — for confirmation messages listing the full day. */
+export async function getActiveMealsSummaryForDates(
+  mealPlanId: number,
+  dateYmds: string[]
+): Promise<MealDaySummary[]> {
+  const unique = [...new Set(dateYmds)]
+  if (unique.length === 0) return []
+
+  const items = await prisma.mealPlanItem.findMany({
+    where: {
+      mealPlanId,
+      isSkipped: false,
+      wrongDelivery: false,
+      OR: unique.map((ymd) => ({ date: mealPlanDateFromYmd(ymd) })),
+    },
+    select: {
+      date: true,
+      timeSlot: true,
+      dishId: true,
+      dishName: true,
+    },
+    orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { id: 'asc' }],
+  })
+
+  const byDate = new Map<string, MealDaySummary[]>()
+  for (const item of items) {
+    const ymd = mealPlanDateYmd(item.date)
+    if (!unique.includes(ymd)) continue
+    const name = item.dishName?.trim()
+    if (!name && item.dishId == null) continue
+    const list = byDate.get(ymd) ?? []
+    list.push({
+      dateYmd: ymd,
+      dishName: name ?? null,
+      slotIndex: list.length,
+    })
+    byDate.set(ymd, list)
+  }
+
+  const result: MealDaySummary[] = []
+  for (const ymd of unique) {
+    result.push(...(byDate.get(ymd) ?? []))
+  }
+  return result
+}
+
 export async function findMealPlanItemSnapshot(
   itemId: number
 ): Promise<Record<string, unknown> | null> {

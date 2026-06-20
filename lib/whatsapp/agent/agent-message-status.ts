@@ -32,6 +32,9 @@ export function agentStatusLabel(
     case 'PARTIAL':
       return { label: 'Partially applied', detail: errorMessage }
     case 'NEEDS_CONFIRMATION':
+      if (reason === 'awaiting_next_meal') {
+        return { label: 'Waiting for next meal', detail: null }
+      }
       if (reason === 'missing_dish_names') {
         return { label: 'Asked for meal names', detail: null }
       }
@@ -47,6 +50,9 @@ export function agentStatusLabel(
       }
       if (reason === 'farewell') {
         return { label: 'Closing reply sent', detail: null }
+      }
+      if (reason === 'redundant_casual_after_farewell') {
+        return { label: 'Ignored (already closed)', detail: null }
       }
       if (reason === 'NOT_MEAL' || reason === 'support question') {
         return { label: 'Sent support redirect', detail: reason }

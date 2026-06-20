@@ -10,7 +10,8 @@ import { classifyMealIntent } from './classify-intent'
 import { findCustomerByPhoneExact } from './find-customer'
 import { handleCancelPending, handleFollowUpMessage } from './handle-follow-up'
 import { parseMealMessage, inferMealDateFromMessage } from './parse-meal-message'
-import { isVagueDishPhrase } from './meal-phrases'
+import { replyAfterMealsApplied } from './meal-update-reply'
+import { isVagueDishPhrase, sanitizeDisplayPhrase } from './meal-phrases'
 import { resolveDishFromPhrase, candidateIdsForDisplay, loadCandidatesInOrder, suggestDishesForPhrase } from './dish-matcher'
 import {
   createPendingAction,
@@ -52,6 +53,7 @@ import type {
   PendingMealSlot,
 } from './types'
 import { detectCasualMessage } from './casual-messages'
+import { shouldIgnoreRedundantCasualFarewell } from './casual-follow-up'
 
 export interface InboundAgentParams {
   conversationId: number
@@ -95,6 +97,24 @@ export async function processInboundAgentMessage(
   }
 
   if (await inboundMessageAlreadyHandled(params.inboundMessageId)) {
+    return null
+  }
+
+  if (await shouldIgnoreRedundantCasualFarewell(params.conversationId, trimmed)) {
+    await createAgentRun({
+      conversationId: params.conversationId,
+      inboundMessageId: params.inboundMessageId,
+      trigger: 'INBOUND_MESSAGE',
+      status: 'SKIPPED',
+      rawMessageBody: trimmed,
+      parsedIntent: {
+        intent: 'NOT_MEAL',
+        isMealPlanRelated: false,
+        confidence: 1,
+        reason: 'redundant_casual_after_farewell',
+      },
+      payload: { reason: 'redundant_casual_after_farewell' },
+    })
     return null
   }
 
@@ -176,9 +196,11 @@ export async function processInboundAgentMessage(
   let skipFollowUp = false
   let pendingStillOpen = hasOpenPending
 
-  if (hasOpenPending && openPending && looksLikeFreshDishInput(trimmed)) {
+  if (hasOpenPending && openPending) {
     const pendingCtx = parsePendingContext(openPending.context)
-    if (pendingCtx) {
+    if (pendingCtx?.awaitingNextMeal) {
+      parseBody = augmentBodyWithPendingDate(trimmed, pendingCtx)
+    } else if (pendingCtx && looksLikeFreshDishInput(trimmed)) {
       let broken = isBrokenPendingContext(pendingCtx)
       if (!broken) {
         const slot = pendingCtx.meals.find((m) => m.status === 'waiting_dish')
@@ -466,7 +488,7 @@ async function processAddMeals(params: {
         dateYmd: meal.dateYmd,
         slotIndex,
         timeSlot,
-        customerPhrase: meal.customerPhrase,
+        customerPhrase: sanitizeDisplayPhrase(meal.customerPhrase),
         customNote: meal.customNote,
         status: 'waiting_dish',
         candidateDishIds: candidateIdsForDisplay(resolution.candidates),
@@ -476,7 +498,7 @@ async function processAddMeals(params: {
         dateYmd: meal.dateYmd,
         slotIndex,
         timeSlot,
-        customerPhrase: meal.customerPhrase,
+        customerPhrase: sanitizeDisplayPhrase(meal.customerPhrase),
         customNote: meal.customNote,
         status: 'waiting_dish',
         candidateDishIds: candidateIdsForDisplay(resolution.candidates),
@@ -625,19 +647,19 @@ async function processAddMeals(params: {
     }
   }
 
-  const replyBody = mealsAddedConfirmation(appliedSummary)
-  await sendAgentReply({
+  if (appliedSummary.length === 0) {
+    return { runId: params.runId, status: 'FAILED' }
+  }
+
+  return replyAfterMealsApplied({
     runId: params.runId,
-    phoneE164: params.phoneE164,
     conversationId: params.conversationId,
-    body: replyBody,
+    phoneE164: params.phoneE164,
+    mealPlanId: params.mealPlanId,
+    customerId: params.customerId,
+    mealsPerDay: params.mealsPerDay,
+    touchedDateYmds: appliedSummary.map((a) => a.dateYmd),
   })
-  await prisma.whatsAppPendingAction.updateMany({
-    where: { conversationId: params.conversationId, status: 'OPEN' },
-    data: { status: 'CANCELLED' },
-  })
-  await updateAgentRun(params.runId, { status: 'SUCCESS', payload: { applied: appliedSummary } })
-  return { runId: params.runId, status: 'SUCCESS', replyBody }
 }
 
 async function processReplaceMeal(params: {

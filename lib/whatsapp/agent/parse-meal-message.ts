@@ -12,7 +12,7 @@ import type {
   ParsedMealSlot,
   ParsedReplaceMeal,
 } from './types'
-import { filterActionableMealPhrases, isVagueDishPhrase } from './meal-phrases'
+import { filterActionableMealPhrases, isVagueDishPhrase, normalizeCustomerPhrase } from './meal-phrases'
 
 const WEEKDAYS: Record<string, number> = {
   monday: 1,
@@ -366,10 +366,15 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
     }
   }
 
-  const addMatch = body.match(/\badd\s+(.+?)\s+for\s+(tomorrow|today)/i)
+  const addMatch = body.match(/\badd\s+(.+?)\s+for\s+(tomorrow|today|tommorow)/i)
+  const addForDayMatch = body.match(
+    /\badd\s+(.+?)\s+for\s+(?:my\s+)?(?:tomorrow|tommorow|today|\w+day)(?:\s+meal[s]?)?/i
+  )
   const phrases: string[] = []
-  if (addMatch) {
-    phrases.push(...splitMealPhrases(addMatch[1]!))
+  if (addForDayMatch) {
+    phrases.push(normalizeCustomerPhrase(addForDayMatch[1]!))
+  } else if (addMatch) {
+    phrases.push(...splitMealPhrases(addMatch[1]!).map(normalizeCustomerPhrase))
   } else {
     const cleaned = body
       .replace(/\b(add|for|tomorrow|today|please|thanks|thank you)\b/gi, ' ')
@@ -382,14 +387,15 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
         if (first) phrases.push(first)
         phrases.push(second[1]!.trim())
       } else {
-        phrases.push(...splitMealPhrases(cleaned))
+        phrases.push(...splitMealPhrases(cleaned).map(normalizeCustomerPhrase))
       }
     }
   }
 
   phrases.forEach((phrase, slotIndex) => {
-    if (!isVagueDishPhrase(phrase)) {
-      meals.push({ dateYmd, dateSource, slotIndex, customerPhrase: phrase })
+    const normalized = normalizeCustomerPhrase(phrase)
+    if (!isVagueDishPhrase(normalized)) {
+      meals.push({ dateYmd, dateSource, slotIndex, customerPhrase: normalized })
     }
   })
   return meals
@@ -453,7 +459,7 @@ function normalizeAiExtraction(
   if (Array.isArray(raw.meals)) {
     for (const m of raw.meals) {
       if (!m || typeof m !== 'object') continue
-      const phrase = String(m.customerPhrase ?? '').trim()
+      const phrase = normalizeCustomerPhrase(String(m.customerPhrase ?? '').trim())
       if (phrase.length < 2 || isVagueDishPhrase(phrase)) continue
       const rawDateSource = String(m.dateSource ?? '').trim()
       const resolved = resolveMealDate(m.dateYmd, rawDateSource, base)
