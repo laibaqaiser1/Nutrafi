@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { whatsappAgentConfig } from './config'
 import {
-  agentRunExistsForMessage,
+  inboundMessageAlreadyHandled,
   createAgentRun,
   logAgentAction,
   updateAgentRun,
@@ -56,8 +56,17 @@ export async function processInboundAgentMessage(
   const trimmed = params.body.trim()
   if (!trimmed) return null
 
-  if (await agentRunExistsForMessage(params.inboundMessageId)) {
+  if (await inboundMessageAlreadyHandled(params.inboundMessageId)) {
     return null
+  }
+
+  const startedAt = Date.now()
+  const timing = (step: string) => {
+    if (process.env.WHATSAPP_AGENT_DEBUG_TIMING === 'true') {
+      console.info(
+        `[whatsapp agent] ${step} +${Date.now() - startedAt}ms msg=${params.inboundMessageId}`
+      )
+    }
   }
 
   const conversation = await prisma.whatsAppConversation.findUnique({
@@ -89,6 +98,7 @@ export async function processInboundAgentMessage(
   const hasOpenPending = openPending != null
 
   const intentResult = await classifyMealIntent(trimmed, hasOpenPending)
+  timing('classify')
   const classification = intentResult.classification
 
   const run = await createAgentRun({
@@ -203,6 +213,7 @@ export async function processInboundAgentMessage(
   const intent =
     classification.intent === 'UPDATE_MEAL' ? 'UPDATE_MEAL' : 'ADD_MEALS'
   const parseResult = await parseMealMessage(trimmed, intent)
+  timing('parse')
 
   await logAgentAction({
     runId: run.id,
@@ -286,26 +297,36 @@ async function processAddMeals(params: {
     slotIndex: number
   }> = []
 
-  for (const meal of params.parsedMeals) {
-    const slotIndex = meal.slotIndex
-    const timeSlot = params.timeSlots[0] ?? '12:00'
+  const defaultTimeSlot = params.timeSlots[0] ?? '12:00'
 
-    const resolution = await resolveDishFromPhrase(meal.customerPhrase)
+  const matchResults = await Promise.all(
+    params.parsedMeals.map(async (meal) => ({
+      meal,
+      slotIndex: meal.slotIndex,
+      timeSlot: defaultTimeSlot,
+      resolution: await resolveDishFromPhrase(meal.customerPhrase),
+    }))
+  )
 
-    await logAgentAction({
-      runId: params.runId,
-      actionType: 'MATCH_DISH',
-      status:
-        resolution.status === 'resolved'
-          ? 'OK'
-          : resolution.status === 'needs_confirm'
-            ? 'PENDING_CONFIRM'
-            : 'FAILED',
-      input: { phrase: meal.customerPhrase, dateYmd: meal.dateYmd, slotIndex },
-      output: resolution,
-      confidence: resolution.confidence,
-    })
+  await Promise.all(
+    matchResults.map(({ meal, slotIndex, resolution }) =>
+      logAgentAction({
+        runId: params.runId,
+        actionType: 'MATCH_DISH',
+        status:
+          resolution.status === 'resolved'
+            ? 'OK'
+            : resolution.status === 'needs_confirm'
+              ? 'PENDING_CONFIRM'
+              : 'FAILED',
+        input: { phrase: meal.customerPhrase, dateYmd: meal.dateYmd, slotIndex },
+        output: resolution,
+        confidence: resolution.confidence,
+      })
+    )
+  )
 
+  for (const { meal, slotIndex, timeSlot, resolution } of matchResults) {
     if (resolution.status === 'resolved' && resolution.dishId) {
       toApply.push({
         dateYmd: meal.dateYmd,

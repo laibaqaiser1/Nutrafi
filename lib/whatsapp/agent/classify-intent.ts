@@ -137,12 +137,6 @@ export async function classifyMealIntent(
       }
     }
 
-    const cfg = whatsappAgentConfig()
-    if (cfg.openAiKey) {
-      const ai = await classifyWithOpenAi(trimmed, cfg.openAiKey, cfg.openAiModel, true)
-      if (ai) return ai
-    }
-
     if (looksLikeDishFollowUpReply(trimmed)) {
       return {
         classification: {
@@ -153,6 +147,12 @@ export async function classifyMealIntent(
         },
         source: 'rules',
       }
+    }
+
+    const cfg = whatsappAgentConfig()
+    if (cfg.openAiKey) {
+      const ai = await classifyWithOpenAi(trimmed, cfg.openAiKey, cfg.openAiModel, true)
+      if (ai) return ai
     }
 
     return {
@@ -179,13 +179,22 @@ export async function classifyMealIntent(
   }
 
   const cfg = whatsappAgentConfig()
-  if (cfg.openAiKey) {
-    const ai = await classifyWithOpenAi(trimmed, cfg.openAiKey, cfg.openAiModel)
-    if (ai) return ai
+  const rulesResult = classifyWithRules(trimmed)
+  const rulesConfident =
+    rulesResult.intent !== 'AMBIGUOUS' && rulesResult.confidence >= 0.8
+
+  if (rulesConfident || !cfg.openAiKey) {
+    return {
+      classification: rulesResult,
+      source: 'rules',
+    }
   }
 
+  const ai = await classifyWithOpenAi(trimmed, cfg.openAiKey!, cfg.openAiModel)
+  if (ai) return ai
+
   return {
-    classification: classifyWithRules(trimmed),
+    classification: rulesResult,
     source: 'rules',
   }
 }

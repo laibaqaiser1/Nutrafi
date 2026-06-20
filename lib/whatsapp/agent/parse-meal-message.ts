@@ -562,8 +562,7 @@ async function parseWithOpenAi(
 
 /**
  * Parse customer message into structured meals.
- * Production: OpenAI first (required when WHATSAPP_AGENT_REQUIRE_OPENAI=true).
- * Rules used only as fallback if OpenAI fails.
+ * Rules first (fast); OpenAI when rules cannot extract meals.
  */
 export async function parseMealMessage(
   body: string,
@@ -574,6 +573,18 @@ export async function parseMealMessage(
   if (!trimmed) return null
 
   const cfg = whatsappAgentConfig()
+
+  const rules = parseWithRules(trimmed, intent, base)
+  if (rules) {
+    const hasMeals = rules.meals.length > 0
+    const hasReplace = rules.kind === 'UPDATE' && rules.replace != null
+    if (hasMeals || hasReplace) {
+      return {
+        extraction: rules,
+        source: 'rules',
+      }
+    }
+  }
 
   if (cfg.openAiKey) {
     const ai = await parseWithOpenAi(
@@ -591,13 +602,7 @@ export async function parseMealMessage(
     return null
   }
 
-  const rules = parseWithRules(trimmed, intent, base)
-  if (!rules) return null
-
-  return {
-    extraction: rules,
-    source: 'rules',
-  }
+  return rules ? { extraction: rules, source: 'rules' } : null
 }
 
 export { todayInTz, ymdFromDate }

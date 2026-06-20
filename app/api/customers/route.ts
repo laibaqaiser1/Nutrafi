@@ -4,6 +4,7 @@ import { sessionHasPermission } from '@/lib/permissions'
 import { PK } from '@/lib/permission-keys'
 import { prisma } from '@/lib/prisma'
 import { createCustomerLocation, ensureDefaultHomeLocation } from '@/lib/customer-location'
+import { buildCustomerListWhere } from '@/lib/customers-list-query'
 import { z } from 'zod'
 
 const additionalLocationSchema = z.object({
@@ -35,47 +36,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get('search')
-    const status = searchParams.get('status')
     const planType = searchParams.get('planType')
-    const deliveryArea = searchParams.get('deliveryArea')
-    const timeSlot = searchParams.get('timeSlot')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
 
-    const where: any = {}
-
-    if (search) {
-      where.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { deliveryArea: { contains: search, mode: 'insensitive' } },
-      ]
-    }
-
-    if (status) {
-      if (status === 'INACTIVE') {
-        where.status = { in: ['INACTIVE', 'CANCELLED'] }
-      } else {
-        where.status = status
-      }
-    }
-
-    if (deliveryArea) {
-      where.deliveryArea = { contains: deliveryArea, mode: 'insensitive' }
-    }
-
-    // If planType filter is provided, filter customers by their active meal plans
-    if (planType) {
-      where.mealPlans = {
-        some: {
-          status: 'ACTIVE',
-          planType: planType as any,
-        },
-      }
-    }
+    const where = buildCustomerListWhere(searchParams)
 
     // Get total count
     const total = await prisma.customer.count({ where })

@@ -5,13 +5,25 @@ import type {
   WhatsAppAgentTrigger,
 } from '@/lib/generated/prisma/client'
 
+export async function inboundMessageAlreadyHandled(
+  inboundMessageId: number
+): Promise<boolean> {
+  const replied = await prisma.whatsAppAgentAction.findFirst({
+    where: {
+      run: { inboundMessageId },
+      actionType: 'SEND_REPLY',
+      status: 'OK',
+    },
+    select: { id: true },
+  })
+  return replied != null
+}
+
+/** @deprecated Prefer inboundMessageAlreadyHandled — runs without a reply blocked retries. */
 export async function agentRunExistsForMessage(
   inboundMessageId: number
 ): Promise<boolean> {
-  const count = await prisma.whatsAppAgentRun.count({
-    where: { inboundMessageId },
-  })
-  return count > 0
+  return inboundMessageAlreadyHandled(inboundMessageId)
 }
 
 export async function createAgentRun(params: {

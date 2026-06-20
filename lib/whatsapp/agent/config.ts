@@ -28,6 +28,10 @@ export function whatsappAgentConfig() {
     (requireOpenAiExplicit !== 'false' &&
       process.env.NODE_ENV === 'production')
 
+  /** Extra OpenAI call for dish pick only when local match is uncertain (default: off). */
+  const openAiDishPick =
+    process.env.WHATSAPP_AGENT_OPENAI_DISH_PICK?.trim() === 'true'
+
   return {
     enabled,
     supportPhone,
@@ -39,6 +43,7 @@ export function whatsappAgentConfig() {
       : 0.5,
     openAiKey,
     openAiModel,
+    openAiDishPick,
     requireOpenAi,
     pendingExpiryHours: Number.isFinite(pendingExpiryHours)
       ? pendingExpiryHours

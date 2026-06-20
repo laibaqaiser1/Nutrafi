@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { logWhatsAppError, logWhatsAppInfo, logWhatsAppWarn, serializeError } from './log'
-import { triggerAgentAfterInbound } from '@/lib/whatsapp/agent/trigger-after-inbound'
+import { scheduleAgentAfterInbound } from '@/lib/whatsapp/agent/trigger-after-inbound'
 import { findCustomerByWhatsAppPhone } from './match-customer'
 import { normalizeWhatsAppPhone } from './normalize-phone'
 
@@ -213,7 +213,7 @@ export async function processWhatsAppWebhook(body: unknown): Promise<void> {
                 messageId: stored.messageId,
                 messageType: String(msg.type ?? 'text'),
               })
-              void triggerAgentAfterInbound({
+              scheduleAgentAfterInbound({
                 conversationId: stored.conversationId,
                 inboundMessageId: stored.messageId,
                 phoneE164: stored.phoneE164,

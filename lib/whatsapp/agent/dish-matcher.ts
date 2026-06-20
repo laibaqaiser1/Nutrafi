@@ -360,7 +360,15 @@ export async function resolveDishFromPhrase(
   let top = candidates[0]!
   let confidence = top.score
 
-  if (cfg.openAiKey && candidates.length > 0) {
+  const ambiguous = isAmbiguousTop(candidates, customerPhrase)
+  const autoThreshold = cfg.dishAutoConfidence
+
+  if (
+    cfg.openAiKey &&
+    cfg.openAiDishPick &&
+    candidates.length > 0 &&
+    (ambiguous || confidence < autoThreshold)
+  ) {
     const ai = await pickWithOpenAi(
       customerPhrase,
       candidates,
@@ -375,9 +383,6 @@ export async function resolveDishFromPhrase(
       }
     }
   }
-
-  const ambiguous = isAmbiguousTop(candidates, customerPhrase)
-  const autoThreshold = cfg.dishAutoConfidence
 
   if (confidence >= autoThreshold && !ambiguous) {
     return {

@@ -35,6 +35,7 @@ export default function CustomersPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const PAGE_SIZE_OPTIONS = [10, 20, 50] as const
+  const [exporting, setExporting] = useState(false)
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -124,17 +125,41 @@ export default function CustomersPage() {
     }
   }
 
+  const handleExport = () => {
+    setExporting(true)
+    try {
+      const params = new URLSearchParams()
+      if (filters.search) params.append('search', filters.search)
+      if (filters.status) params.append('status', filters.status)
+      if (filters.planType) params.append('planType', filters.planType)
+      if (filters.deliveryArea) params.append('deliveryArea', filters.deliveryArea)
+      const q = params.toString()
+      window.open(`/api/customers/export${q ? `?${q}` : ''}`, '_blank')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-3 lg:mb-6">
+      <div className="flex justify-between items-center mb-3 lg:mb-6 gap-2 flex-wrap">
         <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Customer Management</h1>
-        <Link
-          href="/customers/new"
-          className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded hover:bg-nutrafi-dark"
-        >
-          Add New Customer
-        </Link>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm border border-nutrafi-primary text-nutrafi-dark rounded hover:bg-[#f0f4e8] disabled:opacity-50"
+          >
+            {exporting ? 'Exporting…' : 'Export Excel'}
+          </button>
+          <Link
+            href="/customers/new"
+            className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded hover:bg-nutrafi-dark"
+          >
+            Add New Customer
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

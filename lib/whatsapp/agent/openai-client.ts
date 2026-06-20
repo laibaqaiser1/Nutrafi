@@ -11,7 +11,9 @@ export async function openAiJsonCompletion<T>(params: {
   model: string
   system: string
   user: string
+  timeoutMs?: number
 }): Promise<OpenAiJsonResult<T>> {
+  const timeoutMs = params.timeoutMs ?? 25_000
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -28,6 +30,7 @@ export async function openAiJsonCompletion<T>(params: {
           { role: 'user', content: params.user },
         ],
       }),
+      signal: AbortSignal.timeout(timeoutMs),
     })
 
     const raw = await res.json().catch(() => ({}))
