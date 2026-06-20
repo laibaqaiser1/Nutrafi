@@ -124,6 +124,26 @@ export function askWhichMealsReply(dateYmd: string, mealsPerDay: number): string
   return lines.join('\n')
 }
 
+export function dayAlreadyHasMealsReply(
+  dateYmd: string,
+  existingMeals: Array<{ dishName: string | null }>,
+  mealsPerDay: number
+): string {
+  const dateLabel = formatDateLabel(dateYmd)
+  const lines = [
+    `You already have ${mealsPerDay} meal(s) set for ${dateLabel}:`,
+    '',
+  ]
+  for (const meal of existingMeals) {
+    lines.push(`• ${meal.dishName ?? 'Meal'}`)
+  }
+  lines.push('')
+  lines.push('Would you like to change one? Reply with what to update, for example:')
+  lines.push(`"change meal 1 to chicken pasta for ${dateLabel}"`)
+  lines.push('Or reply CANCEL to start over.')
+  return lines.join('\n')
+}
+
 export function nextMealPrompt(
   dateYmd: string,
   mealsSetCount: number,

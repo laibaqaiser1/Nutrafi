@@ -10,6 +10,12 @@ import { classifyMealIntent } from './classify-intent'
 import { findCustomerByPhoneExact } from './find-customer'
 import { handleCancelPending, handleFollowUpMessage } from './handle-follow-up'
 import { parseMealMessage, inferMealDateFromMessage } from './parse-meal-message'
+import {
+  applyConversationTargetDate,
+  rememberTargetDateForConversation,
+  enforceTargetDateOnExtraction,
+} from './conversation-target-date'
+import { handleMealDayFullError } from './handle-apply-error'
 import { replyAfterMealsApplied } from './meal-update-reply'
 import { isVagueDishPhrase, sanitizeDisplayPhrase } from './meal-phrases'
 import { resolveDishFromPhrase, candidateIdsForDisplay, loadCandidatesInOrder, suggestDishesForPhrase } from './dish-matcher'
@@ -198,9 +204,8 @@ export async function processInboundAgentMessage(
 
   if (hasOpenPending && openPending) {
     const pendingCtx = parsePendingContext(openPending.context)
-    if (pendingCtx?.awaitingNextMeal) {
-      parseBody = augmentBodyWithPendingDate(trimmed, pendingCtx)
-    } else if (pendingCtx && looksLikeFreshDishInput(trimmed)) {
+
+    if (pendingCtx && looksLikeFreshDishInput(trimmed)) {
       let broken = isBrokenPendingContext(pendingCtx)
       if (!broken) {
         const slot = pendingCtx.meals.find((m) => m.status === 'waiting_dish')
@@ -214,7 +219,11 @@ export async function processInboundAgentMessage(
       if (broken) {
         await setPendingStatus(openPending.id, 'CANCELLED')
         pendingStillOpen = false
-        parseBody = augmentBodyWithPendingDate(trimmed, pendingCtx)
+        parseBody = await applyConversationTargetDate(
+          params.conversationId,
+          augmentBodyWithPendingDate(trimmed, pendingCtx),
+          openPending
+        )
         const reclassified = await classifyMealIntent(parseBody, false)
         classification = reclassified.classification
         await updateAgentRun(run.id, {
@@ -226,6 +235,18 @@ export async function processInboundAgentMessage(
         })
         skipFollowUp = true
       }
+    }
+
+    if (
+      pendingStillOpen &&
+      pendingCtx &&
+      (pendingCtx.awaitingNextMeal || looksLikeFreshDishInput(trimmed))
+    ) {
+      parseBody = await applyConversationTargetDate(
+        params.conversationId,
+        trimmed,
+        openPending
+      )
     }
   }
 
@@ -313,6 +334,12 @@ export async function processInboundAgentMessage(
 
   await updateAgentRun(run.id, { mealPlanId: mealPlan.id })
 
+  parseBody = await applyConversationTargetDate(
+    params.conversationId,
+    parseBody,
+    openPending
+  )
+
   const intent =
     classification.intent === 'UPDATE_MEAL' ? 'UPDATE_MEAL' : 'ADD_MEALS'
   const parseResult = await parseMealMessage(parseBody, intent)
@@ -336,6 +363,14 @@ export async function processInboundAgentMessage(
   if (!parseResult) {
     const dateHint = inferMealDateFromMessage(trimmed)
     if (dateHint) {
+      await rememberTargetDateForConversation({
+        conversationId: params.conversationId,
+        customerId: customer.id,
+        mealPlanId: mealPlan.id,
+        createdFromRunId: run.id,
+        dateYmd: dateHint.dateYmd,
+        mealsPerDay: mealPlan.mealsPerDay,
+      })
       const replyBody = askWhichMealsReply(dateHint.dateYmd, mealPlan.mealsPerDay)
       await sendAgentReply({
         runId: run.id,
@@ -369,9 +404,24 @@ export async function processInboundAgentMessage(
 
   const extraction = parseResult.extraction
 
+  await enforceTargetDateOnExtraction(
+    params.conversationId,
+    extraction,
+    trimmed,
+    openPending
+  )
+
   if (extraction.kind === 'ADD' && extraction.meals.length === 0) {
     const dateHint = inferMealDateFromMessage(trimmed)
     if (dateHint) {
+      await rememberTargetDateForConversation({
+        conversationId: params.conversationId,
+        customerId: customer.id,
+        mealPlanId: mealPlan.id,
+        createdFromRunId: run.id,
+        dateYmd: dateHint.dateYmd,
+        mealsPerDay: mealPlan.mealsPerDay,
+      })
       const replyBody = askWhichMealsReply(dateHint.dateYmd, mealPlan.mealsPerDay)
       await sendAgentReply({
         runId: run.id,
@@ -506,7 +556,9 @@ async function processAddMeals(params: {
     }
   }
 
-  if (toApply.length > 0) {
+  const hasWaitingConfirm = pendingSlots.some((s) => s.status === 'waiting_dish')
+
+  if (toApply.length > 0 && !hasWaitingConfirm) {
     try {
       const applied = await applyAgentMealItems(params.mealPlanId, toApply)
       for (const row of applied) {
@@ -535,6 +587,16 @@ async function processAddMeals(params: {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Apply failed'
+      const dayFull = await handleMealDayFullError({
+        runId: params.runId,
+        conversationId: params.conversationId,
+        phoneE164: params.phoneE164,
+        mealPlanId: params.mealPlanId,
+        errorMessage: msg,
+        fallbackDateYmd: params.parsedMeals[0]?.dateYmd,
+      })
+      if (dayFull) return dayFull
+
       const replyBody = errorReply(msg)
       await sendAgentReply({
         runId: params.runId,
@@ -568,6 +630,8 @@ async function processAddMeals(params: {
               },
             ],
             currentQuestionIndex: 0,
+            targetDateYmd: slot.dateYmd,
+            mealsPerDay: params.mealsPerDay,
           }
           await createPendingAction({
             conversationId: params.conversationId,
@@ -597,6 +661,14 @@ async function processAddMeals(params: {
       }
 
       const replyBody = askWhichMealsReply(slot.dateYmd, params.mealsPerDay)
+      await rememberTargetDateForConversation({
+        conversationId: params.conversationId,
+        customerId: params.customerId,
+        mealPlanId: params.mealPlanId,
+        createdFromRunId: params.runId,
+        dateYmd: slot.dateYmd,
+        mealsPerDay: params.mealsPerDay,
+      })
       await sendAgentReply({
         runId: params.runId,
         phoneE164: params.phoneE164,
@@ -610,10 +682,13 @@ async function processAddMeals(params: {
       return { runId: params.runId, status: 'NEEDS_CONFIRMATION', replyBody }
     }
 
+    const targetDateYmd = params.parsedMeals[0]?.dateYmd ?? slot.dateYmd
     const ctx: PendingBatchContext = {
       intent: 'ADD_MEALS',
       meals: pendingSlots,
       currentQuestionIndex: waitingIdx,
+      targetDateYmd,
+      mealsPerDay: params.mealsPerDay,
     }
     const pending = await createPendingAction({
       conversationId: params.conversationId,

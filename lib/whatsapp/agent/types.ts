@@ -87,6 +87,9 @@ export interface PendingBatchContext {
   intent: 'ADD_MEALS' | 'UPDATE_MEAL'
   meals: PendingMealSlot[]
   currentQuestionIndex: number
+  /** Conversation date context (e.g. customer said Monday, then sends dish names). */
+  targetDateYmd?: string
+  mealsPerDay?: number
   /** Waiting for the next meal slot on a day (e.g. after meal 1 of 2). */
   awaitingNextMeal?: {
     dateYmd: string

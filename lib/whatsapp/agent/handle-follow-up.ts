@@ -30,8 +30,76 @@ import {
   looksLikeFreshDishInput,
 } from './pending-health'
 import { replyAfterMealsApplied } from './meal-update-reply'
+import { handleMealDayFullError } from './handle-apply-error'
 import { sendAgentReply } from './record-outbound'
-import type { AgentProcessResult } from './types'
+import type { AgentProcessResult, PendingBatchContext, PendingMealSlot } from './types'
+
+function alignSlotsToTargetDate(ctx: PendingBatchContext): void {
+  if (!ctx.targetDateYmd) return
+  for (const slot of ctx.meals) {
+    slot.dateYmd = ctx.targetDateYmd
+  }
+}
+
+function resolvedSlotsForApply(ctx: PendingBatchContext): PendingMealSlot[] {
+  return ctx.meals.filter(
+    (m) => m.status === 'resolved' && m.resolvedDishId != null
+  )
+}
+
+async function applyResolvedPendingMeals(params: {
+  runId: number
+  conversationId: number
+  phoneE164: string
+  mealPlanId: number
+  ctx: PendingBatchContext
+}): Promise<AgentProcessResult | null> {
+  const slots = resolvedSlotsForApply(params.ctx)
+  if (slots.length === 0) return null
+
+  const applyItems: AgentMealApplyItem[] = slots.map((slot) => ({
+    dateYmd: slot.dateYmd,
+    slotIndex: slot.slotIndex,
+    timeSlot: slot.timeSlot,
+    dishId: slot.resolvedDishId!,
+    dishName: slot.resolvedDishName,
+    customNote: slot.customNote,
+  }))
+
+  try {
+    const applied = await applyAgentMealItems(params.mealPlanId, applyItems)
+    for (const row of applied) {
+      const slot = params.ctx.meals.find(
+        (s) => s.dateYmd === row.dateYmd && s.slotIndex === row.slotIndex
+      )
+      if (slot) {
+        slot.status = 'applied'
+        slot.mealPlanItemId = row.mealPlanItemId
+      }
+      await logAgentAction({
+        runId: params.runId,
+        actionType: 'APPLY_MEAL',
+        status: 'OK',
+        input: applyItems.find(
+          (t) => t.dateYmd === row.dateYmd && t.slotIndex === row.slotIndex
+        ),
+        beforeSnapshot: row.before,
+        afterSnapshot: row.after,
+      })
+    }
+    return null
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Apply failed'
+    return handleMealDayFullError({
+      runId: params.runId,
+      conversationId: params.conversationId,
+      phoneE164: params.phoneE164,
+      mealPlanId: params.mealPlanId,
+      errorMessage: msg,
+      fallbackDateYmd: slots[0]?.dateYmd,
+    })
+  }
+}
 
 export async function handleFollowUpMessage(params: {
   runId: number
@@ -59,6 +127,8 @@ export async function handleFollowUpMessage(params: {
     return { runId: params.runId, status: 'FAILED' }
   }
 
+  alignSlotsToTargetDate(ctx)
+
   const idx = ctx.currentQuestionIndex
   const slot = ctx.meals[idx]
   if (!slot || slot.status !== 'waiting_dish') {
@@ -84,30 +154,15 @@ export async function handleFollowUpMessage(params: {
       slot.resolvedDishName = direct.dishName
       slot.customerPhrase = params.body.trim()
 
-      const applyItems: AgentMealApplyItem[] = [
-        {
-          dateYmd: slot.dateYmd,
-          slotIndex: slot.slotIndex,
-          timeSlot: slot.timeSlot,
-          dishId: direct.dishId,
-          dishName: direct.dishName,
-          customNote: slot.customNote,
-        },
-      ]
-
-      try {
-        await applyAgentMealItems(pending.mealPlanId, applyItems)
-        await logAgentAction({
-          runId: params.runId,
-          actionType: 'APPLY_MEAL',
-          status: 'OK',
-          input: applyItems[0],
-        })
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Apply failed'
-        await updateAgentRun(params.runId, { status: 'FAILED', errorMessage: msg })
-        return { runId: params.runId, status: 'FAILED' }
-      }
+      alignSlotsToTargetDate(ctx)
+      const applyError = await applyResolvedPendingMeals({
+        runId: params.runId,
+        conversationId: params.conversationId,
+        phoneE164: params.phoneE164,
+        mealPlanId: pending.mealPlanId,
+        ctx,
+      })
+      if (applyError) return applyError
 
       await setPendingStatus(pending.id, 'COMPLETED')
       return replyAfterMealsApplied({
@@ -227,36 +282,15 @@ export async function handleFollowUpMessage(params: {
     return { runId: params.runId, status: 'FAILED' }
   }
 
-  const applyItems: AgentMealApplyItem[] = [
-    {
-      dateYmd: slot.dateYmd,
-      slotIndex: slot.slotIndex,
-      timeSlot: slot.timeSlot,
-      dishId: resolution.dishId,
-      dishName: resolution.dishName,
-      customNote: slot.customNote,
-    },
-  ]
-
-  try {
-    const applied = await applyAgentMealItems(mealPlanId, applyItems)
-    for (const row of applied) {
-      slot.status = 'applied'
-      slot.mealPlanItemId = row.mealPlanItemId
-      await logAgentAction({
-        runId: params.runId,
-        actionType: 'APPLY_MEAL',
-        status: 'OK',
-        input: applyItems[0],
-        beforeSnapshot: row.before,
-        afterSnapshot: row.after,
-      })
-    }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Apply failed'
-    await updateAgentRun(params.runId, { status: 'FAILED', errorMessage: msg })
-    return { runId: params.runId, status: 'FAILED' }
-  }
+  alignSlotsToTargetDate(ctx)
+  const applyError = await applyResolvedPendingMeals({
+    runId: params.runId,
+    conversationId: params.conversationId,
+    phoneE164: params.phoneE164,
+    mealPlanId,
+    ctx,
+  })
+  if (applyError) return applyError
 
   const nextIdx = ctx.meals.findIndex((m) => m.status === 'waiting_dish')
   ctx.currentQuestionIndex = nextIdx >= 0 ? nextIdx : idx
@@ -268,7 +302,8 @@ export async function handleFollowUpMessage(params: {
       nextSlot.candidateDishIds ?? []
     )
     const question = dishChoiceQuestion(nextSlot, candidates, ctx.meals.length || 2)
-    const replyBody = partialApplyReply(1, question)
+    const appliedCount = ctx.meals.filter((m) => m.status === 'applied').length
+    const replyBody = partialApplyReply(appliedCount, question)
     await sendAgentReply({
       runId: params.runId,
       phoneE164: params.phoneE164,
