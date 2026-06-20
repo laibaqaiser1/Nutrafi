@@ -11,7 +11,7 @@ import { findCustomerByPhoneExact } from './find-customer'
 import { handleCancelPending, handleFollowUpMessage } from './handle-follow-up'
 import { parseMealMessage, inferMealDateFromMessage } from './parse-meal-message'
 import { isVagueDishPhrase } from './meal-phrases'
-import { resolveDishFromPhrase, candidateIdsForDisplay, loadCandidatesInOrder } from './dish-matcher'
+import { resolveDishFromPhrase, candidateIdsForDisplay, loadCandidatesInOrder, suggestDishesForPhrase } from './dish-matcher'
 import {
   createPendingAction,
   getOpenPendingAction,
@@ -174,31 +174,40 @@ export async function processInboundAgentMessage(
 
   let parseBody = trimmed
   let skipFollowUp = false
+  let pendingStillOpen = hasOpenPending
 
-  if (hasOpenPending && openPending) {
+  if (hasOpenPending && openPending && looksLikeFreshDishInput(trimmed)) {
     const pendingCtx = parsePendingContext(openPending.context)
-    const broken = pendingCtx != null && isBrokenPendingContext(pendingCtx)
-    const freshDish = looksLikeFreshDishInput(trimmed)
-
-    if (broken && (freshDish || classification.intent === 'CONFIRM')) {
-      await setPendingStatus(openPending.id, 'CANCELLED')
-      if (pendingCtx) {
-        parseBody = augmentBodyWithPendingDate(trimmed, pendingCtx)
+    if (pendingCtx) {
+      let broken = isBrokenPendingContext(pendingCtx)
+      if (!broken) {
+        const slot = pendingCtx.meals.find((m) => m.status === 'waiting_dish')
+        const ids = slot?.candidateDishIds ?? []
+        if (ids.length > 0) {
+          const loaded = await loadCandidatesInOrder(ids)
+          if (loaded.length === 0) broken = true
+        }
       }
-      const reclassified = await classifyMealIntent(parseBody, false)
-      classification = reclassified.classification
-      await updateAgentRun(run.id, {
-        parsedIntent: {
-          ...classification,
-          _source: reclassified.source,
-          _recoveredFromBrokenPending: true,
-        },
-      })
-      skipFollowUp = true
+
+      if (broken) {
+        await setPendingStatus(openPending.id, 'CANCELLED')
+        pendingStillOpen = false
+        parseBody = augmentBodyWithPendingDate(trimmed, pendingCtx)
+        const reclassified = await classifyMealIntent(parseBody, false)
+        classification = reclassified.classification
+        await updateAgentRun(run.id, {
+          parsedIntent: {
+            ...classification,
+            _source: reclassified.source,
+            _recoveredFromBrokenPending: true,
+          },
+        })
+        skipFollowUp = true
+      }
     }
   }
 
-  if (hasOpenPending && classification.intent === 'CONFIRM' && !skipFollowUp) {
+  if (pendingStillOpen && classification.intent === 'CONFIRM' && !skipFollowUp) {
     return handleFollowUpMessage({
       runId: run.id,
       conversationId: params.conversationId,
@@ -215,7 +224,7 @@ export async function processInboundAgentMessage(
     })
   }
 
-  if (hasOpenPending && !classification.isMealPlanRelated) {
+  if (pendingStillOpen && !classification.isMealPlanRelated) {
     const { pendingOpenReply } = await import('./replies')
     const replyBody = pendingOpenReply()
     await sendAgentReply({
@@ -523,6 +532,48 @@ async function processAddMeals(params: {
     const candidates = await loadCandidatesInOrder(slot.candidateDishIds ?? [])
 
     if (candidates.length === 0 || isVagueDishPhrase(slot.customerPhrase)) {
+      if (!isVagueDishPhrase(slot.customerPhrase)) {
+        const suggestions = await suggestDishesForPhrase(slot.customerPhrase)
+        if (suggestions.length > 0) {
+          const ctx: PendingBatchContext = {
+            intent: 'ADD_MEALS',
+            meals: [
+              {
+                ...slot,
+                status: 'waiting_dish',
+                customerPhrase: slot.customerPhrase,
+                candidateDishIds: candidateIdsForDisplay(suggestions),
+              },
+            ],
+            currentQuestionIndex: 0,
+          }
+          await createPendingAction({
+            conversationId: params.conversationId,
+            customerId: params.customerId,
+            mealPlanId: params.mealPlanId,
+            createdFromRunId: params.runId,
+            type: 'MEAL_BATCH',
+            context: ctx,
+          })
+          const question = dishChoiceQuestion(
+            ctx.meals[0]!,
+            suggestions,
+            params.mealsPerDay
+          )
+          await sendAgentReply({
+            runId: params.runId,
+            phoneE164: params.phoneE164,
+            conversationId: params.conversationId,
+            body: question,
+          })
+          await updateAgentRun(params.runId, {
+            status: 'NEEDS_CONFIRMATION',
+            payload: { reason: 'dish_suggestions', dateYmd: slot.dateYmd },
+          })
+          return { runId: params.runId, status: 'NEEDS_CONFIRMATION', replyBody: question }
+        }
+      }
+
       const replyBody = askWhichMealsReply(slot.dateYmd, params.mealsPerDay)
       await sendAgentReply({
         runId: params.runId,

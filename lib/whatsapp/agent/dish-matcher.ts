@@ -125,23 +125,61 @@ function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
 
   for (const dish of pool) {
     const nameNorm = normalizeForCompare(dish.name)
-    if (required.length >= 2 && !required.every((t) => nameNorm.includes(t))) {
-      continue
-    }
+    const nameLower = dish.name.toLowerCase()
 
     const score = Math.max(
       stringSimilarity(phrase, dish.name),
       phraseContainedInNameScore(phrase, dish.name)
     )
-    const nameLower = dish.name.toLowerCase()
     const tokenHit = tokens.some((t) => nameLower.includes(t))
-    if (score >= 0.35 || tokenHit) {
-      scored.push({ dishId: dish.id, name: dish.name, score })
+    const requiredMatches = required.filter((t) => nameNorm.includes(t)).length
+    const requiredRatio = required.length > 0 ? requiredMatches / required.length : 0
+
+    // Typo-tolerant: allow one wrong token (e.g. "pastq" vs "pasta") when similarity is good
+    const passes =
+      score >= 0.42 ||
+      tokenHit ||
+      requiredRatio >= 0.5 ||
+      (requiredMatches >= 1 && score >= 0.38)
+
+    if (passes) {
+      scored.push({
+        dishId: dish.id,
+        name: dish.name,
+        score: Math.max(score, requiredRatio * 0.85, tokenHit ? 0.55 : 0),
+      })
     }
   }
 
   scored.sort((a, b) => b.score - a.score)
   return scored.slice(0, 10)
+}
+
+/** Last resort when token rules exclude everything — pick closest menu name. */
+function findFuzzyBestMatch(phrase: string, dishes: MenuDish[]): DishCandidate | null {
+  let best: DishCandidate | null = null
+  for (const dish of dishes) {
+    const score = Math.max(
+      stringSimilarity(phrase, dish.name),
+      phraseContainedInNameScore(phrase, dish.name)
+    )
+    if (!best || score > best.score) {
+      best = { dishId: dish.id, name: dish.name, score }
+    }
+  }
+  if (best && best.score >= 0.52) return best
+  return null
+}
+
+export async function suggestDishesForPhrase(
+  phrase: string,
+  limit = 6
+): Promise<DishCandidate[]> {
+  const dishes = await loadActiveDishes()
+  const shortlist = shortlistDishes(phrase, dishes)
+  if (shortlist.length > 0) return shortlist.slice(0, limit)
+  const fuzzy = findFuzzyBestMatch(phrase, dishes)
+  return fuzzy ? [fuzzy] : []
 }
 
 /** Customer phrase matches menu name exactly (ignoring case/punctuation). */
@@ -332,6 +370,27 @@ export async function resolveDishFromPhrase(
   const candidates = shortlistDishes(customerPhrase, dishes)
 
   if (candidates.length === 0) {
+    const fuzzy = findFuzzyBestMatch(customerPhrase, dishes)
+    if (fuzzy && fuzzy.score >= 0.72) {
+      return {
+        customerPhrase,
+        status: 'resolved',
+        confidence: fuzzy.score,
+        dishId: fuzzy.dishId,
+        dishName: fuzzy.name,
+        candidates: [fuzzy],
+      }
+    }
+    if (fuzzy) {
+      return {
+        customerPhrase,
+        status: 'needs_confirm',
+        confidence: fuzzy.score,
+        dishId: fuzzy.dishId,
+        dishName: fuzzy.name,
+        candidates: [fuzzy],
+      }
+    }
     return {
       customerPhrase,
       status: 'no_match',

@@ -8,6 +8,7 @@ import {
   resolveDishFromReply,
   resolveDishFromPhrase,
   candidateIdsForDisplay,
+  suggestDishesForPhrase,
 } from './dish-matcher'
 import {
   getOpenPendingAction,
@@ -68,11 +69,73 @@ export async function handleFollowUpMessage(params: {
   }
 
   const candidateIds = slot.candidateDishIds ?? []
-  let resolution = await resolveDishFromReply(params.body, candidateIds)
+  const loadedCandidates = await loadCandidatesInOrder(candidateIds)
+  const broken =
+    isBrokenPendingContext(ctx) ||
+    (candidateIds.length > 0 && loadedCandidates.length === 0)
+
+  if (broken && looksLikeFreshDishInput(params.body)) {
+    await setPendingStatus(pending.id, 'CANCELLED')
+    const direct = await resolveDishFromPhrase(params.body.trim())
+    if (direct.status === 'resolved' && direct.dishId && pending.mealPlanId) {
+      slot.status = 'resolved'
+      slot.resolvedDishId = direct.dishId
+      slot.resolvedDishName = direct.dishName
+      slot.customerPhrase = params.body.trim()
+
+      const applyItems: AgentMealApplyItem[] = [
+        {
+          dateYmd: slot.dateYmd,
+          slotIndex: slot.slotIndex,
+          timeSlot: slot.timeSlot,
+          dishId: direct.dishId,
+          dishName: direct.dishName,
+          customNote: slot.customNote,
+        },
+      ]
+
+      try {
+        await applyAgentMealItems(pending.mealPlanId, applyItems)
+        await logAgentAction({
+          runId: params.runId,
+          actionType: 'APPLY_MEAL',
+          status: 'OK',
+          input: applyItems[0],
+        })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Apply failed'
+        await updateAgentRun(params.runId, { status: 'FAILED', errorMessage: msg })
+        return { runId: params.runId, status: 'FAILED' }
+      }
+
+      const replyBody = mealsAddedConfirmation([
+        {
+          dateYmd: slot.dateYmd,
+          dishName: direct.dishName ?? params.body.trim(),
+          slotIndex: slot.slotIndex,
+        },
+      ])
+      await sendAgentReply({
+        runId: params.runId,
+        phoneE164: params.phoneE164,
+        conversationId: params.conversationId,
+        body: replyBody,
+      })
+      await updateAgentRun(params.runId, {
+        status: 'SUCCESS',
+        payload: { recoveredFromBrokenPending: true },
+      })
+      return { runId: params.runId, status: 'SUCCESS', replyBody }
+    }
+  }
+
+  let resolution = candidateIds.length > 0
+    ? await resolveDishFromReply(params.body, candidateIds)
+    : null
 
   if (
     (!resolution || resolution.status !== 'resolved' || !resolution.dishId) &&
-    (candidateIds.length === 0 || isBrokenPendingContext(ctx)) &&
+    (candidateIds.length === 0 || loadedCandidates.length === 0 || broken) &&
     looksLikeFreshDishInput(params.body)
   ) {
     const direct = await resolveDishFromPhrase(params.body)
@@ -111,7 +174,33 @@ export async function handleFollowUpMessage(params: {
       return { runId: params.runId, status: 'SKIPPED', replyBody }
     }
 
-    const candidates = await loadCandidatesInOrder(slot.candidateDishIds ?? candidateIds)
+    const candidates =
+      slot.candidateDishIds && slot.candidateDishIds.length > 0
+        ? await loadCandidatesInOrder(slot.candidateDishIds)
+        : await suggestDishesForPhrase(params.body.trim())
+
+    if (
+      candidates.length > 0 &&
+      !isVagueDishPhrase(slot.customerPhrase) &&
+      looksLikeFreshDishInput(params.body)
+    ) {
+      slot.candidateDishIds = candidateIdsForDisplay(candidates)
+      slot.customerPhrase = params.body.trim()
+      await updatePendingContext(pending.id, ctx)
+      const question = dishChoiceQuestion(slot, candidates, ctx.meals.length || 2)
+      await sendAgentReply({
+        runId: params.runId,
+        phoneE164: params.phoneE164,
+        conversationId: params.conversationId,
+        body: question,
+      })
+      await updateAgentRun(params.runId, {
+        status: 'NEEDS_CONFIRMATION',
+        payload: { followUp: resolution, reason: 'dish_suggestions' },
+      })
+      return { runId: params.runId, status: 'NEEDS_CONFIRMATION', replyBody: question }
+    }
+
     const question =
       candidates.length === 0 || isVagueDishPhrase(slot.customerPhrase)
         ? askWhichMealsReply(slot.dateYmd, ctx.meals.length || 2)
