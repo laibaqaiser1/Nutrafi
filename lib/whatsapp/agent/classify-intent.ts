@@ -1,5 +1,6 @@
 import { whatsappAgentConfig } from './config'
 import { detectCasualMessage } from './casual-messages'
+import { looksLikeMultiDishList } from './pending-health'
 import { openAiJsonCompletion } from './openai-client'
 import type {
   IntentClassification,
@@ -64,6 +65,7 @@ function looksLikeDishFollowUpReply(body: string): boolean {
   const trimmed = body.trim()
   if (!trimmed) return false
   if (CANCEL_SIGNALS.test(trimmed)) return false
+  if (looksLikeMultiDishList(trimmed)) return false
   if (CONFIRM_SIGNALS.test(trimmed)) return true
   if (/^\d{1,2}$/.test(trimmed)) return true
   if (trimmed.includes('?')) return false
@@ -133,6 +135,18 @@ export async function classifyMealIntent(
           isMealPlanRelated: true,
           confidence: 0.85,
           reason: 'new meal request replaces pending',
+        },
+        source: 'rules',
+      }
+    }
+
+    if (looksLikeMultiDishList(trimmed)) {
+      return {
+        classification: {
+          intent: 'ADD_MEALS',
+          isMealPlanRelated: true,
+          confidence: 0.9,
+          reason: 'dish list while pending',
         },
         source: 'rules',
       }

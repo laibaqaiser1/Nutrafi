@@ -26,6 +26,7 @@ import {
 } from './replies'
 import { isVagueDishPhrase } from './meal-phrases'
 import {
+  isAwaitingMealNames,
   isBrokenPendingContext,
   looksLikeFreshDishInput,
 } from './pending-health'
@@ -132,6 +133,14 @@ export async function handleFollowUpMessage(params: {
   const idx = ctx.currentQuestionIndex
   const slot = ctx.meals[idx]
   if (!slot || slot.status !== 'waiting_dish') {
+    if (isAwaitingMealNames(ctx)) {
+      await setPendingStatus(pending.id, 'CANCELLED')
+      await updateAgentRun(params.runId, {
+        status: 'FAILED',
+        errorMessage: 'Expected meal names, not dish choice reply',
+      })
+      return { runId: params.runId, status: 'FAILED' }
+    }
     await updateAgentRun(params.runId, {
       status: 'FAILED',
       errorMessage: 'No waiting slot',

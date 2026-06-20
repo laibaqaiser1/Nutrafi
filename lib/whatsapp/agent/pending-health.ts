@@ -30,6 +30,19 @@ export function pendingTargetDate(ctx: PendingBatchContext): { dateYmd: string }
   return { dateYmd: slot.dateYmd }
 }
 
+/** Customer is listing dishes (e.g. "chicken pasta and beef rice"), not picking from a numbered list. */
+export function looksLikeMultiDishList(body: string): boolean {
+  const trimmed = body.trim()
+  if (!looksLikeFreshDishInput(trimmed)) return false
+  return /\band\b|,/.test(trimmed)
+}
+
+/** Bot asked for dish names on a date; pending has no dish-choice slot yet. */
+export function isAwaitingMealNames(ctx: PendingBatchContext): boolean {
+  if (!ctx.awaitingNextMeal) return false
+  return !ctx.meals.some((m) => m.status === 'waiting_dish')
+}
+
 /** Customer sent an actual dish name, not a number/yes/no reply to a choice list. */
 export function looksLikeFreshDishInput(body: string): boolean {
   const trimmed = body.trim()

@@ -27,8 +27,10 @@ import {
 } from './pending-actions'
 import {
   augmentBodyWithPendingDate,
+  isAwaitingMealNames,
   isBrokenPendingContext,
   looksLikeFreshDishInput,
+  looksLikeMultiDishList,
 } from './pending-health'
 import { resolveActiveMealPlanForCustomer } from './resolve-meal-plan'
 import {
@@ -250,13 +252,30 @@ export async function processInboundAgentMessage(
     }
   }
 
-  if (pendingStillOpen && classification.intent === 'CONFIRM' && !skipFollowUp) {
-    return handleFollowUpMessage({
-      runId: run.id,
-      conversationId: params.conversationId,
-      phoneE164: params.phoneE164,
-      body: trimmed,
-    })
+  if (pendingStillOpen && classification.intent === 'CONFIRM' && !skipFollowUp && openPending) {
+    const pendingCtx = parsePendingContext(openPending.context)
+    const answeringMealNamePrompt =
+      pendingCtx != null &&
+      (isAwaitingMealNames(pendingCtx) || looksLikeMultiDishList(trimmed))
+
+    if (answeringMealNamePrompt) {
+      classification = {
+        intent: 'ADD_MEALS',
+        isMealPlanRelated: true,
+        confidence: 0.9,
+        reason: 'meal names after date prompt',
+      }
+      await updateAgentRun(run.id, {
+        parsedIntent: { ...classification, _source: 'rules', _correctedFromConfirm: true },
+      })
+    } else {
+      return handleFollowUpMessage({
+        runId: run.id,
+        conversationId: params.conversationId,
+        phoneE164: params.phoneE164,
+        body: trimmed,
+      })
+    }
   }
 
   if (classification.intent === 'CANCEL') {
@@ -476,6 +495,14 @@ async function processAddMeals(params: {
     customNote?: string
   }>
 }): Promise<AgentProcessResult> {
+  const openAwaitingNames = await getOpenPendingAction(params.conversationId)
+  if (openAwaitingNames && params.parsedMeals.length > 0) {
+    const awaitingCtx = parsePendingContext(openAwaitingNames.context)
+    if (awaitingCtx && isAwaitingMealNames(awaitingCtx)) {
+      await setPendingStatus(openAwaitingNames.id, 'CANCELLED')
+    }
+  }
+
   const pendingSlots: PendingMealSlot[] = []
   const toApply: AgentMealApplyItem[] = []
   const appliedSummary: Array<{
