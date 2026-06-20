@@ -21,6 +21,14 @@ export function supportOnlyReply(): string {
   ].join('\n')
 }
 
+export function greetingReply(): string {
+  return 'Hi there! How can I help you?'
+}
+
+export function farewellReply(): string {
+  return 'Thanks for contacting Nutrafi! If you need to add or update meals later, just message us anytime.'
+}
+
 export function noCustomerReply(): string {
   return [
     "We couldn't find your phone number in our customer records.",

@@ -533,7 +533,9 @@ export default function WhatsAppInboxPage() {
                           agent.status === 'FAILED' ||
                           (agent.status === 'SKIPPED' &&
                             agent.reason !== 'NOT_MEAL' &&
-                            agent.reason !== 'support question'))
+                            agent.reason !== 'support question' &&
+                            agent.reason !== 'greeting' &&
+                            agent.reason !== 'farewell'))
 
                       return (
                       <div

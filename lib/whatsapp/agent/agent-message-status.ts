@@ -39,6 +39,12 @@ export function agentStatusLabel(
         detail: errorMessage ?? reason ?? 'Unknown error',
       }
     case 'SKIPPED':
+      if (reason === 'greeting') {
+        return { label: 'Greeting sent', detail: null }
+      }
+      if (reason === 'farewell') {
+        return { label: 'Closing reply sent', detail: null }
+      }
       if (reason === 'NOT_MEAL' || reason === 'support question') {
         return { label: 'Sent support redirect', detail: reason }
       }

@@ -25,6 +25,8 @@ import {
   ambiguousReply,
   dishChoiceQuestion,
   errorReply,
+  farewellReply,
+  greetingReply,
   mealsAddedConfirmation,
   noCustomerReply,
   noMealPlanReply,
@@ -36,15 +38,31 @@ import {
 import { sendAgentReply } from './record-outbound'
 import type {
   AgentProcessResult,
+  IntentClassification,
   PendingBatchContext,
   PendingMealSlot,
 } from './types'
+import { detectCasualMessage } from './casual-messages'
 
 export interface InboundAgentParams {
   conversationId: number
   inboundMessageId: number
   phoneE164: string
   body: string
+}
+
+function nonMealReply(body: string, classification: IntentClassification): string {
+  const casual = detectCasualMessage(body)
+  if (casual === 'greeting' || classification.reason === 'greeting') {
+    return greetingReply()
+  }
+  if (casual === 'farewell' || classification.reason === 'farewell') {
+    return farewellReply()
+  }
+  if (classification.intent === 'AMBIGUOUS') {
+    return ambiguousReply()
+  }
+  return supportOnlyReply()
 }
 
 export async function processInboundAgentMessage(
@@ -180,10 +198,7 @@ export async function processInboundAgentMessage(
     classification.intent === 'NOT_MEAL' ||
     classification.intent === 'AMBIGUOUS'
   ) {
-    const replyBody =
-      classification.intent === 'AMBIGUOUS'
-        ? ambiguousReply()
-        : supportOnlyReply()
+    const replyBody = nonMealReply(trimmed, classification)
     await sendAgentReply({
       runId: run.id,
       phoneE164: params.phoneE164,
@@ -192,7 +207,7 @@ export async function processInboundAgentMessage(
     })
     await updateAgentRun(run.id, {
       status: 'SKIPPED',
-      payload: { reason: classification.intent },
+      payload: { reason: classification.reason ?? classification.intent },
     })
     return { runId: run.id, status: 'SKIPPED', replyBody }
   }

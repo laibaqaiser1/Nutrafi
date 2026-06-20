@@ -1,4 +1,5 @@
 import { whatsappAgentConfig } from './config'
+import { detectCasualMessage } from './casual-messages'
 import { openAiJsonCompletion } from './openai-client'
 import type {
   IntentClassification,
@@ -18,7 +19,7 @@ const CONFIRM_SIGNALS =
   /^(yes|yep|yeah|ok|okay|confirm|correct|\d{1,2})\.?$/i
 
 const NOT_MEAL_SIGNALS =
-  /\b(payment|pay|bill|invoice|delivery|delivered|deliver|when will|what time|where is|track|refund|complaint|support|help me|hello|hi there|good morning|thanks|thank you)\b/i
+  /\b(payment|pay|bill|invoice|delivery|delivered|deliver|when will|what time|where is|track|refund|complaint|support|help me)\b/i
 
 const DELIVERY_QUESTION =
   /\b(when|what time|how long)\b[\s\S]{0,40}\b(deliver|delivered|delivery|arrive|arriving|coming|reach)\b/i
@@ -210,6 +211,24 @@ function classifyWithRules(body: string): IntentClassification {
     }
   }
 
+  const casual = detectCasualMessage(trimmed)
+  if (casual === 'greeting') {
+    return {
+      intent: 'NOT_MEAL',
+      isMealPlanRelated: false,
+      confidence: 0.95,
+      reason: 'greeting',
+    }
+  }
+  if (casual === 'farewell') {
+    return {
+      intent: 'NOT_MEAL',
+      isMealPlanRelated: false,
+      confidence: 0.95,
+      reason: 'farewell',
+    }
+  }
+
   if (isSupportQuestion(body)) {
     return {
       intent: 'NOT_MEAL',
@@ -220,6 +239,14 @@ function classifyWithRules(body: string): IntentClassification {
   }
 
   if (CONFIRM_SIGNALS.test(body.trim()) && !MEAL_SIGNALS.test(body)) {
+    if (detectCasualMessage(body.trim()) === 'farewell') {
+      return {
+        intent: 'NOT_MEAL',
+        isMealPlanRelated: false,
+        confidence: 0.92,
+        reason: 'farewell',
+      }
+    }
     return {
       intent: 'AMBIGUOUS',
       isMealPlanRelated: false,
@@ -316,7 +343,7 @@ Return JSON: { "intent": "ADD_MEALS"|"UPDATE_MEAL"|"CONFIRM"|"CANCEL"|"NOT_MEAL"
 
 ADD_MEALS = customer listing meals or days to add.
 UPDATE_MEAL = swap/change/remove a meal ("don't want X, want Y").
-NOT_MEAL = delivery timing, tracking, payment, general support, greetings, unrelated questions — even if the word "meals" appears.
+NOT_MEAL = delivery timing, tracking, payment, general support questions — NOT short greetings (hi/hello) or thanks/ok/bye (those are still NOT_MEAL but casual).
 CONFIRM = only when replying to a pending dish choice (number, yes, or short dish name).
 CANCEL = only when clearly cancelling.`,
     user: body,
