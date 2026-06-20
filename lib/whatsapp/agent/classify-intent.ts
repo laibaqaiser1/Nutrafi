@@ -200,6 +200,16 @@ export async function classifyMealIntent(
 }
 
 function classifyWithRules(body: string): IntentClassification {
+  const trimmed = body.trim()
+  if (/^[.\?!…]+$/.test(trimmed)) {
+    return {
+      intent: 'AMBIGUOUS',
+      isMealPlanRelated: false,
+      confidence: 0.9,
+      reason: 'punctuation only',
+    }
+  }
+
   if (isSupportQuestion(body)) {
     return {
       intent: 'NOT_MEAL',
@@ -241,6 +251,15 @@ function classifyWithRules(body: string): IntentClassification {
     }
   }
 
+  if (hasUpdate && /\b(for|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun|tomorrow|today)\b/i.test(body)) {
+    return {
+      intent: 'UPDATE_MEAL',
+      isMealPlanRelated: true,
+      confidence: 0.86,
+      reason: 'update with date',
+    }
+  }
+
   if (hasMealSignal) {
     const intent: MealAgentIntent = hasUpdate ? 'UPDATE_MEAL' : 'ADD_MEALS'
     return {
@@ -259,12 +278,14 @@ function classifyWithRules(body: string): IntentClassification {
     lower.includes('rice') ||
     lower.includes('wrap') ||
     lower.includes('salad') ||
-    lower.includes('pasta')
+    lower.includes('pasta') ||
+    lower.includes('fish') ||
+    lower.includes('soup')
   ) {
     return {
       intent: 'ADD_MEALS',
       isMealPlanRelated: true,
-      confidence: 0.7,
+      confidence: 0.85,
       reason: 'food terms',
     }
   }

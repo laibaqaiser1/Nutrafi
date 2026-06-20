@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cronAuthConfigured, verifyCronRequest } from '@/lib/whatsapp/agent/cron-auth'
+import { recordAgentFailureIfMissing } from '@/lib/whatsapp/agent/audit-log'
 import { processInboundAgentMessage } from '@/lib/whatsapp/agent/handle-inbound'
 import { z } from 'zod'
 
@@ -23,8 +24,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  let parsed: z.infer<typeof bodySchema>
   try {
-    const parsed = bodySchema.parse(await request.json())
+    parsed = bodySchema.parse(await request.json())
+  } catch (error) {
+    return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
+  }
+
+  try {
     const started = Date.now()
     const result = await processInboundAgentMessage(parsed)
     if (process.env.WHATSAPP_AGENT_DEBUG_TIMING === 'true') {
@@ -36,7 +43,15 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ ok: true, result })
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
     console.error('[whatsapp agent worker]', error)
-    return NextResponse.json({ error: 'Worker failed' }, { status: 500 })
+    await recordAgentFailureIfMissing({
+      conversationId: parsed.conversationId,
+      inboundMessageId: parsed.inboundMessageId,
+      rawMessageBody: parsed.body,
+      errorMessage: msg,
+      payload: { source: 'worker' },
+    })
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { sendWhatsAppText } from '@/lib/whatsapp/client'
 import { logWhatsAppError, serializeError } from '@/lib/whatsapp/log'
 import { formatPhoneDisplay } from '@/lib/whatsapp/normalize-phone'
+import { buildAgentMessageStatus } from '@/lib/whatsapp/agent/agent-message-status'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -46,10 +47,43 @@ export async function GET(
       })
     }
 
+    const inboundIds = conversation.messages
+      .filter((m) => m.direction === 'INBOUND' && m.messageType === 'text')
+      .map((m) => m.id)
+
+    const agentRuns =
+      inboundIds.length > 0
+        ? await prisma.whatsAppAgentRun.findMany({
+            where: { inboundMessageId: { in: inboundIds } },
+            orderBy: { createdAt: 'desc' },
+            select: {
+              id: true,
+              inboundMessageId: true,
+              status: true,
+              errorMessage: true,
+              parsedIntent: true,
+              payload: true,
+            },
+          })
+        : []
+
+    const agentByMessageId: Record<number, ReturnType<typeof buildAgentMessageStatus>> = {}
+    for (const run of agentRuns) {
+      if (run.inboundMessageId == null || agentByMessageId[run.inboundMessageId]) continue
+      agentByMessageId[run.inboundMessageId] = buildAgentMessageStatus({
+        runId: run.id,
+        status: run.status,
+        errorMessage: run.errorMessage,
+        parsedIntent: run.parsedIntent,
+        payload: run.payload,
+      })
+    }
+
     return NextResponse.json({
       ...conversation,
       phoneDisplay: formatPhoneDisplay(conversation.phoneE164),
       unreadCount: 0,
+      agentByMessageId,
     })
   } catch (error) {
     logWhatsAppError('conversation_get_failed', {

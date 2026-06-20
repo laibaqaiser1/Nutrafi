@@ -1,6 +1,7 @@
 import { after } from 'next/server'
 import { cronAuthConfigured } from './cron-auth'
 import { whatsappAgentConfig } from './config'
+import { recordAgentFailureIfMissing } from './audit-log'
 import { processInboundAgentMessage } from './handle-inbound'
 
 export interface AgentInboundPayload {
@@ -11,12 +12,16 @@ export interface AgentInboundPayload {
 }
 
 function appBaseUrl(): string {
+  const publicUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  if (publicUrl) return publicUrl.replace(/\/$/, '')
+  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
+  if (production) {
+    return production.startsWith('http') ? production : `https://${production}`
+  }
   const vercel = process.env.VERCEL_URL?.trim()
   if (vercel) {
     return vercel.startsWith('http') ? vercel : `https://${vercel}`
   }
-  const publicUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (publicUrl) return publicUrl.replace(/\/$/, '')
   const appUrl = process.env.APP_URL?.trim()
   if (appUrl) return appUrl.replace(/\/$/, '')
   return 'http://127.0.0.1:3000'
@@ -51,12 +56,31 @@ async function invokeAgentWorker(payload: AgentInboundPayload): Promise<boolean>
 }
 
 async function runAgent(payload: AgentInboundPayload): Promise<void> {
-  if (cronAuthConfigured()) {
-    const dispatched = await invokeAgentWorker(payload)
-    if (dispatched) return
+  if (!cronAuthConfigured()) {
+    console.error(
+      '[whatsapp agent] WHATSAPP_AGENT_CRON_SECRET not set — agent may be killed before OpenAI finishes. Set it on Vercel.'
+    )
   }
 
-  await processInboundAgentMessage(payload)
+  try {
+    if (cronAuthConfigured()) {
+      const dispatched = await invokeAgentWorker(payload)
+      if (dispatched) return
+      console.error('[whatsapp agent] worker dispatch failed — running inline (may timeout on Vercel)')
+    }
+
+    await processInboundAgentMessage(payload)
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('[whatsapp agent] process failed:', error)
+    await recordAgentFailureIfMissing({
+      conversationId: payload.conversationId,
+      inboundMessageId: payload.inboundMessageId,
+      rawMessageBody: payload.body,
+      errorMessage: msg,
+      payload: { source: 'runAgent' },
+    })
+  }
 }
 
 /**
@@ -84,11 +108,7 @@ export function scheduleAgentAfterInbound(params: {
   }
 
   after(async () => {
-    try {
-      await runAgent(payload)
-    } catch (error) {
-      console.error('[whatsapp agent] process failed:', error)
-    }
+    await runAgent(payload)
   })
 }
 

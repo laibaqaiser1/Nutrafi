@@ -50,11 +50,22 @@ export interface InboundAgentParams {
 export async function processInboundAgentMessage(
   params: InboundAgentParams
 ): Promise<AgentProcessResult | null> {
-  const cfg = whatsappAgentConfig()
-  if (!cfg.enabled) return null
-
   const trimmed = params.body.trim()
   if (!trimmed) return null
+
+  const cfg = whatsappAgentConfig()
+  if (!cfg.enabled) {
+    await createAgentRun({
+      conversationId: params.conversationId,
+      inboundMessageId: params.inboundMessageId,
+      trigger: 'INBOUND_MESSAGE',
+      status: 'SKIPPED',
+      rawMessageBody: trimmed,
+      errorMessage: 'WhatsApp agent is disabled',
+      payload: { reason: 'agent_disabled' },
+    })
+    return null
+  }
 
   if (await inboundMessageAlreadyHandled(params.inboundMessageId)) {
     return null
@@ -73,7 +84,18 @@ export async function processInboundAgentMessage(
     where: { id: params.conversationId },
     select: { agentMode: true },
   })
-  if (conversation?.agentMode === 'MANUAL') return null
+  if (conversation?.agentMode === 'MANUAL') {
+    await createAgentRun({
+      conversationId: params.conversationId,
+      inboundMessageId: params.inboundMessageId,
+      trigger: 'INBOUND_MESSAGE',
+      status: 'SKIPPED',
+      rawMessageBody: trimmed,
+      errorMessage: 'Conversation is in MANUAL mode',
+      payload: { reason: 'manual_mode' },
+    })
+    return null
+  }
 
   if (cfg.requireOpenAi && !cfg.openAiKey) {
     const run = await createAgentRun({

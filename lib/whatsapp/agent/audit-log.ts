@@ -133,3 +133,29 @@ export async function appendRunPayload(
     },
   })
 }
+
+/** Log a failed run when processing never started or crashed (for inbox / AI history). */
+export async function recordAgentFailureIfMissing(params: {
+  conversationId: number
+  inboundMessageId: number
+  rawMessageBody: string
+  errorMessage: string
+  payload?: Record<string, unknown>
+}): Promise<number | null> {
+  const existing = await prisma.whatsAppAgentRun.findFirst({
+    where: { inboundMessageId: params.inboundMessageId },
+    select: { id: true },
+  })
+  if (existing) return existing.id
+
+  const run = await createAgentRun({
+    conversationId: params.conversationId,
+    inboundMessageId: params.inboundMessageId,
+    trigger: 'INBOUND_MESSAGE',
+    status: 'FAILED',
+    rawMessageBody: params.rawMessageBody,
+    errorMessage: params.errorMessage,
+    payload: params.payload,
+  })
+  return run.id
+}

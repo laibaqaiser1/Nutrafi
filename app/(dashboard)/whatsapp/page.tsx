@@ -34,6 +34,15 @@ interface MessageRow {
   timestamp: string
 }
 
+interface AgentMessageStatus {
+  runId: number
+  status: string
+  errorMessage: string | null
+  reason: string | null
+  label: string
+  detail: string | null
+}
+
 interface SupportQueueItem {
   runId: number
   conversationId: number | null
@@ -53,6 +62,23 @@ interface SupportQueueSummary {
   total: number
   last24h: number
   days: number
+}
+
+function agentStatusBadgeClass(status: string): string {
+  switch (status) {
+    case 'SUCCESS':
+      return 'bg-green-100 text-green-900'
+    case 'PARTIAL':
+      return 'bg-yellow-100 text-yellow-900'
+    case 'NEEDS_CONFIRMATION':
+      return 'bg-blue-100 text-blue-900'
+    case 'FAILED':
+      return 'bg-red-100 text-red-800'
+    case 'SKIPPED':
+      return 'bg-amber-100 text-amber-900'
+    default:
+      return 'bg-gray-100 text-gray-700'
+  }
 }
 
 function reasonBadgeClass(reason: string): string {
@@ -87,9 +113,11 @@ export default function WhatsAppInboxPage() {
   const [conversations, setConversations] = useState<ConversationRow[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [messages, setMessages] = useState<MessageRow[]>([])
+  const [agentByMessageId, setAgentByMessageId] = useState<Record<number, AgentMessageStatus>>({})
   const [threadLoading, setThreadLoading] = useState(false)
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
+  const [reprocessingId, setReprocessingId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [threadMeta, setThreadMeta] = useState<{
     phoneDisplay: string
@@ -140,6 +168,7 @@ export default function WhatsAppInboxPage() {
       if (!res.ok) throw new Error('Failed to load thread')
       const data = await res.json()
       setMessages(data.messages)
+      setAgentByMessageId(data.agentByMessageId ?? {})
       setThreadMeta({
         phoneDisplay: data.phoneDisplay,
         customer: data.customer,
@@ -195,6 +224,28 @@ export default function WhatsAppInboxPage() {
       toast.error(e instanceof Error ? e.message : 'Send failed')
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleReprocess = async (inboundMessageId: number) => {
+    setReprocessingId(inboundMessageId)
+    try {
+      const res = await fetch('/api/whatsapp/agent/reprocess', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inboundMessageId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(typeof data.error === 'string' ? data.error : 'Re-run failed')
+      }
+      if (selectedId != null) await loadThread(selectedId)
+      await loadSupportQueue()
+      toast.success('AI re-run finished')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Re-run failed')
+    } finally {
+      setReprocessingId(null)
     }
   }
 
@@ -470,10 +521,24 @@ export default function WhatsAppInboxPage() {
                   ) : messages.length === 0 ? (
                     <p className="text-sm text-gray-500">No messages in this thread.</p>
                   ) : (
-                    messages.map((m) => (
+                    messages.map((m) => {
+                      const agent =
+                        m.direction === 'INBOUND' && m.messageType === 'text'
+                          ? agentByMessageId[m.id]
+                          : undefined
+                      const showReprocess =
+                        m.direction === 'INBOUND' &&
+                        m.messageType === 'text' &&
+                        (!agent ||
+                          agent.status === 'FAILED' ||
+                          (agent.status === 'SKIPPED' &&
+                            agent.reason !== 'NOT_MEAL' &&
+                            agent.reason !== 'support question'))
+
+                      return (
                       <div
                         key={m.id}
-                        className={`flex ${m.direction === 'OUTBOUND' ? 'justify-end' : 'justify-start'}`}
+                        className={`flex flex-col ${m.direction === 'OUTBOUND' ? 'items-end' : 'items-start'}`}
                       >
                         <div
                           className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
@@ -499,8 +564,47 @@ export default function WhatsAppInboxPage() {
                             {m.direction === 'OUTBOUND' ? ` · ${m.status.toLowerCase()}` : ''}
                           </p>
                         </div>
+                        {m.direction === 'INBOUND' && m.messageType === 'text' && (
+                          <div className="max-w-[85%] mt-1 flex flex-wrap items-center gap-1.5">
+                            {agent ? (
+                              <>
+                                <span
+                                  className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${agentStatusBadgeClass(agent.status)}`}
+                                  title={agent.detail ?? undefined}
+                                >
+                                  AI: {agent.label}
+                                </span>
+                                {agent.detail && (
+                                  <span className="text-[10px] text-red-700 max-w-full truncate">
+                                    {agent.detail}
+                                  </span>
+                                )}
+                                <Link
+                                  href={`/whatsapp/agent?run=${agent.runId}`}
+                                  className="text-[10px] text-nutrafi-primary hover:underline"
+                                >
+                                  Run #{agent.runId}
+                                </Link>
+                              </>
+                            ) : (
+                              <span className="text-[10px] text-red-700 font-medium">
+                                AI: not processed (agent may have timed out)
+                              </span>
+                            )}
+                            {showReprocess && (
+                              <button
+                                type="button"
+                                disabled={reprocessingId === m.id}
+                                onClick={() => void handleReprocess(m.id)}
+                                className="text-[10px] text-nutrafi-primary hover:underline disabled:opacity-50"
+                              >
+                                {reprocessingId === m.id ? 'Running…' : 'Re-run AI'}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))
+                    )})
                   )}
                 </div>
                 <div className="p-3 border-t border-gray-100 flex gap-2">
