@@ -36,6 +36,27 @@ export interface AgentMealApplyResult {
   after: Record<string, unknown>
 }
 
+export interface SkipDayResult {
+  dateYmd: string
+  skippedCount: number
+  createdCount: number
+  updatedCount: number
+  alreadyFullySkipped: boolean
+  itemIds: number[]
+}
+
+export class SkipDayAlreadyDeliveredError extends Error {
+  readonly code = 'ALREADY_DELIVERED' as const
+
+  constructor(
+    readonly dateYmd: string,
+    readonly deliveredCount: number
+  ) {
+    super(`Meals for ${dateYmd} already delivered`)
+    this.name = 'SkipDayAlreadyDeliveredError'
+  }
+}
+
 type ExistingItemRow = {
   id: number
   date: Date
@@ -491,4 +512,139 @@ export async function findMealPlanItemSnapshot(
   })
   if (!row) return null
   return snapshotRow({ ...row, wrongDelivery: false })
+}
+
+/** Mark all meals on a day as skipped — update existing rows or create skipped placeholders. */
+export async function skipAgentMealsForDay(
+  mealPlanId: number,
+  dateYmd: string
+): Promise<SkipDayResult> {
+  const mealPlanRow = await prisma.mealPlan.findUnique({
+    where: { id: mealPlanId },
+    select: {
+      id: true,
+      customerId: true,
+      mealsPerDay: true,
+      timeSlots: true,
+      days: true,
+      startDate: true,
+    },
+  })
+  if (!mealPlanRow) throw new Error('Meal plan not found')
+
+  const planStart = mealPlanRow.startDate
+    ? mealPlanDateYmd(mealPlanRow.startDate)
+    : ''
+  const planEnd =
+    planStart && mealPlanRow.days > 0 ? planEndYmd(planStart, mealPlanRow.days) : null
+  if (planEnd && dateYmd > planEnd) {
+    throw new Error(`${dateYmd} is after the plan end date (${planEnd}).`)
+  }
+
+  const mealsPerDay = Math.max(1, mealPlanRow.mealsPerDay)
+  const planTimeSlots = parseMealPlanTimeSlots(mealPlanRow.timeSlots)
+  const timeSlots =
+    planTimeSlots.length > 0
+      ? planTimeSlots
+      : Array.from({ length: mealsPerDay }, (_, i) => {
+          const hour = 8 + i * 5
+          return `${hour.toString().padStart(2, '0')}:00`
+        })
+
+  const defaultCustomerLocationId = await getDefaultCustomerLocationId(
+    prisma,
+    mealPlanRow.customerId
+  )
+
+  const dayDate = mealPlanDateFromYmd(dateYmd)
+  const existingRows = await prisma.mealPlanItem.findMany({
+    where: { mealPlanId, date: dayDate },
+    select: {
+      id: true,
+      date: true,
+      timeSlot: true,
+      isSkipped: true,
+      wrongDelivery: true,
+      isDelivered: true,
+      dishId: true,
+      dishName: true,
+      customNote: true,
+    },
+    orderBy: [{ timeSlot: 'asc' }, { id: 'asc' }],
+  })
+
+  const deliveredCount = existingRows.filter((r) => r.isDelivered).length
+  if (deliveredCount > 0) {
+    throw new SkipDayAlreadyDeliveredError(dateYmd, deliveredCount)
+  }
+
+  const alreadyFullySkipped =
+    existingRows.length >= mealsPerDay &&
+    existingRows.every((r) => r.isSkipped) &&
+    existingRows.filter((r) => isActiveRow(r)).length === 0
+
+  if (alreadyFullySkipped) {
+    return {
+      dateYmd,
+      skippedCount: existingRows.length,
+      createdCount: 0,
+      updatedCount: 0,
+      alreadyFullySkipped: true,
+      itemIds: existingRows.map((r) => r.id),
+    }
+  }
+
+  const skipPayload = {
+    isSkipped: true,
+    wrongDelivery: false,
+    isDelivered: false,
+    deliveredAt: null as Date | null,
+    dishId: null as number | null,
+    dishName: null as string | null,
+  }
+
+  let updatedCount = 0
+  let createdCount = 0
+  const itemIds: number[] = []
+
+  await withRetry(() =>
+    prisma.$transaction(async (tx) => {
+      for (const row of existingRows) {
+        const updated = await tx.mealPlanItem.update({
+          where: { id: row.id },
+          data: skipPayload,
+        })
+        itemIds.push(updated.id)
+        updatedCount++
+      }
+
+      const slotsNeeded = Math.max(0, mealsPerDay - existingRows.length)
+      for (let i = 0; i < slotsNeeded; i++) {
+        const slotIndex = existingRows.length + i
+        const timeSlot = timeSlots[slotIndex] ?? timeSlots[0] ?? '12:00'
+        const created = await tx.mealPlanItem.create({
+          data: {
+            mealPlanId,
+            date: dayDate,
+            timeSlot,
+            ...skipPayload,
+            customerLocationId: defaultCustomerLocationId ?? undefined,
+          },
+        })
+        itemIds.push(created.id)
+        createdCount++
+      }
+
+      await syncMealPlanRemainingMeals(tx, mealPlanId)
+    })
+  )
+
+  return {
+    dateYmd,
+    skippedCount: updatedCount + createdCount,
+    createdCount,
+    updatedCount,
+    alreadyFullySkipped: false,
+    itemIds,
+  }
 }

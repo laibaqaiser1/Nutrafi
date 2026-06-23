@@ -1,6 +1,7 @@
 import { detectCasualMessage } from './casual-messages'
 import { dateHintFromYmd } from './conversation-target-date'
 import { isVagueDishPhrase } from './meal-phrases'
+import { hasNumberedMealFormat } from './parse-meal-message'
 import { significantTokens } from './string-similarity'
 import type { PendingBatchContext } from './types'
 
@@ -30,11 +31,19 @@ export function pendingTargetDate(ctx: PendingBatchContext): { dateYmd: string }
   return { dateYmd: slot.dateYmd }
 }
 
-/** Customer is listing dishes (e.g. "chicken pasta and beef rice"), not picking from a numbered list. */
+/** Customer is listing dishes (newline, comma, or "and"), not picking from a numbered list. */
 export function looksLikeMultiDishList(body: string): boolean {
   const trimmed = body.trim()
   if (!looksLikeFreshDishInput(trimmed)) return false
-  return /\band\b|,/.test(trimmed)
+  if (/\band\b|,/.test(trimmed)) return true
+  if (hasNumberedMealFormat(trimmed)) return true
+
+  const lines = trimmed
+    .split(/\n+/)
+    .map((l) => l.replace(/^meal\s+\d+\s*[:\-]\s*/i, '').trim())
+    .filter((l) => l.length > 1 && looksLikeFreshDishInput(l))
+
+  return lines.length >= 2
 }
 
 /** Bot asked for dish names on a date; pending has no dish-choice slot yet. */

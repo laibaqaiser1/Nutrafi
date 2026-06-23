@@ -189,17 +189,49 @@ export async function handleFollowUpMessage(params: {
     ? await resolveDishFromReply(params.body, candidateIds)
     : null
 
+  const trimmedReply = params.body.trim()
+  const replyIsNumber = /^\d{1,2}$/.test(trimmedReply)
+  const replyLooksFresh = looksLikeFreshDishInput(trimmedReply)
+  const staleCandidateList =
+    !replyIsNumber &&
+    replyLooksFresh &&
+    candidateIds.length > 0 &&
+    (!resolution ||
+      resolution.status !== 'resolved' ||
+      (resolution.confidence ?? 0) < 0.65)
+
   if (
-    (!resolution || resolution.status !== 'resolved' || !resolution.dishId) &&
-    (candidateIds.length === 0 || loadedCandidates.length === 0 || broken) &&
-    looksLikeFreshDishInput(params.body)
+    staleCandidateList ||
+    ((!resolution || resolution.status !== 'resolved' || !resolution.dishId) &&
+      (candidateIds.length === 0 || loadedCandidates.length === 0 || broken) &&
+      replyLooksFresh)
   ) {
-    const direct = await resolveDishFromPhrase(params.body)
+    const direct = await resolveDishFromPhrase(trimmedReply)
     if (direct.status === 'resolved' && direct.dishId) {
       resolution = direct
     } else if (direct.status === 'needs_confirm' && direct.candidates.length > 0) {
       slot.candidateDishIds = candidateIdsForDisplay(direct.candidates)
-      slot.customerPhrase = params.body.trim()
+      slot.customerPhrase = trimmedReply
+      await updatePendingContext(pending.id, ctx)
+      const question = dishChoiceQuestion(
+        slot,
+        direct.candidates,
+        ctx.mealsPerDay ?? (ctx.meals.length || 2)
+      )
+      await sendAgentReply({
+        runId: params.runId,
+        phoneE164: params.phoneE164,
+        conversationId: params.conversationId,
+        body: question,
+      })
+      await updateAgentRun(params.runId, {
+        status: 'NEEDS_CONFIRMATION',
+        payload: { followUp: direct, reason: 'refreshed_dish_search' },
+      })
+      return { runId: params.runId, status: 'NEEDS_CONFIRMATION', replyBody: question }
+    } else if (direct.candidates.length > 0) {
+      slot.candidateDishIds = candidateIdsForDisplay(direct.candidates)
+      slot.customerPhrase = trimmedReply
       await updatePendingContext(pending.id, ctx)
       resolution = null
     }
@@ -231,17 +263,19 @@ export async function handleFollowUpMessage(params: {
     }
 
     const candidates =
-      slot.candidateDishIds && slot.candidateDishIds.length > 0
-        ? await loadCandidatesInOrder(slot.candidateDishIds)
-        : await suggestDishesForPhrase(params.body.trim())
+      replyLooksFresh && !replyIsNumber
+        ? (await resolveDishFromPhrase(trimmedReply)).candidates
+        : slot.candidateDishIds && slot.candidateDishIds.length > 0
+          ? await loadCandidatesInOrder(slot.candidateDishIds)
+          : await suggestDishesForPhrase(trimmedReply)
 
     if (
       candidates.length > 0 &&
       !isVagueDishPhrase(slot.customerPhrase) &&
-      looksLikeFreshDishInput(params.body)
+      replyLooksFresh
     ) {
       slot.candidateDishIds = candidateIdsForDisplay(candidates)
-      slot.customerPhrase = params.body.trim()
+      slot.customerPhrase = trimmedReply
       await updatePendingContext(pending.id, ctx)
       const question = dishChoiceQuestion(slot, candidates, ctx.meals.length || 2)
       await sendAgentReply({

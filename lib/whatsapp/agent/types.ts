@@ -5,6 +5,8 @@ export type MealAgentIntent =
   | 'CANCEL'
   | 'NOT_MEAL'
   | 'AMBIGUOUS'
+  | 'MEAL_PLAN_STATUS'
+  | 'SKIP_DAY'
 
 export interface IntentClassification {
   intent: MealAgentIntent
@@ -68,7 +70,11 @@ export interface DishResolution {
   candidates: DishCandidate[]
 }
 
-export type PendingMealSlotStatus = 'waiting_dish' | 'resolved' | 'applied'
+export type PendingMealSlotStatus =
+  | 'waiting_dish'
+  | 'resolved'
+  | 'applied'
+  | 'no_match'
 
 export interface PendingMealSlot {
   dateYmd: string

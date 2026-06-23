@@ -95,7 +95,7 @@ const TOKEN_STOP = new Set([
   'add',
 ])
 
-/** Food-type words — if present in the customer phrase, dish name should include them. */
+/** Food-type words — secondary filter only; never drop distinctive tokens like bbq, salmon. */
 const FOOD_TYPE_TOKENS = new Set([
   'rice',
   'pasta',
@@ -114,6 +114,21 @@ const FOOD_TYPE_TOKENS = new Set([
   'salmon',
   'wraps',
 ])
+
+export function isFoodTypeToken(token: string): boolean {
+  return FOOD_TYPE_TOKENS.has(token)
+}
+
+export function splitPhraseTokens(phrase: string): {
+  distinctive: string[]
+  foodTypes: string[]
+} {
+  const tokens = mustContainTokens(phrase)
+  return {
+    distinctive: tokens.filter((t) => !FOOD_TYPE_TOKENS.has(t)),
+    foodTypes: tokens.filter((t) => FOOD_TYPE_TOKENS.has(t)),
+  }
+}
 
 export function significantTokens(phrase: string): string[] {
   return normalizeForCompare(phrase)

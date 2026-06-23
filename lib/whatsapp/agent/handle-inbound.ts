@@ -8,8 +8,10 @@ import {
 } from './audit-log'
 import { classifyMealIntent } from './classify-intent'
 import { findCustomerByPhoneExact } from './find-customer'
+import { handleMealPlanStatusQuery, isMealPlanStatusQuestion } from './meal-plan-status'
+import { handleSkipDayRequest, isSkipDayRequestNotUpdate } from './skip-day'
 import { handleCancelPending, handleFollowUpMessage } from './handle-follow-up'
-import { parseMealMessage, inferMealDateFromMessage } from './parse-meal-message'
+import { parseMealMessage, inferMealDateFromMessage, parseNumberedMealsFromBody } from './parse-meal-message'
 import {
   applyConversationTargetDate,
   rememberTargetDateForConversation,
@@ -18,7 +20,7 @@ import {
 import { handleMealDayFullError } from './handle-apply-error'
 import { replyAfterMealsApplied } from './meal-update-reply'
 import { isVagueDishPhrase, sanitizeDisplayPhrase } from './meal-phrases'
-import { resolveDishFromPhrase, candidateIdsForDisplay, loadCandidatesInOrder, suggestDishesForPhrase } from './dish-matcher'
+import { resolveDishFromPhrase, candidateIdsForDisplay, loadCandidatesInOrder, suggestDishesForPhrase, suggestFallbackMenuDishes } from './dish-matcher'
 import {
   createPendingAction,
   getOpenPendingAction,
@@ -52,6 +54,7 @@ import {
   parseFailedReply,
   partialApplyReply,
   supportOnlyReply,
+  dishesNotOnMenuReply,
 } from './replies'
 import { sendAgentReply } from './record-outbound'
 import type {
@@ -177,6 +180,24 @@ export async function processInboundAgentMessage(
   const intentResult = await classifyMealIntent(trimmed, hasOpenPending)
   timing('classify')
   let classification = intentResult.classification
+
+  if (isMealPlanStatusQuestion(trimmed)) {
+    classification = {
+      intent: 'MEAL_PLAN_STATUS',
+      isMealPlanRelated: true,
+      confidence: 0.95,
+      reason: 'meal plan status question',
+    }
+  }
+
+  if (isSkipDayRequestNotUpdate(trimmed)) {
+    classification = {
+      intent: 'SKIP_DAY',
+      isMealPlanRelated: true,
+      confidence: 0.95,
+      reason: 'skip meals for a day',
+    }
+  }
 
   const run = await createAgentRun({
     conversationId: params.conversationId,
@@ -353,6 +374,27 @@ export async function processInboundAgentMessage(
 
   await updateAgentRun(run.id, { mealPlanId: mealPlan.id })
 
+  if (classification.intent === 'MEAL_PLAN_STATUS') {
+    return handleMealPlanStatusQuery({
+      runId: run.id,
+      conversationId: params.conversationId,
+      phoneE164: params.phoneE164,
+      body: trimmed,
+      customerId: customer.id,
+      mealPlan,
+    })
+  }
+
+  if (classification.intent === 'SKIP_DAY') {
+    return handleSkipDayRequest({
+      runId: run.id,
+      conversationId: params.conversationId,
+      phoneE164: params.phoneE164,
+      body: trimmed,
+      mealPlan,
+    })
+  }
+
   parseBody = await applyConversationTargetDate(
     params.conversationId,
     parseBody,
@@ -361,8 +403,19 @@ export async function processInboundAgentMessage(
 
   const intent =
     classification.intent === 'UPDATE_MEAL' ? 'UPDATE_MEAL' : 'ADD_MEALS'
-  const parseResult = await parseMealMessage(parseBody, intent)
+  const parseResultRaw = await parseMealMessage(parseBody, intent)
   timing('parse')
+
+  let parseResult = parseResultRaw
+  if (!parseResult || parseResult.extraction.meals.length === 0) {
+    const numbered = parseNumberedMealsFromBody(parseBody)
+    if (numbered.length > 0) {
+      parseResult = {
+        extraction: { kind: 'ADD', meals: numbered },
+        source: 'rules',
+      }
+    }
+  }
 
   await logAgentAction({
     runId: run.id,
@@ -431,6 +484,11 @@ export async function processInboundAgentMessage(
   )
 
   if (extraction.kind === 'ADD' && extraction.meals.length === 0) {
+    const numbered = parseNumberedMealsFromBody(parseBody)
+    if (numbered.length > 0) {
+      extraction.meals.push(...numbered)
+    }
+
     const dateHint = inferMealDateFromMessage(trimmed)
     if (dateHint) {
       await rememberTargetDateForConversation({
@@ -570,6 +628,16 @@ async function processAddMeals(params: {
         status: 'waiting_dish',
         candidateDishIds: candidateIdsForDisplay(resolution.candidates),
       })
+    } else if (resolution.status === 'no_match') {
+      pendingSlots.push({
+        dateYmd: meal.dateYmd,
+        slotIndex,
+        timeSlot,
+        customerPhrase: sanitizeDisplayPhrase(meal.customerPhrase),
+        customNote: meal.customNote,
+        status: 'no_match',
+        candidateDishIds: [],
+      })
     } else {
       pendingSlots.push({
         dateYmd: meal.dateYmd,
@@ -585,7 +653,7 @@ async function processAddMeals(params: {
 
   const hasWaitingConfirm = pendingSlots.some((s) => s.status === 'waiting_dish')
 
-  if (toApply.length > 0 && !hasWaitingConfirm) {
+  if (toApply.length > 0) {
     try {
       const applied = await applyAgentMealItems(params.mealPlanId, toApply)
       for (const row of applied) {
@@ -637,6 +705,60 @@ async function processAddMeals(params: {
   }
 
   const waitingIdx = pendingSlots.findIndex((s) => s.status === 'waiting_dish')
+  const noMatchSlots = pendingSlots.filter((s) => s.status === 'no_match')
+  const waitingHasCandidates = pendingSlots.some(
+    (s) => s.status === 'waiting_dish' && (s.candidateDishIds?.length ?? 0) > 0
+  )
+
+  if (noMatchSlots.length > 0 && !waitingHasCandidates) {
+    const dateYmd = noMatchSlots[0]!.dateYmd
+    const phrases = noMatchSlots.map((s) => s.customerPhrase)
+    const suggestionSets = await Promise.all(
+      phrases.map((p) => suggestDishesForPhrase(p))
+    )
+    const seen = new Set<number>()
+    const merged: Awaited<ReturnType<typeof suggestDishesForPhrase>> = []
+    for (const set of suggestionSets) {
+      for (const item of set) {
+        if (seen.has(item.dishId)) continue
+        seen.add(item.dishId)
+        merged.push(item)
+      }
+    }
+    const suggestions =
+      merged.length > 0 ? merged.slice(0, 6) : await suggestFallbackMenuDishes()
+
+    await rememberTargetDateForConversation({
+      conversationId: params.conversationId,
+      customerId: params.customerId,
+      mealPlanId: params.mealPlanId,
+      createdFromRunId: params.runId,
+      dateYmd,
+      mealsPerDay: params.mealsPerDay,
+    })
+
+    const replyBody = dishesNotOnMenuReply({
+      dateYmd,
+      unavailablePhrases: phrases,
+      suggestions,
+      appliedCount: appliedSummary.length,
+    })
+    await sendAgentReply({
+      runId: params.runId,
+      phoneE164: params.phoneE164,
+      conversationId: params.conversationId,
+      body: replyBody,
+    })
+    await updateAgentRun(params.runId, {
+      status: appliedSummary.length > 0 ? 'PARTIAL' : 'NEEDS_CONFIRMATION',
+      payload: { reason: 'dishes_not_on_menu', phrases, dateYmd },
+    })
+    return {
+      runId: params.runId,
+      status: appliedSummary.length > 0 ? 'PARTIAL' : 'NEEDS_CONFIRMATION',
+      replyBody,
+    }
+  }
 
   if (waitingIdx >= 0) {
     const slot = pendingSlots[waitingIdx]!
@@ -646,17 +768,17 @@ async function processAddMeals(params: {
       if (!isVagueDishPhrase(slot.customerPhrase)) {
         const suggestions = await suggestDishesForPhrase(slot.customerPhrase)
         if (suggestions.length > 0) {
+          const updatedSlot = {
+            ...slot,
+            status: 'waiting_dish' as const,
+            customerPhrase: slot.customerPhrase,
+            candidateDishIds: candidateIdsForDisplay(suggestions),
+          }
+          pendingSlots[waitingIdx] = updatedSlot
           const ctx: PendingBatchContext = {
             intent: 'ADD_MEALS',
-            meals: [
-              {
-                ...slot,
-                status: 'waiting_dish',
-                customerPhrase: slot.customerPhrase,
-                candidateDishIds: candidateIdsForDisplay(suggestions),
-              },
-            ],
-            currentQuestionIndex: 0,
+            meals: pendingSlots,
+            currentQuestionIndex: waitingIdx,
             targetDateYmd: slot.dateYmd,
             mealsPerDay: params.mealsPerDay,
           }

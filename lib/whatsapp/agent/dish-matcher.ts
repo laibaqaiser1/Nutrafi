@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { whatsappAgentConfig } from './config'
 import {
+  isFoodTypeToken,
   mustContainTokens,
   normalizeForCompare,
   phraseContainedInNameScore,
   significantTokens,
+  splitPhraseTokens,
   stringSimilarity,
 } from './string-similarity'
 import type { DishCandidate, DishResolution } from './types'
@@ -21,24 +23,6 @@ const CACHE_MS = 5 * 60 * 1000
 
 const FOLLOW_UP_MATCH_THRESHOLD = 0.55
 const DISPLAY_CANDIDATE_LIMIT = 6
-
-const FOOD_TYPE_TOKENS = new Set([
-  'rice',
-  'pasta',
-  'pizza',
-  'biryani',
-  'burger',
-  'kofta',
-  'salad',
-  'wrap',
-  'potato',
-  'mince',
-  'sauce',
-  'soup',
-  'steak',
-  'fish',
-  'salmon',
-])
 
 async function loadActiveDishes(): Promise<MenuDish[]> {
   const now = Date.now()
@@ -80,25 +64,38 @@ function filterDishesByPhraseConstraints(
   phrase: string,
   dishes: MenuDish[]
 ): MenuDish[] {
-  const tokens = mustContainTokens(phrase)
-  if (tokens.length === 0) return dishes
+  const { distinctive, foodTypes } = splitPhraseTokens(phrase)
 
   const nameHasAll = (d: MenuDish, required: string[]) => {
     const n = dishNameNorm(d.name)
     return required.every((t) => n.includes(t))
   }
 
+  // Distinctive words (bbq, cream, beef, …) always win over generic food types (rice, pasta).
+  if (distinctive.length > 0) {
+    const withDistinctive = dishes.filter((d) => nameHasAll(d, distinctive))
+    if (withDistinctive.length > 0) {
+      if (foodTypes.length > 0) {
+        const withBoth = withDistinctive.filter((d) => nameHasAll(d, foodTypes))
+        if (withBoth.length > 0) return withBoth
+      }
+      return withDistinctive
+    }
+    return []
+  }
+
+  const tokens = mustContainTokens(phrase)
+  if (tokens.length === 0) return dishes
+
   // "beef rice" → must contain both beef AND rice
   if (tokens.length >= 2) {
     const strict = dishes.filter((d) => nameHasAll(d, tokens))
     if (strict.length > 0) return strict
 
-    // Fall back: require food-type tokens (rice, pasta, …) if customer named them
-    const foodTypes = tokens.filter((t) => FOOD_TYPE_TOKENS.has(t))
     if (foodTypes.length > 0) {
       const typed = dishes.filter((d) => nameHasAll(d, foodTypes))
       if (typed.length > 0) {
-        const proteins = tokens.filter((t) => !FOOD_TYPE_TOKENS.has(t))
+        const proteins = tokens.filter((t) => !isFoodTypeToken(t))
         if (proteins.length > 0) {
           const typedAndProtein = typed.filter((d) => nameHasAll(d, proteins))
           if (typedAndProtein.length > 0) return typedAndProtein
@@ -108,7 +105,6 @@ function filterDishesByPhraseConstraints(
     }
   }
 
-  // Single token e.g. "pasta"
   if (tokens.length === 1) {
     const narrowed = dishes.filter((d) => dishNameNorm(d.name).includes(tokens[0]!))
     if (narrowed.length > 0) return narrowed
@@ -120,6 +116,7 @@ function filterDishesByPhraseConstraints(
 function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
   const pool = filterDishesByPhraseConstraints(phrase, dishes)
   const tokens = significantTokens(phrase)
+  const { distinctive } = splitPhraseTokens(phrase)
   const required = mustContainTokens(phrase)
   const scored: DishCandidate[] = []
 
@@ -127,7 +124,7 @@ function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
     const nameNorm = normalizeForCompare(dish.name)
     const nameLower = dish.name.toLowerCase()
 
-    const score = Math.max(
+    let score = Math.max(
       stringSimilarity(phrase, dish.name),
       phraseContainedInNameScore(phrase, dish.name)
     )
@@ -135,7 +132,12 @@ function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
     const requiredMatches = required.filter((t) => nameNorm.includes(t)).length
     const requiredRatio = required.length > 0 ? requiredMatches / required.length : 0
 
-    // Typo-tolerant: allow one wrong token (e.g. "pastq" vs "pasta") when similarity is good
+    if (distinctive.length > 0) {
+      const distinctiveHits = distinctive.filter((t) => nameLower.includes(t)).length
+      const distinctiveRatio = distinctiveHits / distinctive.length
+      score = Math.max(score, distinctiveRatio * 0.92)
+    }
+
     const passes =
       score >= 0.42 ||
       tokenHit ||
@@ -169,6 +171,15 @@ function findFuzzyBestMatch(phrase: string, dishes: MenuDish[]): DishCandidate |
   }
   if (best && best.score >= 0.52) return best
   return null
+}
+
+export async function suggestFallbackMenuDishes(limit = 6): Promise<DishCandidate[]> {
+  const dishes = await loadActiveDishes()
+  return dishes.slice(0, limit).map((d) => ({
+    dishId: d.id,
+    name: d.name,
+    score: 0,
+  }))
 }
 
 export async function suggestDishesForPhrase(

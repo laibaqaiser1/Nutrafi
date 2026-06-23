@@ -171,6 +171,137 @@ export function nextMealPrompt(
   return lines.join('\n')
 }
 
+export function mealPlanStatusReply(params: {
+  dateYmd: string
+  mealsPerDay: number
+  activeMeals: Array<{ dishName: string | null; slotIndex: number }>
+  planRemainingMeals: number | null
+}): string {
+  const { dateYmd, mealsPerDay, activeMeals, planRemainingMeals } = params
+  const dateLabel = formatDateLabel(dateYmd)
+  const ordinals = ['first', 'second', 'third']
+  const lines: string[] = []
+
+  lines.push(`Your plan includes ${mealsPerDay} meal${mealsPerDay === 1 ? '' : 's'} per day.`)
+
+  if (planRemainingMeals != null) {
+    lines.push(
+      `You have ${planRemainingMeals} meal${planRemainingMeals === 1 ? '' : 's'} remaining on your plan overall.`
+    )
+  }
+
+  lines.push('')
+  lines.push(`For ${dateLabel}:`)
+
+  if (activeMeals.length === 0) {
+    lines.push(`No meals chosen yet (0 of ${mealsPerDay}).`)
+  } else {
+    for (let i = 0; i < mealsPerDay; i++) {
+      const meal = activeMeals[i]
+      const label = ordinals[i] ?? `Meal ${i + 1}`
+      if (meal?.dishName) {
+        lines.push(`✅ ${label.charAt(0).toUpperCase()}${label.slice(1)} meal: ${meal.dishName}`)
+      } else {
+        lines.push(`⏳ ${label.charAt(0).toUpperCase()}${label.slice(1)} meal: not chosen yet`)
+      }
+    }
+  }
+
+  const slotsOpen = activeMeals.length < mealsPerDay
+  lines.push('')
+
+  if (slotsOpen) {
+    const nextIndex = activeMeals.length
+    const nextLabel = ordinals[nextIndex] ?? `meal ${nextIndex + 1}`
+    lines.push(
+      `What would you like for your ${nextLabel} meal? Just send the dish name (e.g. beef kofta with rice).`
+    )
+  } else {
+    lines.push('Your meals for this day are complete. Reply anytime if you want to change something.')
+  }
+
+  return lines.join('\n')
+}
+
+export function skipDayConfirmationReply(
+  dateYmd: string,
+  mealsPerDay: number,
+  alreadySkipped: boolean
+): string {
+  const dateLabel = formatDateLabel(dateYmd)
+  if (alreadySkipped) {
+    return `${dateLabel} is already marked as skipped — no meals will be delivered that day.`
+  }
+  return [
+    `✅ ${dateLabel} is marked as skipped.`,
+    `No meals will be delivered that day (${mealsPerDay} meal${mealsPerDay === 1 ? '' : 's'} on your plan).`,
+    '',
+    'Need meals on a different day? Just send your choices anytime.',
+  ].join('\n')
+}
+
+export function skipDayNeedsDateReply(): string {
+  return [
+    'Which day should we skip?',
+    'For example: "No meals on Tuesday" or "Cancel tomorrow — I am away".',
+  ].join('\n')
+}
+
+export function skipDayAlreadyDeliveredReply(
+  dateYmd: string,
+  deliveredCount = 1
+): string {
+  const dateLabel = formatDateLabel(dateYmd)
+  const plural = deliveredCount > 1
+  return [
+    'Sorry for the inconvenience.',
+    plural
+      ? `Your meals for ${dateLabel} have already been delivered.`
+      : `Your meal for ${dateLabel} has already been delivered.`,
+    'We cannot skip or cancel through this chat.',
+    '',
+    supportLine(),
+  ].join('\n')
+}
+
+export function dishesNotOnMenuReply(params: {
+  dateYmd: string
+  unavailablePhrases: string[]
+  suggestions: DishCandidate[]
+  appliedCount?: number
+}): string {
+  const dateLabel = formatDateLabel(params.dateYmd)
+  const lines: string[] = []
+
+  if ((params.appliedCount ?? 0) > 0) {
+    lines.push(`✅ Added ${params.appliedCount} meal(s) from your message.`, '')
+  }
+
+  lines.push(`Sorry, these items are not on our menu for ${dateLabel}:`)
+  lines.push('')
+  for (const phrase of params.unavailablePhrases) {
+    lines.push(`• ${sanitizeDisplayPhrase(phrase)}`)
+  }
+  lines.push('')
+
+  if (params.suggestions.length > 0) {
+    lines.push('You might like one of these from our menu instead:')
+    params.suggestions.slice(0, 6).forEach((s, i) => {
+      lines.push(`${i + 1}. ${s.name}`)
+    })
+    lines.push('')
+    lines.push('Reply with a dish name, or send for example:')
+    lines.push('Meal 1: Chicken Biryani')
+    lines.push('Meal 2: Beef Kofta with Rice')
+  } else {
+    lines.push('Please contact customer support and we can help you choose from our menu.')
+    lines.push('')
+    lines.push(supportLine())
+  }
+
+  return lines.join('\n')
+}
+
 export function mealsAddedConfirmation(
   applied: Array<{ dateYmd: string; dishName: string | null; slotIndex: number }>
 ): string {

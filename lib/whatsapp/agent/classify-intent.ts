@@ -1,5 +1,7 @@
 import { whatsappAgentConfig } from './config'
 import { detectCasualMessage } from './casual-messages'
+import { isMealPlanStatusQuestion } from './meal-plan-status'
+import { isSkipDayRequestNotUpdate } from './skip-day'
 import { looksLikeMultiDishList } from './pending-health'
 import { openAiJsonCompletion } from './openai-client'
 import type {
@@ -32,6 +34,8 @@ const VALID_INTENTS = new Set<MealAgentIntent>([
   'CANCEL',
   'NOT_MEAL',
   'AMBIGUOUS',
+  'MEAL_PLAN_STATUS',
+  'SKIP_DAY',
 ])
 
 /** General support / delivery questions — not dish follow-up replies. */
@@ -76,6 +80,7 @@ function looksLikeDishFollowUpReply(body: string): boolean {
 
 function looksLikeNewMealRequest(body: string): boolean {
   if (isSupportQuestion(body)) return false
+  if (isSkipDayRequestNotUpdate(body)) return false
   const hasMealSignal = MEAL_SIGNALS.test(body)
   const hasUpdate = UPDATE_SIGNALS.test(body)
   if (!hasMealSignal && !hasUpdate) return false
@@ -123,6 +128,30 @@ export async function classifyMealIntent(
           isMealPlanRelated: false,
           confidence: 0.92,
           reason: 'support question during pending',
+        },
+        source: 'rules',
+      }
+    }
+
+    if (isMealPlanStatusQuestion(trimmed)) {
+      return {
+        classification: {
+          intent: 'MEAL_PLAN_STATUS',
+          isMealPlanRelated: true,
+          confidence: 0.93,
+          reason: 'meal plan status during pending',
+        },
+        source: 'rules',
+      }
+    }
+
+    if (isSkipDayRequestNotUpdate(trimmed)) {
+      return {
+        classification: {
+          intent: 'SKIP_DAY',
+          isMealPlanRelated: true,
+          confidence: 0.94,
+          reason: 'skip day during pending',
         },
         source: 'rules',
       }
@@ -252,6 +281,24 @@ function classifyWithRules(body: string): IntentClassification {
     }
   }
 
+  if (isMealPlanStatusQuestion(body)) {
+    return {
+      intent: 'MEAL_PLAN_STATUS',
+      isMealPlanRelated: true,
+      confidence: 0.93,
+      reason: 'meals remaining question',
+    }
+  }
+
+  if (isSkipDayRequestNotUpdate(body)) {
+    return {
+      intent: 'SKIP_DAY',
+      isMealPlanRelated: true,
+      confidence: 0.94,
+      reason: 'skip meals for a day',
+    }
+  }
+
   if (CONFIRM_SIGNALS.test(body.trim()) && !MEAL_SIGNALS.test(body)) {
     if (detectCasualMessage(body.trim()) === 'farewell') {
       return {
@@ -353,10 +400,12 @@ async function classifyWithOpenAi(
     apiKey,
     model,
     system: `Classify WhatsApp messages for a meal delivery service (Nutrafi).${pendingNote}
-Return JSON: { "intent": "ADD_MEALS"|"UPDATE_MEAL"|"CONFIRM"|"CANCEL"|"NOT_MEAL"|"AMBIGUOUS", "isMealPlanRelated": boolean, "confidence": number, "reason": string }
+Return JSON: { "intent": "ADD_MEALS"|"UPDATE_MEAL"|"CONFIRM"|"CANCEL"|"NOT_MEAL"|"AMBIGUOUS"|"MEAL_PLAN_STATUS"|"SKIP_DAY", "isMealPlanRelated": boolean, "confidence": number, "reason": string }
 
 ADD_MEALS = customer listing meals or days to add.
 UPDATE_MEAL = swap/change/remove a meal ("don't want X, want Y").
+MEAL_PLAN_STATUS = asking how many meals are left, remaining on plan, or what's set for a day (e.g. "how many meals remaining?", "what meals do I have for tomorrow?").
+SKIP_DAY = skip/cancel/no meals for a specific day — customer unavailable, not in office, "cancel for Tuesday", "no meals on Tuesday" (NOT bare "cancel" which clears pending choice).
 NOT_MEAL = delivery timing, tracking, payment, general support questions — NOT short greetings (hi/hello) or thanks/ok/bye (those are still NOT_MEAL but casual).
 CONFIRM = only when replying to a pending dish choice (number, yes, or short dish name).
 CANCEL = only when clearly cancelling.`,

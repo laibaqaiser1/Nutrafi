@@ -99,6 +99,8 @@ EXAMPLES (adapt dates to the reference calendar above):
 OTHER RULES:
 - slotIndex 0 = first meal of the day, 1 = second, 2 = third.
 - Split multi-day messages into separate meals per day.
+- When the customer sends one dish per line (e.g. "Biryani\\nSalmon Lemon\\nChicken wrap"), create one meal entry per line in order with slotIndex 0, 1, 2.
+- When the customer uses "Meal 1: X meal 2: Y" (same line or separate lines), extract X and Y as separate meals with slotIndex 0 and 1.
 - UPDATE kind only for "don't want X want Y" / replace requests.
 - customerPhrase = dish wording only (no date, no "meal 1").
 - Ignore greetings; extract meals only.
@@ -199,11 +201,129 @@ function parseDdMm(text: string, base: Date): string | null {
   return isValid(d) ? ymdFromDate(d) : null
 }
 
+function stripMealLinePrefix(line: string): string {
+  return line
+    .replace(/^[\*\-\•]+\s*/, '')
+    .replace(/^meal\s+\d+\s*[:\-]\s*/i, '')
+    .trim()
+}
+
+/** "Meal 1: chow mein meal 2: kaleji" → ["chow mein", "kaleji"] */
+function parseNumberedMealPhrases(body: string): string[] {
+  const re = /\bmeal\s*\d+\s*[:\-]\s*/gi
+  const markers: { start: number; contentStart: number }[] = []
+  let match: RegExpExecArray | null
+  while ((match = re.exec(body)) !== null) {
+    markers.push({ start: match.index, contentStart: match.index + match[0].length })
+  }
+  if (markers.length === 0) return []
+
+  const phrases: string[] = []
+  for (let i = 0; i < markers.length; i++) {
+    const contentStart = markers[i]!.contentStart
+    const contentEnd =
+      i + 1 < markers.length ? markers[i + 1]!.start : body.length
+    const segment = body.slice(contentStart, contentEnd).trim()
+    const normalized = normalizeCustomerPhrase(segment)
+    if (!isVagueDishPhrase(normalized)) phrases.push(normalized)
+  }
+  return phrases
+}
+
+export function hasNumberedMealFormat(body: string): boolean {
+  return parseNumberedMealPhrases(body).length > 0
+}
+
+function parseNumberedMealList(body: string, base: Date): ParsedMealSlot[] {
+  const phrases = parseNumberedMealPhrases(body)
+  if (phrases.length === 0) return []
+
+  const { dateYmd, dateSource } = resolveDefaultMealDate(body, base)
+  return phrases.map((customerPhrase, slotIndex) => ({
+    dateYmd,
+    dateSource,
+    slotIndex,
+    customerPhrase,
+  }))
+}
+
 function splitMealPhrases(segment: string): string[] {
-  return segment
-    .split(/[,;]|(?:\s+and\s+)|(?:\s*&\s*)/i)
-    .map((s) => s.replace(/^[\*\-\•]\s*/, '').trim())
+  const normalized = segment.trim()
+  if (!normalized) return []
+
+  const newlineParts = normalized
+    .split(/\n+/)
+    .map(stripMealLinePrefix)
     .filter((s) => s.length > 1)
+
+  if (newlineParts.length >= 2) return newlineParts
+
+  const numbered = parseNumberedMealPhrases(normalized)
+  if (numbered.length >= 2) return numbered
+
+  return normalized
+    .split(/[,;]|(?:\s+and\s+)|(?:\s*&\s*)/i)
+    .map((s) => stripMealLinePrefix(s))
+    .filter((s) => s.length > 1)
+}
+
+function resolveDefaultMealDate(
+  body: string,
+  base: Date
+): { dateYmd: string; dateSource: string } {
+  const lower = body.toLowerCase()
+  if (lower.includes('today')) {
+    return { dateYmd: ymdFromDate(base), dateSource: 'today' }
+  }
+  if (lower.includes('tomorrow') || lower.includes('tommorow')) {
+    return { dateYmd: ymdFromDate(addDays(base, 1)), dateSource: 'tomorrow' }
+  }
+  const dayMatch = body.match(WEEKDAY_NAME)
+  if (dayMatch) {
+    return {
+      dateYmd: resolveWeekday(dayMatch[1]!, base),
+      dateSource: dayMatch[1]!,
+    }
+  }
+  const ddmm = parseDdMm(body, base)
+  if (ddmm) {
+    return { dateYmd: ensureNotPast(ddmm, base), dateSource: 'date in message' }
+  }
+  return { dateYmd: ymdFromDate(addDays(base, 1)), dateSource: 'tomorrow' }
+}
+
+/** One dish per line, e.g. "Biryani\\nSalmon Lemon\\nChicken wrap". */
+function parseMultilineDishList(body: string, base: Date): ParsedMealSlot[] {
+  const rawLines = body
+    .split(/\n+/)
+    .map(stripMealLinePrefix)
+    .filter((line) => line.length > 1)
+
+  if (rawLines.length < 2) return []
+
+  const phrases: string[] = []
+  for (const line of rawLines) {
+    const parts = splitMealPhrases(line)
+    if (parts.length <= 1) {
+      const phrase = normalizeCustomerPhrase(line)
+      if (!isVagueDishPhrase(phrase)) phrases.push(phrase)
+    } else {
+      for (const part of parts) {
+        const phrase = normalizeCustomerPhrase(part)
+        if (!isVagueDishPhrase(phrase)) phrases.push(phrase)
+      }
+    }
+  }
+
+  if (phrases.length < 2) return []
+
+  const { dateYmd, dateSource } = resolveDefaultMealDate(body, base)
+  return phrases.map((customerPhrase, slotIndex) => ({
+    dateYmd,
+    dateSource,
+    slotIndex,
+    customerPhrase,
+  }))
 }
 
 function parseReplacePattern(body: string, base: Date): ParsedReplaceMeal | null {
@@ -338,6 +458,12 @@ function parseInlineWeekdayMeals(body: string, base: Date): ParsedMealSlot[] {
 }
 
 function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
+  const numbered = parseNumberedMealList(body, base)
+  if (numbered.length > 0) return numbered
+
+  const multiline = parseMultilineDishList(body, base)
+  if (multiline.length >= 2) return multiline
+
   const inlineWeekday = parseInlineWeekdayMeals(body, base)
   if (inlineWeekday.length > 0) return inlineWeekday
 
@@ -517,8 +643,10 @@ function parseWithRules(
     }
   }
 
-  let meals = parseWeekdayLines(body, base)
+  let meals = parseNumberedMealList(body, base)
+  if (meals.length === 0) meals = parseWeekdayLines(body, base)
   if (meals.length === 0) meals = parseDatedBlocks(body, base)
+  if (meals.length === 0) meals = parseMultilineDishList(body, base)
   if (meals.length === 0) meals = parseInlineWeekdayMeals(body, base)
   if (meals.length === 0) meals = parseSimpleAdd(body, base)
 
@@ -619,6 +747,11 @@ export async function parseMealMessage(
 }
 
 export { todayInTz, ymdFromDate }
+
+/** Numbered meal lines, e.g. "Meal 1: pasta meal 2: rice". */
+export function parseNumberedMealsFromBody(body: string, base?: Date): ParsedMealSlot[] {
+  return parseNumberedMealList(body, base ?? todayInTz())
+}
 
 /** Best-effort date from message text when no dish names were parsed. */
 export function inferMealDateFromMessage(body: string, base?: Date): {
