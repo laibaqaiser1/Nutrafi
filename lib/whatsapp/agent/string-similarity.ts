@@ -88,6 +88,7 @@ const TOKEN_STOP = new Set([
   'without',
   'tomorrow',
   'tommorow',
+  'tomorow',
   'today',
   'meal',
   'meals',

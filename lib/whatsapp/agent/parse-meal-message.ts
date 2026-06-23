@@ -12,7 +12,13 @@ import type {
   ParsedMealSlot,
   ParsedReplaceMeal,
 } from './types'
-import { filterActionableMealPhrases, isVagueDishPhrase, normalizeCustomerPhrase } from './meal-phrases'
+import {
+  filterActionableMealPhrases,
+  isIntentOnlyMealRequest,
+  isVagueDishPhrase,
+  mentionsTomorrow,
+  normalizeCustomerPhrase,
+} from './meal-phrases'
 
 const WEEKDAYS: Record<string, number> = {
   monday: 1,
@@ -100,7 +106,7 @@ OTHER RULES:
 - slotIndex 0 = first meal of the day, 1 = second, 2 = third.
 - Split multi-day messages into separate meals per day.
 - When the customer sends one dish per line (e.g. "Biryani\\nSalmon Lemon\\nChicken wrap"), create one meal entry per line in order with slotIndex 0, 1, 2.
-- When the customer uses "Meal 1: X meal 2: Y" (same line or separate lines), extract X and Y as separate meals with slotIndex 0 and 1.
+- When the customer uses "Meal 1: X meal 2: Y" or "Meal 1: X meal 2 Y" (colon optional on meal 2+), extract X and Y as separate meals with slotIndex 0 and 1.
 - UPDATE kind only for "don't want X want Y" / replace requests.
 - customerPhrase = dish wording only (no date, no "meal 1").
 - Ignore greetings; extract meals only.
@@ -204,26 +210,28 @@ function parseDdMm(text: string, base: Date): string | null {
 function stripMealLinePrefix(line: string): string {
   return line
     .replace(/^[\*\-\•]+\s*/, '')
-    .replace(/^meal\s+\d+\s*[:\-]\s*/i, '')
+    .replace(/^meal\s+\d+\s*[:\-]?\s*/i, '')
     .trim()
 }
 
-/** "Meal 1: chow mein meal 2: kaleji" → ["chow mein", "kaleji"] */
+/** Matches "meal 1:", "meal 2:", "meal 2 beef", etc. */
+const NUMBERED_MEAL_MARKER = /\bmeal\s*\d+\s*(?:[:\-]\s*|\s+(?=[a-z]))/gi
+
+function numberedMealMarkerCount(body: string): number {
+  return body.match(/\bmeal\s*\d+\b/gi)?.length ?? 0
+}
+
+/** "Meal 1: pizza meal 2 beef rice" → ["pizza", "beef rice"] */
 function parseNumberedMealPhrases(body: string): string[] {
-  const re = /\bmeal\s*\d+\s*[:\-]\s*/gi
-  const markers: { start: number; contentStart: number }[] = []
-  let match: RegExpExecArray | null
-  while ((match = re.exec(body)) !== null) {
-    markers.push({ start: match.index, contentStart: match.index + match[0].length })
-  }
-  if (markers.length === 0) return []
+  if (numberedMealMarkerCount(body) === 0) return []
+
+  const parts = body.split(NUMBERED_MEAL_MARKER)
+  if (parts.length < 2) return []
 
   const phrases: string[] = []
-  for (let i = 0; i < markers.length; i++) {
-    const contentStart = markers[i]!.contentStart
-    const contentEnd =
-      i + 1 < markers.length ? markers[i + 1]!.start : body.length
-    const segment = body.slice(contentStart, contentEnd).trim()
+  for (let i = 1; i < parts.length; i++) {
+    const segment = parts[i]!.trim()
+    if (!segment) continue
     const normalized = normalizeCustomerPhrase(segment)
     if (!isVagueDishPhrase(normalized)) phrases.push(normalized)
   }
@@ -231,7 +239,7 @@ function parseNumberedMealPhrases(body: string): string[] {
 }
 
 export function hasNumberedMealFormat(body: string): boolean {
-  return parseNumberedMealPhrases(body).length > 0
+  return numberedMealMarkerCount(body) > 0
 }
 
 function parseNumberedMealList(body: string, base: Date): ParsedMealSlot[] {
@@ -275,7 +283,7 @@ function resolveDefaultMealDate(
   if (lower.includes('today')) {
     return { dateYmd: ymdFromDate(base), dateSource: 'today' }
   }
-  if (lower.includes('tomorrow') || lower.includes('tommorow')) {
+  if (mentionsTomorrow(body)) {
     return { dateYmd: ymdFromDate(addDays(base, 1)), dateSource: 'tomorrow' }
   }
   const dayMatch = body.match(WEEKDAY_NAME)
@@ -475,7 +483,7 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
   if (lower.includes('today')) {
     dateYmd = ymdFromDate(base)
     dateSource = 'today'
-  } else if (lower.includes('tomorrow')) {
+  } else if (mentionsTomorrow(body)) {
     dateYmd = ymdFromDate(addDays(base, 1))
     dateSource = 'tomorrow'
   } else {
@@ -503,7 +511,10 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
     phrases.push(...splitMealPhrases(addMatch[1]!).map(normalizeCustomerPhrase))
   } else {
     const cleaned = body
-      .replace(/\b(add|for|tomorrow|today|please|thanks|thank you)\b/gi, ' ')
+      .replace(
+        /\b(add|update|for|tomorrow|tommorow|tomorow|today|please|thanks|thank you|my|meals?)\b/gi,
+        ' '
+      )
       .replace(/\s+/g, ' ')
       .trim()
     if (cleaned.length > 2) {
@@ -715,6 +726,24 @@ export async function parseMealMessage(
 
   const cfg = whatsappAgentConfig()
 
+  if (isIntentOnlyMealRequest(trimmed)) {
+    return {
+      extraction: { kind: 'ADD', meals: [] },
+      source: 'rules',
+    }
+  }
+
+  const numberedMeals = parseNumberedMealList(trimmed, base)
+  if (numberedMealMarkerCount(trimmed) > 0 && numberedMeals.length > 0) {
+    const actionable = filterActionableMealPhrases(numberedMeals)
+    if (actionable.length > 0) {
+      return {
+        extraction: { kind: 'ADD', meals: actionable },
+        source: 'rules',
+      }
+    }
+  }
+
   const rules = parseWithRules(trimmed, intent, base)
   if (rules) {
     const hasMeals = rules.meals.length > 0
@@ -760,7 +789,7 @@ export function inferMealDateFromMessage(body: string, base?: Date): {
 } | null {
   const ref = base ?? todayInTz()
   const lower = body.toLowerCase()
-  if (lower.includes('tomorrow') || lower.includes('tommorow')) {
+  if (mentionsTomorrow(body)) {
     return {
       dateYmd: addDaysToYmd(ymdFromDate(ref), 1),
       dateSource: 'tomorrow',
