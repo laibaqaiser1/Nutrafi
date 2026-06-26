@@ -7,6 +7,8 @@ import { normalizeWhatsAppPhone } from '@/lib/whatsapp/normalize-phone'
 import { whatsappAgentConfig } from './config'
 import { createAgentRun, logAgentAction } from './audit-log'
 
+const LOG = '[whatsapp agent cron reminders]'
+
 function calendarTodayInTz(timezone: string): Date {
   const now = new Date()
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -102,6 +104,7 @@ export interface MealReminderCronResult {
   sent: number
   skipped: number
   failed: number
+  warnings: string[]
   details: Array<{
     customerId: number
     customerName: string
@@ -137,10 +140,38 @@ export async function runMealReminders(options?: {
 
   let rows = await getKitchenUnscheduledRows(reminderDateYmd)
   const totalCandidates = rows.length
+  const warnings: string[] = []
 
   if (allowlistActive) {
+    const before = rows.length
     rows = rows.filter((row) => allowlist.has(parseInt(row.customerId, 10)))
+    if (before > 0 && rows.length === 0) {
+      warnings.push(
+        `Allowlist active (${[...allowlist].join(', ')}) but none of those customers need meals on ${reminderDateYmd}. Clear WHATSAPP_AGENT_CRON_REMINDER_CUSTOMER_IDS to remind everyone.`
+      )
+    }
   }
+
+  if (totalCandidates === 0) {
+    warnings.push(`No active customers missing meals on ${reminderDateYmd}.`)
+  }
+
+  console.error(LOG, 'candidates loaded', {
+    reminderDateYmd,
+    timezone: cfg.timezone,
+    dateLabel,
+    totalCandidates,
+    afterAllowlist: rows.length,
+    allowlistActive,
+    allowlistCustomerIds: allowlistActive ? [...allowlist!].sort((a, b) => a - b) : null,
+    candidatePreview: rows.slice(0, 10).map((r) => ({
+      customerId: r.customerId,
+      customerName: r.customerName,
+      phone: r.phone ? `${r.phone.slice(0, 4)}…` : null,
+      scheduledWithDishCount: r.scheduledWithDishCount,
+      mealsPerDay: r.mealsPerDay,
+    })),
+  })
 
   const result: MealReminderCronResult = {
     ok: true,
@@ -151,13 +182,16 @@ export async function runMealReminders(options?: {
     sent: 0,
     skipped: 0,
     failed: 0,
+    warnings,
     details: [],
   }
 
   if (!cfg.enabled) {
+    console.error(LOG, 'agent disabled — WHATSAPP_AGENT_ENABLED=false')
     return {
       ...result,
       ok: false,
+      warnings: [...warnings, 'WHATSAPP_AGENT_ENABLED=false'],
       details: [
         {
           customerId: 0,
@@ -167,6 +201,10 @@ export async function runMealReminders(options?: {
         },
       ],
     }
+  }
+
+  if (warnings.length > 0) {
+    console.error(LOG, 'pre-run warnings', { warnings })
   }
 
   for (const row of rows) {
@@ -180,6 +218,7 @@ export async function runMealReminders(options?: {
 
     if (!row.phone?.trim()) {
       detail.reason = 'no phone'
+      console.error(LOG, 'skipped customer', { customerId, customerName: row.customerName, reason: detail.reason })
       result.skipped++
       result.details.push(detail)
       continue
@@ -188,6 +227,12 @@ export async function runMealReminders(options?: {
     const phoneE164 = normalizeWhatsAppPhone(row.phone)
     if (!phoneE164) {
       detail.reason = 'invalid phone'
+      console.error(LOG, 'skipped customer', {
+        customerId,
+        customerName: row.customerName,
+        reason: detail.reason,
+        rawPhone: row.phone,
+      })
       result.skipped++
       result.details.push(detail)
       continue
@@ -195,10 +240,19 @@ export async function runMealReminders(options?: {
 
     if (await reminderAlreadySent(customerId, reminderDateYmd)) {
       detail.reason = 'already reminded today'
+      console.error(LOG, 'skipped customer', { customerId, customerName: row.customerName, reason: detail.reason })
       result.skipped++
       result.details.push(detail)
       continue
     }
+
+    console.error(LOG, 'sending reminder', {
+      customerId,
+      customerName: row.customerName,
+      phoneE164: `${phoneE164.slice(0, 4)}…`,
+      reminderDateYmd,
+      template: WHATSAPP_TEMPLATES.daily_meals_reminder,
+    })
 
     const run = await createAgentRun({
       customerId,
@@ -262,6 +316,11 @@ export async function runMealReminders(options?: {
 
       detail.status = 'sent'
       result.sent++
+      console.error(LOG, 'reminder sent', {
+        customerId,
+        customerName: row.customerName,
+        messageId: sendResult.messageId,
+      })
     } else {
       await prisma.whatsAppAgentRun.update({
         where: { id: run.id },
@@ -273,11 +332,26 @@ export async function runMealReminders(options?: {
       detail.status = 'failed'
       detail.reason = sendResult.error
       result.failed++
+      console.error(LOG, 'reminder send failed', {
+        customerId,
+        customerName: row.customerName,
+        error: sendResult.error,
+        errorCode: sendResult.errorCode,
+        fbtraceId: sendResult.fbtraceId,
+      })
     }
 
     result.details.push(detail)
   }
 
   result.ok = result.failed === 0
+  console.error(LOG, 'run finished', {
+    reminderDateYmd,
+    sent: result.sent,
+    skipped: result.skipped,
+    failed: result.failed,
+    ok: result.ok,
+    warnings: result.warnings,
+  })
   return result
 }

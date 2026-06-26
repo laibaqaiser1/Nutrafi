@@ -1,4 +1,5 @@
 import { after } from 'next/server'
+import { appBaseUrl } from '@/lib/app-base-url'
 import { cronAuthConfigured } from './cron-auth'
 import { whatsappAgentConfig } from './config'
 import { recordAgentFailureIfMissing } from './audit-log'
@@ -9,22 +10,6 @@ export interface AgentInboundPayload {
   inboundMessageId: number
   phoneE164: string
   body: string
-}
-
-function appBaseUrl(): string {
-  const publicUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (publicUrl) return publicUrl.replace(/\/$/, '')
-  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
-  if (production) {
-    return production.startsWith('http') ? production : `https://${production}`
-  }
-  const vercel = process.env.VERCEL_URL?.trim()
-  if (vercel) {
-    return vercel.startsWith('http') ? vercel : `https://${vercel}`
-  }
-  const appUrl = process.env.APP_URL?.trim()
-  if (appUrl) return appUrl.replace(/\/$/, '')
-  return 'http://127.0.0.1:3000'
 }
 
 function workerAuthToken(): string | null {

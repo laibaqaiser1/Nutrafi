@@ -158,3 +158,35 @@ export async function sendWhatsAppText(to: string, body: string): Promise<SendTe
     text: { body },
   })
 }
+
+export interface SendDocumentParams {
+  to: string
+  link: string
+  filename?: string
+  caption?: string
+}
+
+export async function sendWhatsAppDocument(
+  params: SendDocumentParams
+): Promise<SendTextResult> {
+  const toNorm = normalizeWhatsAppPhone(params.to)
+  if (!toNorm) {
+    logWhatsAppError('send_invalid_recipient', { to: params.to })
+    return { ok: false, error: 'Invalid recipient phone' }
+  }
+
+  const link = params.link.trim()
+  if (!link.startsWith('https://')) {
+    logWhatsAppError('send_invalid_document_link', { link })
+    return { ok: false, error: 'Document link must be HTTPS' }
+  }
+
+  const document: Record<string, string> = { link }
+  if (params.filename?.trim()) document.filename = params.filename.trim()
+  if (params.caption?.trim()) document.caption = params.caption.trim()
+
+  return postWhatsAppMessage(toNorm, {
+    type: 'document',
+    document,
+  })
+}

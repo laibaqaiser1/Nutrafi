@@ -132,11 +132,14 @@ export function menuHelpReply(params: {
   suggestions: DishCandidate[]
   dateYmd?: string
   pendingReminder?: boolean
+  includesPdf?: boolean
 }): string {
-  const lines = [
-    'You can view our full menu here:',
-    MENU_URL,
-  ]
+  const lines = ['You can view our full menu here:', MENU_URL]
+
+  if (params.includesPdf) {
+    lines.push('')
+    lines.push('We have also sent our menu PDF in this chat.')
+  }
 
   if (params.suggestions.length > 0) {
     lines.push('')

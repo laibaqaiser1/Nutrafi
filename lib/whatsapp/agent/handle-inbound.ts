@@ -65,7 +65,7 @@ import {
   supportOnlyReply,
   dishesNotOnMenuReply,
 } from './replies'
-import { sendAgentReply } from './record-outbound'
+import { sendAgentReply, sendMenuHelpReply } from './record-outbound'
 import type {
   AgentProcessResult,
   IntentClassification,
@@ -323,12 +323,14 @@ export async function processInboundAgentMessage(
       openPending ?? undefined
     )
     const dateHint = target ?? inferMealDateFromMessage(trimmed)
+    const menuPdfConfigured = whatsappAgentConfig().menuPdfUrl.startsWith('https://')
     const replyBody = menuHelpReply({
       suggestions,
       dateYmd: dateHint?.dateYmd,
       pendingReminder: pendingStillOpen,
+      includesPdf: menuPdfConfigured,
     })
-    await sendAgentReply({
+    const sendResult = await sendMenuHelpReply({
       runId: run.id,
       phoneE164: params.phoneE164,
       conversationId: params.conversationId,
@@ -336,7 +338,11 @@ export async function processInboundAgentMessage(
     })
     await updateAgentRun(run.id, {
       status: pendingStillOpen ? 'NEEDS_CONFIRMATION' : 'SKIPPED',
-      payload: { reason: 'menu_help', dateYmd: dateHint?.dateYmd },
+      payload: {
+        reason: 'menu_help',
+        dateYmd: dateHint?.dateYmd,
+        menuPdfSent: sendResult.pdfSent,
+      },
     })
     return {
       runId: run.id,

@@ -1,3 +1,7 @@
+import { appBaseUrl } from '@/lib/app-base-url'
+
+const DEFAULT_MENU_PDF_PATH = '/menu/nutrafi-menu.pdf'
+
 export function whatsappAgentConfig() {
   const enabled = process.env.WHATSAPP_AGENT_ENABLED?.trim() !== 'false'
   const supportPhone =
@@ -17,7 +21,10 @@ export function whatsappAgentConfig() {
     10
   )
   const timezone = process.env.WHATSAPP_AGENT_TIMEZONE?.trim() || 'Asia/Dubai'
-  const cronSecret = process.env.WHATSAPP_AGENT_CRON_SECRET?.trim()
+  const cronSecret =
+    process.env.WHATSAPP_AGENT_CRON_SECRET?.trim() ||
+    process.env.CRON_SECRET?.trim() ||
+    ''
   const cronReminderCustomerIds = parseCustomerIdAllowlist(
     process.env.WHATSAPP_AGENT_CRON_REMINDER_CUSTOMER_IDS
   )
@@ -32,6 +39,14 @@ export function whatsappAgentConfig() {
   const openAiDishPick =
     process.env.WHATSAPP_AGENT_OPENAI_DISH_PICK?.trim() === 'true'
 
+  /** Public HTTPS URL to menu PDF — sent when customers ask for the menu. */
+  const menuPdfUrl =
+    process.env.WHATSAPP_AGENT_MENU_PDF_URL?.trim() ||
+    `${appBaseUrl()}${DEFAULT_MENU_PDF_PATH}`
+  const menuPdfFilename =
+    process.env.WHATSAPP_AGENT_MENU_PDF_FILENAME?.trim() ||
+    'Nutrafi Kitchen Menu.pdf'
+
   return {
     enabled,
     supportPhone,
@@ -45,6 +60,8 @@ export function whatsappAgentConfig() {
     openAiModel,
     openAiDishPick,
     requireOpenAi,
+    menuPdfUrl,
+    menuPdfFilename,
     pendingExpiryHours: Number.isFinite(pendingExpiryHours)
       ? pendingExpiryHours
       : 24,

@@ -1,4 +1,5 @@
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
+import { mealPlanDateFromYmd } from '@/lib/meal-plan-calendar-date'
 import { prisma, withRetry } from '@/lib/prisma'
 
 function itemHasDish(item: { dishId: number | null; dishName: string | null }): boolean {
@@ -28,8 +29,10 @@ export type KitchenUnscheduledRow = {
  * (contract still open). `endDate` is not used here.
  */
 export async function getKitchenUnscheduledRows(date: string): Promise<KitchenUnscheduledRow[]> {
-  const dayStart = new Date(new Date(date).setHours(0, 0, 0, 0))
-  const dayEnd = new Date(new Date(date).setHours(23, 59, 59, 999))
+  const ymd = date.slice(0, 10)
+  const dayStart = mealPlanDateFromYmd(ymd)
+  const dayEnd = new Date(dayStart)
+  dayEnd.setUTCHours(23, 59, 59, 999)
 
   const plans = await withRetry(() =>
     prisma.mealPlan.findMany({
