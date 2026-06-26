@@ -10,6 +10,11 @@ export async function middleware(request: NextRequest) {
   const session = await auth()
   const pathname = request.nextUrl.pathname
 
+  // Public static files (e.g. WhatsApp menu PDF) — Meta fetches without auth cookies
+  if (pathname.endsWith('.pdf')) {
+    return NextResponse.next()
+  }
+
   const isAuthPage = pathname.startsWith('/login')
   const isDashboardRoute =
     pathname.startsWith('/dashboard') ||

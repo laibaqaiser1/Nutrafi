@@ -1,6 +1,6 @@
 import { appBaseUrl } from '@/lib/app-base-url'
 
-const DEFAULT_MENU_PDF_PATH = '/menu/nutrafi-menu.pdf'
+const DEFAULT_MENU_PDF_PATH = '/nutrafi-menu.pdf'
 
 export function whatsappAgentConfig() {
   const enabled = process.env.WHATSAPP_AGENT_ENABLED?.trim() !== 'false'
