@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { format, addDays, eachDayOfInterval, parseISO } from 'date-fns'
 import { getPlanWeekNumber, getMondayOfPlanWeek, planWeekDayStringsOnOrAfterStart } from '@/lib/meal-plan-weeks'
 import {
+  datesToSeedWhenAddingPlanWeek,
   normalizeWeeklySkipDays,
   shouldSkipCalendarDay,
   WEEKDAY_SKIP_TOGGLES,
@@ -824,13 +825,16 @@ export default function NewMealPlanPage() {
     setVisibleWeeks(updatedVisibleWeeks)
     
     const firstDateStr = format(getMondayOfPlanWeek(formData.startDate, nextWeek), 'yyyy-MM-dd')
+    const datesToCreate = datesToSeedWhenAddingPlanWeek(
+      formData.startDate,
+      nextWeek,
+      formData.weeklySkipDays
+    )
     setVisibleDaysByWeek((prev) => ({
       ...prev,
-      [nextWeek]: [firstDateStr],
+      [nextWeek]: datesToCreate.length > 0 ? datesToCreate : [firstDateStr],
     }))
 
-    const weekDates = [parseISO(firstDateStr)]
-    
     const timeSlots = effectiveMealPlanTimeSlots(formData.timeSlots)
     if (timeSlots.length === 0) {
       return
@@ -839,8 +843,8 @@ export default function NewMealPlanPage() {
     const selectedCustomer = customers.find(c => c.id == formData.customerId)
     const mealsPerDay = parseInt(formData.mealsPerDay)
     const newMeals: typeof formData.meals = []
-    weekDates.forEach(date => {
-      const dateStr = format(date, 'yyyy-MM-dd')
+    const seedDates = datesToCreate.length > 0 ? datesToCreate : [firstDateStr]
+    seedDates.forEach(dateStr => {
       if (formData.meals.filter(m => m.date === dateStr).length > 0) return
       for (let mealIndex = 0; mealIndex < mealsPerDay; mealIndex++) {
         const timeSlot = timeSlots[mealIndex % timeSlots.length]

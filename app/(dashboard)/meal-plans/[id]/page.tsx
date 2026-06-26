@@ -16,6 +16,7 @@ import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import {
   jsWeekdayFromYmd,
   jsWeekdayToMon1Sun7,
+  datesToSeedWhenAddingPlanWeek,
   normalizeWeeklySkipDays,
   parseWeeklySkipDaysByWeekJson,
   shouldSkipCalendarDay,
@@ -1149,7 +1150,7 @@ export default function MealPlanViewPage() {
     return Array.from({ length: n }, () => placeholder)
   }
 
-  // Function to add another week (only creates first day)
+  // Function to add another week (first eligible day + default skip-day rows for that week)
   const addAnotherWeek = async () => {
     if (!mealPlan) return
     
@@ -1172,47 +1173,51 @@ export default function MealPlanViewPage() {
         normalizeWeeklySkipDays(mealPlan.weeklySkipDays)
       )
 
-      // New week = next calendar Mon–Sun block (Monday first)
-      const weekMonday = getMondayOfPlanWeek(mealPlan.startDate, nextWeek)
-      const firstDate = format(weekMonday, 'yyyy-MM-dd')
+      const datesToCreate = datesToSeedWhenAddingPlanWeek(
+        mealPlan.startDate,
+        nextWeek,
+        skipForNewWeek
+      )
 
       const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
+      const defaultLocationId =
+        pickDefaultLocationId(mealPlan.customer.locations ?? []) ?? undefined
 
-      // Create meal items for only the first day
-      const mealItemPromises = defaultTimeSlots.map((timeSlot) => {
-        const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
-        let deliveryTime = ''
-        if (timeMatch) {
-          let hours = parseInt(timeMatch[1])
-          const minutes = timeMatch[2]
-          deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
-        } else {
-          deliveryTime = timeSlot
-        }
-        
-        return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date: firstDate,
-            timeSlot: timeSlot,
-            deliveryType: 'delivery',
-            deliveryTime: deliveryTime,
-            customerLocationId: pickDefaultLocationId(mealPlan.customer.locations ?? []) ?? undefined,
-            isSkipped: shouldSkipCalendarDay(firstDate, skipForNewWeek),
-          }),
+      const mealItemPromises = datesToCreate.flatMap((dateStr) =>
+        defaultTimeSlots.map((timeSlot) => {
+          const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})/)
+          let deliveryTime = ''
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1])
+            const minutes = timeMatch[2]
+            deliveryTime = `${hours.toString().padStart(2, '0')}:${minutes}:00`
+          } else {
+            deliveryTime = timeSlot
+          }
+
+          return fetch(`/api/meal-plans/${mealPlan.id}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: dateStr,
+              timeSlot: timeSlot,
+              deliveryType: 'delivery',
+              deliveryTime: deliveryTime,
+              customerLocationId: defaultLocationId,
+              isSkipped: shouldSkipCalendarDay(dateStr, skipForNewWeek),
+            }),
+          })
         })
-      })
+      )
       
       await Promise.all(mealItemPromises)
       
       // Add the new week to visible weeks
       setVisibleWeeks(prev => [...prev, nextWeek].sort((a, b) => a - b))
       
-      // Add first day to visible days for this week
       setVisibleDaysByWeek(prev => ({
         ...prev,
-        [nextWeek]: [firstDate]
+        [nextWeek]: datesToCreate,
       }))
       
       // Expand the new week

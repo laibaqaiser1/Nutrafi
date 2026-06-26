@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { planWeekDayStringsOnOrAfterStart } from '@/lib/meal-plan-weeks'
 
 /** JS `Date.getDay()`: Sunday = 0 … Saturday = 6 */
 export function jsWeekdayFromYmd(ymd: string): number {
@@ -90,6 +91,32 @@ export function parseWeeklySkipDaysByWeekJson(raw: unknown): Record<string, numb
     out[k] = normalizeWeeklySkipDays(v)
   }
   return out
+}
+
+/**
+ * Calendar dates to create when opening a new plan week:
+ * the earliest eligible day (Mon–Sun on/after plan start) plus every other eligible day
+ * in that week that matches the skip pattern (skipped rows do not use meal slots).
+ */
+export function datesToSeedWhenAddingPlanWeek(
+  planStartDate: string | null,
+  weekNumber: number,
+  skipDaysForWeek: number[] | null | undefined
+): string[] {
+  const eligible = planWeekDayStringsOnOrAfterStart(planStartDate, weekNumber)
+  if (eligible.length === 0) return []
+
+  const skipNorm = normalizeWeeklySkipDays(skipDaysForWeek)
+  const dates = new Set<string>()
+  dates.add(eligible[0]!)
+
+  if (skipNorm.length > 0) {
+    for (const ymd of eligible) {
+      if (shouldSkipCalendarDay(ymd, skipNorm)) dates.add(ymd)
+    }
+  }
+
+  return Array.from(dates).sort()
 }
 
 export function serializeWeeklySkipDaysByWeek(
