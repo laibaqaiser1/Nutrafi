@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { whatsappAgentConfig } from './config'
 import {
+  fuzzyPhraseTokenScore,
   isFoodTypeToken,
   mustContainTokens,
   normalizeForCompare,
@@ -8,6 +9,7 @@ import {
   significantTokens,
   splitPhraseTokens,
   stringSimilarity,
+  tokenMatchesInDishName,
 } from './string-similarity'
 import type { DishCandidate, DishResolution } from './types'
 import { isVagueDishPhrase, normalizeCustomerPhrase } from './meal-phrases'
@@ -24,6 +26,9 @@ const CACHE_MS = 5 * 60 * 1000
 
 const FOLLOW_UP_MATCH_THRESHOLD = 0.55
 const DISPLAY_CANDIDATE_LIMIT = 6
+/** Typo-tolerant full-phrase floor (e.g. "peffalo pizza" → Chicken Buffalo Pizza). */
+const FUZZY_BEST_MATCH_MIN = 0.48
+const FUZZY_AUTO_RESOLVE_MIN = 0.68
 
 async function loadActiveDishes(): Promise<MenuDish[]> {
   const now = Date.now()
@@ -56,9 +61,6 @@ export async function loadCandidatesInOrder(
   }))
 }
 
-function dishNameNorm(name: string): string {
-  return name.toLowerCase()
-}
 
 /** Narrow menu to dishes compatible with what the customer actually said. */
 function filterDishesByPhraseConstraints(
@@ -67,10 +69,8 @@ function filterDishesByPhraseConstraints(
 ): MenuDish[] {
   const { distinctive, foodTypes } = splitPhraseTokens(phrase)
 
-  const nameHasAll = (d: MenuDish, required: string[]) => {
-    const n = dishNameNorm(d.name)
-    return required.every((t) => n.includes(t))
-  }
+  const nameHasAll = (d: MenuDish, required: string[]) =>
+    required.every((t) => tokenMatchesInDishName(t, d.name))
 
   // Distinctive words (bbq, cream, beef, …) always win over generic food types (rice, pasta).
   if (distinctive.length > 0) {
@@ -107,7 +107,7 @@ function filterDishesByPhraseConstraints(
   }
 
   if (tokens.length === 1) {
-    const narrowed = dishes.filter((d) => dishNameNorm(d.name).includes(tokens[0]!))
+    const narrowed = dishes.filter((d) => tokenMatchesInDishName(tokens[0]!, d.name))
     if (narrowed.length > 0) return narrowed
   }
 
@@ -122,19 +122,21 @@ function shortlistDishes(phrase: string, dishes: MenuDish[]): DishCandidate[] {
   const scored: DishCandidate[] = []
 
   for (const dish of pool) {
-    const nameNorm = normalizeForCompare(dish.name)
-    const nameLower = dish.name.toLowerCase()
-
     let score = Math.max(
       stringSimilarity(phrase, dish.name),
-      phraseContainedInNameScore(phrase, dish.name)
+      phraseContainedInNameScore(phrase, dish.name),
+      fuzzyPhraseTokenScore(phrase, dish.name)
     )
-    const tokenHit = tokens.some((t) => nameLower.includes(t))
-    const requiredMatches = required.filter((t) => nameNorm.includes(t)).length
+    const tokenHit = tokens.some((t) => tokenMatchesInDishName(t, dish.name))
+    const requiredMatches = required.filter((t) =>
+      tokenMatchesInDishName(t, dish.name)
+    ).length
     const requiredRatio = required.length > 0 ? requiredMatches / required.length : 0
 
     if (distinctive.length > 0) {
-      const distinctiveHits = distinctive.filter((t) => nameLower.includes(t)).length
+      const distinctiveHits = distinctive.filter((t) =>
+        tokenMatchesInDishName(t, dish.name)
+      ).length
       const distinctiveRatio = distinctiveHits / distinctive.length
       score = Math.max(score, distinctiveRatio * 0.92)
     }
@@ -164,13 +166,14 @@ function findFuzzyBestMatch(phrase: string, dishes: MenuDish[]): DishCandidate |
   for (const dish of dishes) {
     const score = Math.max(
       stringSimilarity(phrase, dish.name),
-      phraseContainedInNameScore(phrase, dish.name)
+      phraseContainedInNameScore(phrase, dish.name),
+      fuzzyPhraseTokenScore(phrase, dish.name)
     )
     if (!best || score > best.score) {
       best = { dishId: dish.id, name: dish.name, score }
     }
   }
-  if (best && best.score >= 0.52) return best
+  if (best && best.score >= FUZZY_BEST_MATCH_MIN) return best
   return null
 }
 
@@ -262,10 +265,9 @@ function findUniqueMenuMatchByTokens(
   const pool = filterDishesByPhraseConstraints(phrase, dishes)
   const tokens = mustContainTokens(phrase)
   if (tokens.length === 0) return null
-  const matches = pool.filter((d) => {
-    const n = dishNameNorm(d.name)
-    return tokens.every((t) => n.includes(t))
-  })
+  const matches = pool.filter((d) =>
+    tokens.every((t) => tokenMatchesInDishName(t, d.name))
+  )
   if (matches.length === 1) return matches[0]!
   return null
 }
@@ -279,7 +281,7 @@ function findUniqueCandidateByTokens(
   if (tokens.length === 0) return null
   const matches = candidates.filter((c) => {
     const n = normalizeForCompare(c.name)
-    return tokens.every((t) => n.includes(t))
+    return tokens.every((t) => tokenMatchesInDishName(t, n))
   })
   if (matches.length === 1) return matches[0]!
   return null
@@ -432,7 +434,7 @@ export async function resolveDishFromPhrase(
 
   if (candidates.length === 0) {
     const fuzzy = findFuzzyBestMatch(searchPhrase, dishes)
-    if (fuzzy && fuzzy.score >= 0.72) {
+    if (fuzzy && fuzzy.score >= FUZZY_AUTO_RESOLVE_MIN) {
       return {
         customerPhrase: searchPhrase,
         status: 'resolved',

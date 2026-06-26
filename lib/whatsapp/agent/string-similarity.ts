@@ -8,9 +8,11 @@ export function stringSimilarity(a: string, b: string): number {
   const tokenScore = tokenOverlapScore(na, nb)
   const levScore = 1 - levenshteinRatio(na, nb)
   const subsetScore = phraseContainedInNameScore(na, nb)
+  const fuzzyTokenScore = fuzzyPhraseTokenScore(a, b)
   return Math.max(
     0.5 * tokenScore + 0.5 * levScore,
-    subsetScore
+    subsetScore,
+    fuzzyTokenScore
   )
 }
 
@@ -22,7 +24,7 @@ export function normalizeForCompare(s: string): string {
     .trim()
 }
 
-/** "beef pasta" inside "beef pasta red sauce" → high score */
+/** "beef pasta" inside "beef pasta red sauce" → high score; tolerates typos per token. */
 export function phraseContainedInNameScore(phrase: string, dishName: string): number {
   const p = normalizeForCompare(phrase)
   const d = normalizeForCompare(dishName)
@@ -31,14 +33,60 @@ export function phraseContainedInNameScore(phrase: string, dishName: string): nu
   const tokens = significantTokens(phrase)
   if (tokens.length === 0) return 0
   const matched = tokens.filter((t) => d.includes(t)).length
-  return matched / tokens.length
+  const exactScore = matched / tokens.length
+  const fuzzyScore = fuzzyPhraseTokenScore(phrase, dishName)
+  return Math.max(exactScore, fuzzyScore * 0.98)
 }
 
 export function allSignificantTokensInName(phrase: string, dishName: string): boolean {
   const tokens = significantTokens(phrase)
   if (tokens.length === 0) return false
   const d = normalizeForCompare(dishName)
-  return tokens.every((t) => d.includes(t))
+  return tokens.every(
+    (t) => d.includes(t) || bestFuzzyTokenMatchInText(t, d) >= FUZZY_TOKEN_MATCH_MIN
+  )
+}
+
+/** Minimum per-token similarity to treat a typo as the same word (e.g. peffalo → buffalo). */
+export const FUZZY_TOKEN_MATCH_MIN = 0.68
+
+const MIN_FUZZY_TOKEN_LEN = 4
+
+/** Best [0,1] match of `token` against any word in `text` (exact substring or edit distance). */
+export function bestFuzzyTokenMatchInText(token: string, text: string): number {
+  const t = token.toLowerCase().trim()
+  const normalized = normalizeForCompare(text)
+  if (!t || !normalized) return 0
+  if (normalized.includes(t)) return 1
+
+  const words = normalized.split(' ').filter((w) => w.length > 1)
+  let best = 0
+  for (const word of words) {
+    if (word === t) return 1
+    if (t.length < MIN_FUZZY_TOKEN_LEN && word.length < MIN_FUZZY_TOKEN_LEN) continue
+    if (Math.abs(word.length - t.length) > 2) continue
+    const score = 1 - levenshteinRatio(t, word)
+    if (score > best) best = score
+  }
+  return best
+}
+
+/** Average fuzzy match of each meaningful phrase token against the dish name. */
+export function fuzzyPhraseTokenScore(phrase: string, dishName: string): number {
+  const tokens = mustContainTokens(phrase)
+  if (tokens.length === 0) return 0
+  let sum = 0
+  for (const token of tokens) {
+    sum += bestFuzzyTokenMatchInText(token, dishName)
+  }
+  return sum / tokens.length
+}
+
+/** Whether a customer token appears in the dish name (exact or close typo). */
+export function tokenMatchesInDishName(token: string, dishName: string): boolean {
+  const n = normalizeForCompare(dishName)
+  const t = token.toLowerCase()
+  return n.includes(t) || bestFuzzyTokenMatchInText(t, n) >= FUZZY_TOKEN_MATCH_MIN
 }
 
 function tokenOverlapScore(a: string, b: string): number {
