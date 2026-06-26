@@ -40,14 +40,22 @@ export function cronAuthConfigured(): boolean {
 }
 
 export function cronAuthFailureReason(request: NextRequest): string {
+  const diag = cronAuthDiagnostics()
   if (!cronAuthConfigured()) {
     return 'Set WHATSAPP_AGENT_CRON_SECRET (or CRON_SECRET) in Vercel environment variables, then redeploy.'
   }
   const token = tokenFromRequest(request)
   if (!token) {
+    if (diag.hasWhatsappAgentCronSecret && !diag.hasCronSecret) {
+      return (
+        'Missing Authorization: Bearer token. Vercel Cron only sends CRON_SECRET (not WHATSAPP_AGENT_CRON_SECRET). ' +
+        'Add CRON_SECRET in Vercel with the same value as WHATSAPP_AGENT_CRON_SECRET, then redeploy. ' +
+        'Manual test: curl -H "Authorization: Bearer YOUR_SECRET" https://your-domain/api/whatsapp/agent/cron/reminders'
+      )
+    }
     return 'Missing Authorization: Bearer token. Vercel Cron sends CRON_SECRET automatically after deploy.'
   }
-  return 'Invalid cron secret. Ensure WHATSAPP_AGENT_CRON_SECRET matches CRON_SECRET on Vercel.'
+  return 'Invalid cron secret. Ensure CRON_SECRET and WHATSAPP_AGENT_CRON_SECRET use the same value on Vercel.'
 }
 
 export function isVercelCronInvocation(request: NextRequest): boolean {

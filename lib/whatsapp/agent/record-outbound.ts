@@ -119,6 +119,9 @@ export async function sendMenuHelpReply(params: {
   const { menuPdfUrl, menuPdfFilename } = whatsappAgentConfig()
 
   if (!menuPdfUrl.startsWith('https://')) {
+    console.error('[whatsapp agent menu help] PDF skipped — menu URL is not HTTPS', {
+      menuPdfUrl,
+    })
     return { ok: textResult.ok, pdfSent: false, error: textResult.error }
   }
 
@@ -130,6 +133,13 @@ export async function sendMenuHelpReply(params: {
     filename: menuPdfFilename,
     caption: 'Nutrafi Kitchen — full menu',
   })
+
+  if (!pdfResult.ok) {
+    console.error('[whatsapp agent menu help] PDF send failed', {
+      documentUrl: menuPdfUrl,
+      error: pdfResult.error,
+    })
+  }
 
   return {
     ok: textResult.ok && pdfResult.ok,

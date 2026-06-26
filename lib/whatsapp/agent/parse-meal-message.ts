@@ -538,7 +538,7 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
   )
   const phrases: string[] = []
   if (addForDayMatch) {
-    phrases.push(addForDayMatch[1]!.trim())
+    phrases.push(...splitMealPhrases(addForDayMatch[1]!))
   } else if (addMatch) {
     phrases.push(...splitMealPhrases(addMatch[1]!))
   } else {

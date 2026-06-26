@@ -336,6 +336,12 @@ export async function processInboundAgentMessage(
       conversationId: params.conversationId,
       body: replyBody,
     })
+    if (menuPdfConfigured && !sendResult.pdfSent) {
+      console.error('[whatsapp agent menu help] PDF not delivered', {
+        documentUrl: whatsappAgentConfig().menuPdfUrl,
+        error: sendResult.error,
+      })
+    }
     await updateAgentRun(run.id, {
       status: pendingStillOpen ? 'NEEDS_CONFIRMATION' : 'SKIPPED',
       payload: {
