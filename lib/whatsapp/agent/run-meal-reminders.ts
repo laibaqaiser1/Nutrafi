@@ -35,32 +35,6 @@ export function formatReminderDateLabel(dateYmd: string): string {
   }
 }
 
-async function reminderAlreadySent(
-  customerId: number,
-  reminderDateYmd: string
-): Promise<boolean> {
-  const since = addDays(calendarTodayInTz(whatsappAgentConfig().timezone), 0)
-  since.setHours(0, 0, 0, 0)
-
-  const runs = await prisma.whatsAppAgentRun.findMany({
-    where: {
-      customerId,
-      trigger: 'CRON_REMINDER',
-      status: 'SUCCESS',
-      createdAt: { gte: since },
-    },
-    select: { payload: true },
-    take: 20,
-  })
-
-  return runs.some((run) => {
-    if (!run.payload || typeof run.payload !== 'object' || Array.isArray(run.payload)) {
-      return false
-    }
-    return (run.payload as { reminderDateYmd?: string }).reminderDateYmd === reminderDateYmd
-  })
-}
-
 async function upsertConversationForPhone(params: {
   phoneE164: string
   customerId: number
@@ -116,6 +90,9 @@ export interface MealReminderCronResult {
 /**
  * Send WhatsApp template reminders to customers missing tomorrow's meals.
  * Uses approved `daily_meals_reminder` template (outside 24h session).
+ *
+ * Eligibility comes from kitchen unscheduled rows — if meals are still missing,
+ * each cron run may send again (no "already reminded today" dedup).
  */
 export async function runMealReminders(options?: {
   targetDateYmd?: string
@@ -233,14 +210,6 @@ export async function runMealReminders(options?: {
         reason: detail.reason,
         rawPhone: row.phone,
       })
-      result.skipped++
-      result.details.push(detail)
-      continue
-    }
-
-    if (await reminderAlreadySent(customerId, reminderDateYmd)) {
-      detail.reason = 'already reminded today'
-      console.error(LOG, 'skipped customer', { customerId, customerName: row.customerName, reason: detail.reason })
       result.skipped++
       result.details.push(detail)
       continue
