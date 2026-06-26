@@ -96,8 +96,7 @@ function isScheduledMealRow(row: ExistingItemRow): boolean {
 /** Empty / inactive placeholder rows can be filled; rows with a dish cannot. */
 function isFillableEmptyRow(row: ExistingItemRow): boolean {
   if (row.wrongDelivery) return false
-  if (row.dishId != null) return false
-  return isPlaceholderDishName(row.dishName)
+  return !rowHasAssignedDish(row)
 }
 
 function groupExistingRowsByDateYmd(
@@ -116,30 +115,46 @@ function groupExistingRowsByDateYmd(
   return byDate
 }
 
+function pickFillableEmptyRow(
+  candidates: ExistingItemRow[],
+  preferredTimeSlot: string
+): ExistingItemRow | undefined {
+  if (candidates.length === 0) return undefined
+  const norm = normalizeMealPlanTimeSlotForKey(preferredTimeSlot)
+  const match = candidates.find(
+    (r) => normalizeMealPlanTimeSlotForKey(r.timeSlot) === norm
+  )
+  return match ?? candidates[0]
+}
+
 function findFillableEmptyRow(
   ymd: string,
   rowsByDate: Map<string, ExistingItemRow[]>,
   usedRowIds: Set<number>,
   preferredTimeSlot: string,
-  extraRowsOnDate: ExistingItemRow[] = []
+  dayRows: ExistingItemRow[] = []
 ): ExistingItemRow | undefined {
-  const fromMap = rowsByDate.get(ymd) ?? []
   const merged = new Map<number, ExistingItemRow>()
-  for (const row of [...fromMap, ...extraRowsOnDate]) {
+  for (const row of [...(rowsByDate.get(ymd) ?? []), ...dayRows]) {
     merged.set(row.id, row)
   }
-  const onDate = [...merged.values()].filter(
+  const candidates = [...merged.values()].filter(
     (r) => !usedRowIds.has(r.id) && isFillableEmptyRow(r)
   )
-  if (onDate.length === 0) return undefined
+  if (candidates.length > 0) {
+    return pickFillableEmptyRow(candidates, preferredTimeSlot)
+  }
 
-  const norm = normalizeMealPlanTimeSlotForKey(preferredTimeSlot)
-  const match = onDate.find(
-    (r) => normalizeMealPlanTimeSlotForKey(r.timeSlot) === norm
-  )
-  if (match) return match
-
-  return onDate[0]
+  // Fallback: scan cached plan rows for this calendar day (legacy date storage)
+  const fromPlan = [...rowsByDate.values()]
+    .flat()
+    .filter(
+      (r) =>
+        mealPlanDateYmd(r.date) === ymd &&
+        !usedRowIds.has(r.id) &&
+        isFillableEmptyRow(r)
+    )
+  return pickFillableEmptyRow(fromPlan, preferredTimeSlot)
 }
 
 async function loadRowsForCalendarDay(
@@ -314,6 +329,7 @@ export async function applyAgentMealItems(
           let existingRow: ExistingItemRow | undefined
           let slotIndex = data.slotIndex
           let timeSlot = customerDayTimeSlot
+          let dayRows: ExistingItemRow[] = []
 
           if (data.replaceItemId) {
             existingRow = existingRows.find((r) => r.id === data.replaceItemId)
@@ -322,7 +338,7 @@ export async function applyAgentMealItems(
             }
             timeSlot = existingRow.timeSlot
           } else {
-            const dayRows = await loadRowsForCalendarDay(tx, mealPlanId, ymd)
+            dayRows = await loadRowsForCalendarDay(tx, mealPlanId, ymd)
             mergeRowsIntoDateMap(rowsByDate, dayRows)
 
             const fillable = findFillableEmptyRow(
@@ -350,6 +366,22 @@ export async function applyAgentMealItems(
               slotIndex = scheduledOnDate
               timeSlot = customerDayTimeSlot
               existingRow = undefined
+            }
+          }
+
+          // Never create a new row while inactive placeholders exist on this day
+          if (!existingRow && !data.replaceItemId) {
+            if (dayRows.length === 0) {
+              dayRows = await loadRowsForCalendarDay(tx, mealPlanId, ymd)
+              mergeRowsIntoDateMap(rowsByDate, dayRows)
+            }
+            const openSlots = dayRows.filter(
+              (r) => !usedExistingRowIds.has(r.id) && isFillableEmptyRow(r)
+            )
+            const forced = pickFillableEmptyRow(openSlots, customerDayTimeSlot)
+            if (forced) {
+              existingRow = forced
+              timeSlot = forced.timeSlot
             }
           }
 

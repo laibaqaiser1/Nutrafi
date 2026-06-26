@@ -32,7 +32,7 @@ import {
   looksLikeFreshDishInput,
 } from './pending-health'
 import { replyAfterMealsApplied } from './meal-update-reply'
-import { handleMealDayFullError } from './handle-apply-error'
+import { handleApplyFailure } from './handle-apply-error'
 import { sendAgentReply } from './record-outbound'
 import type { AgentProcessResult, PendingBatchContext, PendingMealSlot } from './types'
 
@@ -108,8 +108,23 @@ async function applyResolvedPendingMeals(params: {
   phoneE164: string
   mealPlanId: number
   ctx: PendingBatchContext
+  /** When set (e.g. "1"), only apply the current question slot — not every resolved row. */
+  replyBody?: string
 }): Promise<AgentProcessResult | null> {
-  const slots = resolvedSlotsForApply(params.ctx)
+  const trimmedReply = params.replyBody?.trim() ?? ''
+  const numericPick = /^\d{1,2}$/.test(trimmedReply)
+  const idx = params.ctx.currentQuestionIndex
+  const current = params.ctx.meals[idx]
+
+  let slots = resolvedSlotsForApply(params.ctx)
+  if (
+    numericPick &&
+    current &&
+    current.status === 'resolved' &&
+    current.resolvedDishId != null
+  ) {
+    slots = [current]
+  }
   if (slots.length === 0) return null
 
   const applyItems: AgentMealApplyItem[] = slots.map((slot) => ({
@@ -145,7 +160,7 @@ async function applyResolvedPendingMeals(params: {
     return null
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Apply failed'
-    return handleMealDayFullError({
+    return handleApplyFailure({
       runId: params.runId,
       conversationId: params.conversationId,
       phoneE164: params.phoneE164,
@@ -393,6 +408,7 @@ export async function handleFollowUpMessage(params: {
     phoneE164: params.phoneE164,
     mealPlanId,
     ctx,
+    replyBody: trimmedReply,
   })
   if (applyError) return applyError
 

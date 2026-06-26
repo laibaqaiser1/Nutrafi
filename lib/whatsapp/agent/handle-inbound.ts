@@ -18,7 +18,7 @@ import {
   enforceTargetDateOnExtraction,
   resolveConversationTargetDate,
 } from './conversation-target-date'
-import { handleMealDayFullError } from './handle-apply-error'
+import { handleApplyFailure } from './handle-apply-error'
 import { replyAfterMealsApplied } from './meal-update-reply'
 import { isVagueDishPhrase, sanitizeDisplayPhrase } from './meal-phrases'
 import {
@@ -732,7 +732,7 @@ async function processAddMeals(params: {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Apply failed'
-      const dayFull = await handleMealDayFullError({
+      const dayFull = await handleApplyFailure({
         runId: params.runId,
         conversationId: params.conversationId,
         phoneE164: params.phoneE164,
