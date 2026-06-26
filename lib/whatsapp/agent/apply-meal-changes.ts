@@ -1,6 +1,6 @@
 import type { Dish } from '@/lib/generated/prisma/client'
 import { prisma, withRetry } from '@/lib/prisma'
-import { mealPlanDateFromYmd, mealPlanDateYmd } from '@/lib/meal-plan-calendar-date'
+import { mealPlanDateFromYmd, mealPlanDateYmd, mealPlanDayBoundsUtc } from '@/lib/meal-plan-calendar-date'
 import { planEndYmd } from '@/lib/import-default-plan/suggest-start-date'
 import {
   normalizeMealPlanTimeSlotForKey,
@@ -72,11 +72,20 @@ function isActiveRow(row: { isSkipped: boolean; wrongDelivery: boolean }): boole
   return !row.isSkipped && !row.wrongDelivery
 }
 
+const PLACEHOLDER_DISH_NAMES = new Set(['-', '—', 'n/a', 'na', 'none', 'tbd'])
+
+function isPlaceholderDishName(name: string | null | undefined): boolean {
+  if (name == null) return true
+  const n = name.trim().toLowerCase()
+  return n.length === 0 || PLACEHOLDER_DISH_NAMES.has(n)
+}
+
 function rowHasAssignedDish(row: {
   dishId: number | null
   dishName: string | null
 }): boolean {
-  return row.dishId != null || Boolean(row.dishName?.trim())
+  if (row.dishId != null) return true
+  return !isPlaceholderDishName(row.dishName)
 }
 
 /** Meal chosen for delivery — excludes empty/inactive placeholder slots. */
@@ -88,7 +97,7 @@ function isScheduledMealRow(row: ExistingItemRow): boolean {
 function isFillableEmptyRow(row: ExistingItemRow): boolean {
   if (row.wrongDelivery) return false
   if (row.dishId != null) return false
-  return !row.dishName?.trim()
+  return isPlaceholderDishName(row.dishName)
 }
 
 function groupExistingRowsByDateYmd(
@@ -111,9 +120,15 @@ function findFillableEmptyRow(
   ymd: string,
   rowsByDate: Map<string, ExistingItemRow[]>,
   usedRowIds: Set<number>,
-  preferredTimeSlot: string
+  preferredTimeSlot: string,
+  extraRowsOnDate: ExistingItemRow[] = []
 ): ExistingItemRow | undefined {
-  const onDate = (rowsByDate.get(ymd) ?? []).filter(
+  const fromMap = rowsByDate.get(ymd) ?? []
+  const merged = new Map<number, ExistingItemRow>()
+  for (const row of [...fromMap, ...extraRowsOnDate]) {
+    merged.set(row.id, row)
+  }
+  const onDate = [...merged.values()].filter(
     (r) => !usedRowIds.has(r.id) && isFillableEmptyRow(r)
   )
   if (onDate.length === 0) return undefined
@@ -125,6 +140,52 @@ function findFillableEmptyRow(
   if (match) return match
 
   return onDate[0]
+}
+
+async function loadRowsForCalendarDay(
+  tx: Pick<typeof prisma, 'mealPlanItem'>,
+  mealPlanId: number,
+  ymd: string
+): Promise<ExistingItemRow[]> {
+  const { gte, lte } = mealPlanDayBoundsUtc(ymd)
+  return tx.mealPlanItem.findMany({
+    where: { mealPlanId, date: { gte, lte } },
+    select: {
+      id: true,
+      date: true,
+      timeSlot: true,
+      isSkipped: true,
+      wrongDelivery: true,
+      dishId: true,
+      dishName: true,
+      customNote: true,
+    },
+    orderBy: [{ timeSlot: 'asc' }, { id: 'asc' }],
+  })
+}
+
+function mergeRowsIntoDateMap(
+  rowsByDate: Map<string, ExistingItemRow[]>,
+  rows: ExistingItemRow[]
+): void {
+  for (const row of rows) {
+    const ymd = mealPlanDateYmd(row.date)
+    const list = rowsByDate.get(ymd) ?? []
+    if (!list.some((r) => r.id === row.id)) {
+      list.push(row)
+      list.sort((a, b) => a.timeSlot.localeCompare(b.timeSlot) || a.id - b.id)
+      rowsByDate.set(ymd, list)
+    }
+  }
+}
+
+/** Inactive placeholder slots on a calendar day (for agent diagnostics / replies). */
+export async function countFillableEmptySlotsOnDate(
+  mealPlanId: number,
+  dateYmd: string
+): Promise<number> {
+  const rows = await loadRowsForCalendarDay(prisma, mealPlanId, dateYmd)
+  return rows.filter(isFillableEmptyRow).length
 }
 
 /** Customer's delivery time for a day — same slot for every meal that day. */
@@ -261,20 +322,25 @@ export async function applyAgentMealItems(
             }
             timeSlot = existingRow.timeSlot
           } else {
+            const dayRows = await loadRowsForCalendarDay(tx, mealPlanId, ymd)
+            mergeRowsIntoDateMap(rowsByDate, dayRows)
+
             const fillable = findFillableEmptyRow(
               ymd,
               rowsByDate,
               usedExistingRowIds,
-              customerDayTimeSlot
+              customerDayTimeSlot,
+              dayRows
             )
 
             if (fillable) {
               existingRow = fillable
               timeSlot = fillable.timeSlot
             } else {
+              const scheduledWithDish = dayRows.filter(isScheduledMealRow).length
               if (
                 mealPlanRow.mealsPerDay > 0 &&
-                scheduledOnDate >= mealPlanRow.mealsPerDay
+                scheduledWithDish >= mealPlanRow.mealsPerDay
               ) {
                 throw new Error(
                   `${ymd} already has ${mealPlanRow.mealsPerDay} active meal(s).`
@@ -479,12 +545,17 @@ export async function getActiveMealsSummaryForDates(
   const unique = [...new Set(dateYmds)]
   if (unique.length === 0) return []
 
+  const dayFilters = unique.map((ymd) => {
+    const { gte, lte } = mealPlanDayBoundsUtc(ymd)
+    return { date: { gte, lte } }
+  })
+
   const items = await prisma.mealPlanItem.findMany({
     where: {
       mealPlanId,
       isSkipped: false,
       wrongDelivery: false,
-      OR: unique.map((ymd) => ({ date: mealPlanDateFromYmd(ymd) })),
+      OR: dayFilters,
     },
     select: {
       date: true,
@@ -499,8 +570,8 @@ export async function getActiveMealsSummaryForDates(
   for (const item of items) {
     const ymd = mealPlanDateYmd(item.date)
     if (!unique.includes(ymd)) continue
+    if (!rowHasAssignedDish(item)) continue
     const name = item.dishName?.trim()
-    if (!name && item.dishId == null) continue
     const list = byDate.get(ymd) ?? []
     list.push({
       dateYmd: ymd,

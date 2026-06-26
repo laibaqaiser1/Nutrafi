@@ -1,7 +1,10 @@
-import { getActiveMealsSummaryForDate } from './apply-meal-changes'
+import {
+  countFillableEmptySlotsOnDate,
+  getActiveMealsSummaryForDate,
+} from './apply-meal-changes'
 import { updateAgentRun } from './audit-log'
 import { getOpenPendingAction, setPendingStatus } from './pending-actions'
-import { dayAlreadyHasMealsReply } from './replies'
+import { dayAlreadyHasMealsReply, emptySlotApplyFailedReply } from './replies'
 import { sendAgentReply } from './record-outbound'
 import type { AgentProcessResult } from './types'
 
@@ -41,7 +44,16 @@ export async function handleMealDayFullError(params: {
     await setPendingStatus(openPending.id, 'CANCELLED')
   }
 
-  const replyBody = dayAlreadyHasMealsReply(dateYmd, existing, mealsPerDay)
+  let replyBody: string
+  if (existing.length === 0) {
+    const emptySlots = await countFillableEmptySlotsOnDate(
+      params.mealPlanId,
+      dateYmd
+    )
+    replyBody = emptySlotApplyFailedReply(dateYmd, emptySlots)
+  } else {
+    replyBody = dayAlreadyHasMealsReply(dateYmd, existing, mealsPerDay)
+  }
   await sendAgentReply({
     runId: params.runId,
     phoneE164: params.phoneE164,

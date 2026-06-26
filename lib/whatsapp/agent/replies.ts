@@ -171,7 +171,7 @@ export function menuHelpReply(params: {
 export function dayAlreadyHasMealsReply(
   dateYmd: string,
   existingMeals: Array<{ dishName: string | null }>,
-  mealsPerDay: number
+  _mealsPerDay: number
 ): string {
   const dateLabel = formatDateLabel(dateYmd)
   const lines = [
@@ -186,6 +186,28 @@ export function dayAlreadyHasMealsReply(
   lines.push(`"change meal 1 to chicken pasta for ${dateLabel}"`)
   lines.push('Or reply CANCEL to start over.')
   return lines.join('\n')
+}
+
+export function emptySlotApplyFailedReply(
+  dateYmd: string,
+  emptySlotCount: number
+): string {
+  const dateLabel = formatDateLabel(dateYmd)
+  if (emptySlotCount > 0) {
+    return [
+      `Sorry — I matched your dish but couldn't save it to ${dateLabel}.`,
+      `There ${emptySlotCount === 1 ? 'is' : 'are'} ${emptySlotCount} open slot${emptySlotCount === 1 ? '' : 's'} on that day in your plan.`,
+      '',
+      'Please try sending the dish name again, or reply CANCEL to start over.',
+    ].join('\n')
+  }
+  return [
+    `Sorry — I couldn't add that meal to ${dateLabel} because the day is full on your plan.`,
+    '',
+    'Reply with what to change, for example:',
+    `"change meal 1 to chicken pasta for ${dateLabel}"`,
+    'Or reply CANCEL to start over.',
+  ].join('\n')
 }
 
 export function nextMealPrompt(

@@ -5,12 +5,15 @@ import { sessionHasPermission } from '@/lib/permissions'
 import { PK } from '@/lib/permission-keys'
 import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
+import { normalizeMealPlanItemDate } from '@/lib/meal-plan-calendar-date'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
 import { z } from 'zod'
 
 const mealPlanItemSchema = z.object({
-  date: z.string().transform((str) => new Date(str)),
+  date: z
+    .string()
+    .transform((str) => normalizeMealPlanItemDate(str)),
   /** Optional when MealPlan.timeSlots is set — server picks next slot for that date */
   timeSlot: z.string().optional().nullable(),
   dishId: z.union([z.string(), z.number()]).transform((v) => {

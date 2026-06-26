@@ -95,7 +95,10 @@ function alignSlotsToTargetDate(ctx: PendingBatchContext): void {
 
 function resolvedSlotsForApply(ctx: PendingBatchContext): PendingMealSlot[] {
   return ctx.meals.filter(
-    (m) => m.status === 'resolved' && m.resolvedDishId != null
+    (m) =>
+      m.status === 'resolved' &&
+      m.resolvedDishId != null &&
+      m.mealPlanItemId == null
   )
 }
 
