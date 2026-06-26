@@ -5,9 +5,19 @@ import { hasNumberedMealFormat } from './parse-meal-message'
 import { significantTokens } from './string-similarity'
 import type { PendingBatchContext } from './types'
 
+/** Customer agreed to change a meal — waiting for which meal / what to swap to. */
+export function isAwaitingMealUpdate(ctx: PendingBatchContext): boolean {
+  return ctx.awaitingMealUpdate != null
+}
+
+export function isAffirmativeReply(body: string): boolean {
+  return /^(yes|yep|yeah|y|ok|okay|sure)\.?$/i.test(body.trim())
+}
+
 /** Pending state that cannot be resolved via numbered dish choice (legacy / vague parse). */
 export function isBrokenPendingContext(ctx: PendingBatchContext): boolean {
   if (ctx.awaitingNextMeal) return false
+  if (ctx.awaitingMealUpdate) return false
 
   const waiting = ctx.meals.filter((m) => m.status === 'waiting_dish')
   if (waiting.length === 0) return false
@@ -25,6 +35,9 @@ export function pendingTargetDate(ctx: PendingBatchContext): { dateYmd: string }
   }
   if (ctx.awaitingNextMeal) {
     return { dateYmd: ctx.awaitingNextMeal.dateYmd }
+  }
+  if (ctx.awaitingMealUpdate) {
+    return { dateYmd: ctx.awaitingMealUpdate.dateYmd }
   }
   const slot = ctx.meals.find((m) => m.status === 'waiting_dish') ?? ctx.meals[0]
   if (!slot) return null

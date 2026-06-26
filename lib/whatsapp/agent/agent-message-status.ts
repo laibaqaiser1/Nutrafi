@@ -38,6 +38,9 @@ export function agentStatusLabel(
       if (reason === 'day_already_full') {
         return { label: 'Day already full', detail: 'Asked if customer wants to update' }
       }
+      if (reason === 'awaiting_meal_update_details') {
+        return { label: 'Waiting for meal update', detail: null }
+      }
       if (reason === 'missing_dish_names') {
         return { label: 'Asked for meal names', detail: null }
       }

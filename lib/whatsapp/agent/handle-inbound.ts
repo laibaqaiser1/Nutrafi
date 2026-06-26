@@ -64,6 +64,7 @@ import {
   partialApplyReply,
   supportOnlyReply,
   dishesNotOnMenuReply,
+  mealUpdateHowReply,
 } from './replies'
 import { sendAgentReply, sendMenuHelpReply } from './record-outbound'
 import type {
@@ -185,8 +186,9 @@ export async function processInboundAgentMessage(
 
   const openPending = await getOpenPendingAction(params.conversationId)
   const hasOpenPending = openPending != null
+  const pendingCtx = openPending ? parsePendingContext(openPending.context) : null
 
-  const intentResult = await classifyMealIntent(trimmed, hasOpenPending)
+  const intentResult = await classifyMealIntent(trimmed, hasOpenPending, pendingCtx)
   timing('classify')
   let classification = intentResult.classification
 
@@ -234,10 +236,8 @@ export async function processInboundAgentMessage(
   let skipFollowUp = false
   let pendingStillOpen = hasOpenPending
 
-  if (hasOpenPending && openPending) {
-    const pendingCtx = parsePendingContext(openPending.context)
-
-    if (pendingCtx && looksLikeFreshDishInput(trimmed)) {
+  if (hasOpenPending && openPending && pendingCtx) {
+    if (looksLikeFreshDishInput(trimmed)) {
       let broken = isBrokenPendingContext(pendingCtx)
       if (!broken) {
         const slot = pendingCtx.meals.find((m) => m.status === 'waiting_dish')
@@ -271,8 +271,9 @@ export async function processInboundAgentMessage(
 
     if (
       pendingStillOpen &&
-      pendingCtx &&
-      (pendingCtx.awaitingNextMeal || looksLikeFreshDishInput(trimmed))
+      (pendingCtx.awaitingNextMeal ||
+        pendingCtx.awaitingMealUpdate ||
+        looksLikeFreshDishInput(trimmed))
     ) {
       parseBody = await applyConversationTargetDate(
         params.conversationId,
@@ -283,7 +284,6 @@ export async function processInboundAgentMessage(
   }
 
   if (pendingStillOpen && classification.intent === 'CONFIRM' && !skipFollowUp && openPending) {
-    const pendingCtx = parsePendingContext(openPending.context)
     const answeringMealNamePrompt =
       pendingCtx != null &&
       (isAwaitingMealNames(pendingCtx) || looksLikeMultiDishList(trimmed))
@@ -423,6 +423,31 @@ export async function processInboundAgentMessage(
   }
 
   await updateAgentRun(run.id, { mealPlanId: mealPlan.id })
+
+  if (
+    pendingCtx?.awaitingMealUpdate &&
+    classification.intent === 'UPDATE_MEAL' &&
+    classification.reason === 'accepted meal update offer'
+  ) {
+    const replyBody = mealUpdateHowReply({
+      dateYmd: pendingCtx.awaitingMealUpdate.dateYmd,
+      existingMeals: pendingCtx.awaitingMealUpdate.existingMeals,
+    })
+    await sendAgentReply({
+      runId: run.id,
+      phoneE164: params.phoneE164,
+      conversationId: params.conversationId,
+      body: replyBody,
+    })
+    await updateAgentRun(run.id, {
+      status: 'NEEDS_CONFIRMATION',
+      payload: {
+        reason: 'awaiting_meal_update_details',
+        dateYmd: pendingCtx.awaitingMealUpdate.dateYmd,
+      },
+    })
+    return { runId: run.id, status: 'NEEDS_CONFIRMATION', replyBody }
+  }
 
   if (classification.intent === 'MEAL_PLAN_STATUS') {
     return handleMealPlanStatusQuery({

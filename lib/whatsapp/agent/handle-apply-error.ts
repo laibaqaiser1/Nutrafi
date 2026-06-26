@@ -3,7 +3,8 @@ import {
   getActiveMealsSummaryForDate,
 } from './apply-meal-changes'
 import { updateAgentRun } from './audit-log'
-import { getOpenPendingAction, setPendingStatus } from './pending-actions'
+import { createPendingAction, getOpenPendingAction, setPendingStatus } from './pending-actions'
+import { prisma } from '@/lib/prisma'
 import {
   dayAlreadyHasMealsReply,
   emptySlotApplyFailedReply,
@@ -57,7 +58,30 @@ export async function handleMealDayFullError(params: {
     parsed.dateYmd
   )
 
-  await cancelOpenPending(params.conversationId)
+  const planRow = await prisma.mealPlan.findUnique({
+    where: { id: params.mealPlanId },
+    select: { customerId: true, mealsPerDay: true },
+  })
+
+  await createPendingAction({
+    conversationId: params.conversationId,
+    customerId: planRow?.customerId,
+    mealPlanId: params.mealPlanId,
+    createdFromRunId: params.runId,
+    type: 'MEAL_BATCH',
+    context: {
+      intent: 'UPDATE_MEAL',
+      meals: [],
+      currentQuestionIndex: 0,
+      targetDateYmd: parsed.dateYmd,
+      mealsPerDay: planRow?.mealsPerDay ?? parsed.mealsPerDay,
+      awaitingMealUpdate: {
+        dateYmd: parsed.dateYmd,
+        mealsPerDay: planRow?.mealsPerDay ?? parsed.mealsPerDay,
+        existingMeals: existing,
+      },
+    },
+  })
 
   const replyBody = dayAlreadyHasMealsReply(
     parsed.dateYmd,

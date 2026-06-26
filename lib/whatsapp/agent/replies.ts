@@ -168,6 +168,25 @@ export function menuHelpReply(params: {
   return lines.join('\n')
 }
 
+export function mealUpdateHowReply(params: {
+  dateYmd: string
+  existingMeals: Array<{ dishName: string | null }>
+}): string {
+  const dateLabel = formatDateLabel(params.dateYmd)
+  const lines = [
+    `Sure! Which meal on ${dateLabel} would you like to change?`,
+    '',
+  ]
+  params.existingMeals.forEach((meal, index) => {
+    lines.push(`Meal ${index + 1}: ${meal.dishName ?? 'Meal'}`)
+  })
+  lines.push('')
+  lines.push('Reply for example:')
+  lines.push(`"change meal 1 to chicken pasta for ${dateLabel}"`)
+  lines.push('Or reply CANCEL to start over.')
+  return lines.join('\n')
+}
+
 export function dayAlreadyHasMealsReply(
   dateYmd: string,
   existingMeals: Array<{ dishName: string | null }>,

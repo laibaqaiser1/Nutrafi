@@ -84,6 +84,12 @@ export async function resolveConversationTargetDate(
         mealsPerDay: ctx.awaitingNextMeal.mealsPerDay,
       }
     }
+    if (ctx?.awaitingMealUpdate) {
+      return {
+        dateYmd: ctx.awaitingMealUpdate.dateYmd,
+        mealsPerDay: ctx.awaitingMealUpdate.mealsPerDay,
+      }
+    }
     const slot =
       ctx?.meals.find((m) => m.status === 'waiting_dish') ?? ctx?.meals[0]
     if (slot?.dateYmd) {

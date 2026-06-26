@@ -2,12 +2,13 @@ import { whatsappAgentConfig } from './config'
 import { detectCasualMessage } from './casual-messages'
 import { isMealPlanStatusQuestion } from './meal-plan-status'
 import { isSkipDayRequestNotUpdate } from './skip-day'
-import { looksLikeMultiDishList } from './pending-health'
+import { looksLikeMultiDishList, isAffirmativeReply, isAwaitingMealUpdate } from './pending-health'
 import { openAiJsonCompletion } from './openai-client'
 import type {
   IntentClassification,
   IntentClassificationResult,
   MealAgentIntent,
+  PendingBatchContext,
 } from './types'
 
 const MEAL_SIGNALS =
@@ -118,7 +119,8 @@ function looksLikeNewMealRequest(body: string): boolean {
 
 export async function classifyMealIntent(
   body: string,
-  hasOpenPending: boolean
+  hasOpenPending: boolean,
+  pendingContext?: PendingBatchContext | null
 ): Promise<IntentClassificationResult> {
   const trimmed = body.trim()
   if (!trimmed) {
@@ -134,6 +136,56 @@ export async function classifyMealIntent(
   }
 
   if (hasOpenPending) {
+    if (pendingContext && isAwaitingMealUpdate(pendingContext)) {
+      if (CANCEL_SIGNALS.test(trimmed)) {
+        return {
+          classification: {
+            intent: 'CANCEL',
+            isMealPlanRelated: true,
+            confidence: 0.95,
+            reason: 'cancel meal update offer',
+          },
+          source: 'rules',
+        }
+      }
+
+      if (isAffirmativeReply(trimmed)) {
+        return {
+          classification: {
+            intent: 'UPDATE_MEAL',
+            isMealPlanRelated: true,
+            confidence: 0.94,
+            reason: 'accepted meal update offer',
+          },
+          source: 'rules',
+        }
+      }
+
+      if (UPDATE_SIGNALS.test(trimmed) || looksLikeMultiDishList(trimmed)) {
+        return {
+          classification: {
+            intent: 'UPDATE_MEAL',
+            isMealPlanRelated: true,
+            confidence: 0.9,
+            reason: 'meal update instruction',
+          },
+          source: 'rules',
+        }
+      }
+
+      if (looksLikeDishFollowUpReply(trimmed) && !isAffirmativeReply(trimmed)) {
+        return {
+          classification: {
+            intent: 'UPDATE_MEAL',
+            isMealPlanRelated: true,
+            confidence: 0.85,
+            reason: 'dish name for meal update',
+          },
+          source: 'rules',
+        }
+      }
+    }
+
     if (CANCEL_SIGNALS.test(trimmed)) {
       return {
         classification: {

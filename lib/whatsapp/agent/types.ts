@@ -101,6 +101,12 @@ export interface PendingBatchContext {
     dateYmd: string
     mealsPerDay: number
   }
+  /** Day is full — customer was asked if they want to change an existing meal. */
+  awaitingMealUpdate?: {
+    dateYmd: string
+    mealsPerDay: number
+    existingMeals: Array<{ dishName: string | null; slotIndex: number }>
+  }
   replace?: ParsedReplaceMeal & {
     targetItemId?: number
     removeResolved?: boolean
