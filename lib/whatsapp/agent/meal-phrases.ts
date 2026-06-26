@@ -1,3 +1,4 @@
+import { parseQuantityPhrase } from './meal-quantities'
 import { normalizeForCompare, significantTokens } from './string-similarity'
 
 const TOMORROW_WORDS = /(?:tomorrow|tommorow|tomorow)/i
@@ -85,5 +86,7 @@ export function sanitizeDisplayPhrase(phrase: string): string {
 
 /** Normalize parsed customerPhrase before dish matching. */
 export function normalizeCustomerPhrase(phrase: string): string {
-  return sanitizeDisplayPhrase(phrase)
+  const sanitized = sanitizeDisplayPhrase(phrase)
+  const { phrase: withoutQuantity } = parseQuantityPhrase(sanitized)
+  return withoutQuantity.length >= 2 ? withoutQuantity : sanitized
 }

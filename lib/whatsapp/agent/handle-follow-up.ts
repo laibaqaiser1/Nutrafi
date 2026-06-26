@@ -24,7 +24,8 @@ import {
   askWhichMealsReply,
   supportOnlyReply,
 } from './replies'
-import { isVagueDishPhrase } from './meal-phrases'
+import { isVagueDishPhrase, normalizeCustomerPhrase } from './meal-phrases'
+import { MAX_MEAL_QUANTITY, parseQuantityPhrase } from './meal-quantities'
 import {
   isAwaitingMealNames,
   isBrokenPendingContext,
@@ -34,6 +35,56 @@ import { replyAfterMealsApplied } from './meal-update-reply'
 import { handleMealDayFullError } from './handle-apply-error'
 import { sendAgentReply } from './record-outbound'
 import type { AgentProcessResult, PendingBatchContext, PendingMealSlot } from './types'
+
+function applyQuantityResolutionToPending(params: {
+  ctx: PendingBatchContext
+  slot: PendingMealSlot
+  dishId: number
+  dishName: string | null | undefined
+  reply: string
+}): void {
+  const { count, phrase } = parseQuantityPhrase(params.reply)
+  const normalizedPhrase = normalizeCustomerPhrase(
+    phrase || params.reply.trim()
+  )
+
+  params.slot.status = 'resolved'
+  params.slot.resolvedDishId = params.dishId
+  params.slot.resolvedDishName = params.dishName ?? undefined
+  params.slot.customerPhrase = normalizedPhrase
+
+  for (const meal of params.ctx.meals) {
+    if (meal === params.slot || meal.status !== 'waiting_dish') continue
+    if (normalizeCustomerPhrase(meal.customerPhrase) === normalizedPhrase) {
+      meal.status = 'resolved'
+      meal.resolvedDishId = params.dishId
+      meal.resolvedDishName = params.dishName ?? undefined
+      meal.customerPhrase = normalizedPhrase
+    }
+  }
+
+  let resolvedCount = params.ctx.meals.filter(
+    (meal) =>
+      meal.status === 'resolved' &&
+      meal.resolvedDishId === params.dishId &&
+      normalizeCustomerPhrase(meal.customerPhrase) === normalizedPhrase
+  ).length
+
+  const targetCount = Math.min(Math.max(count, 1), MAX_MEAL_QUANTITY)
+  while (resolvedCount < targetCount) {
+    const maxIdx = Math.max(...params.ctx.meals.map((meal) => meal.slotIndex), -1)
+    params.ctx.meals.push({
+      dateYmd: params.slot.dateYmd,
+      slotIndex: maxIdx + 1,
+      timeSlot: params.slot.timeSlot,
+      customerPhrase: normalizedPhrase,
+      status: 'resolved',
+      resolvedDishId: params.dishId,
+      resolvedDishName: params.dishName ?? undefined,
+    })
+    resolvedCount++
+  }
+}
 
 function alignSlotsToTargetDate(ctx: PendingBatchContext): void {
   if (!ctx.targetDateYmd) return
@@ -158,10 +209,13 @@ export async function handleFollowUpMessage(params: {
     await setPendingStatus(pending.id, 'CANCELLED')
     const direct = await resolveDishFromPhrase(params.body.trim())
     if (direct.status === 'resolved' && direct.dishId && pending.mealPlanId) {
-      slot.status = 'resolved'
-      slot.resolvedDishId = direct.dishId
-      slot.resolvedDishName = direct.dishName
-      slot.customerPhrase = params.body.trim()
+      applyQuantityResolutionToPending({
+        ctx,
+        slot,
+        dishId: direct.dishId,
+        dishName: direct.dishName,
+        reply: params.body.trim(),
+      })
 
       alignSlotsToTargetDate(ctx)
       const applyError = await applyResolvedPendingMeals({
@@ -312,9 +366,13 @@ export async function handleFollowUpMessage(params: {
     return { runId: params.runId, status: 'NEEDS_CONFIRMATION', replyBody }
   }
 
-  slot.status = 'resolved'
-  slot.resolvedDishId = resolution.dishId
-  slot.resolvedDishName = resolution.dishName
+  applyQuantityResolutionToPending({
+    ctx,
+    slot,
+    dishId: resolution.dishId,
+    dishName: resolution.dishName,
+    reply: trimmedReply,
+  })
 
   const mealPlanId = pending.mealPlanId
   if (!mealPlanId) {

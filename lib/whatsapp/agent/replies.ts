@@ -4,6 +4,8 @@ import type { DishCandidate, PendingMealSlot } from './types'
 import { isVagueDishPhrase, sanitizeDisplayPhrase } from './meal-phrases'
 import { format, parseISO } from 'date-fns'
 
+export const MENU_URL = 'https://nutrafikitchen.com/#menu'
+
 function supportLine(): string {
   const { supportPhone } = whatsappAgentConfig()
   return `For delivery, payments, or other questions, contact customer support: ${formatPhoneDisplay(supportPhone)}`
@@ -121,6 +123,44 @@ export function askWhichMealsReply(dateYmd: string, mealsPerDay: number): string
 
   lines.push('')
   lines.push('Or in one line: chicken biryani and beef kofta for tomorrow')
+  lines.push('')
+  lines.push(`View our full menu: ${MENU_URL}`)
+  return lines.join('\n')
+}
+
+export function menuHelpReply(params: {
+  suggestions: DishCandidate[]
+  dateYmd?: string
+  pendingReminder?: boolean
+}): string {
+  const lines = [
+    'You can view our full menu here:',
+    MENU_URL,
+  ]
+
+  if (params.suggestions.length > 0) {
+    lines.push('')
+    lines.push('Some popular choices:')
+    params.suggestions.slice(0, 6).forEach((dish, index) => {
+      lines.push(`${index + 1}. ${dish.name}`)
+    })
+  }
+
+  lines.push('')
+  if (params.dateYmd) {
+    const dateLabel = formatDateLabel(params.dateYmd)
+    lines.push(`Reply with the dish name(s) for ${dateLabel}, for example:`)
+  } else {
+    lines.push('Reply with dish names, for example:')
+  }
+  lines.push('Meal 1: Chicken Biryani')
+  lines.push('Meal 2: Beef Kofta with Rice')
+
+  if (params.pendingReminder) {
+    lines.push('')
+    lines.push('Or reply CANCEL to start over.')
+  }
+
   return lines.join('\n')
 }
 
@@ -289,6 +329,8 @@ export function dishesNotOnMenuReply(params: {
     params.suggestions.slice(0, 6).forEach((s, i) => {
       lines.push(`${i + 1}. ${s.name}`)
     })
+    lines.push('')
+    lines.push(`View our full menu: ${MENU_URL}`)
     lines.push('')
     lines.push('Reply with a dish name, or send for example:')
     lines.push('Meal 1: Chicken Biryani')

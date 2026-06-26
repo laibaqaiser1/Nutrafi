@@ -19,6 +19,11 @@ import {
   mentionsTomorrow,
   normalizeCustomerPhrase,
 } from './meal-phrases'
+import {
+  MAX_MEAL_QUANTITY,
+  parseQuantityPhrase,
+  stripOrderingIntent,
+} from './meal-quantities'
 
 const WEEKDAYS: Record<string, number> = {
   monday: 1,
@@ -108,7 +113,8 @@ OTHER RULES:
 - When the customer sends one dish per line (e.g. "Biryani\\nSalmon Lemon\\nChicken wrap"), create one meal entry per line in order with slotIndex 0, 1, 2.
 - When the customer uses "Meal 1: X meal 2: Y" or "Meal 1: X meal 2 Y" (colon optional on meal 2+), extract X and Y as separate meals with slotIndex 0 and 1.
 - UPDATE kind only for "don't want X want Y" / replace requests.
-- customerPhrase = dish wording only (no date, no "meal 1").
+- customerPhrase = dish wording only (no date, no "meal 1", no quantity words).
+- Quantities: "one salad and one pasta" → two meals (salad, pasta). "two chicken pasta" or "2 chicken pasta" → two meals with the same phrase "chicken pasta". Strip leading one/two/2 and trailing "2 items".
 - Ignore greetings; extract meals only.
 - If no meals found: { "kind": "ADD", "meals": [] }.
 - Timezone for all dates: ${timezone}.`
@@ -240,6 +246,32 @@ function parseNumberedMealPhrases(body: string): string[] {
 
 export function hasNumberedMealFormat(body: string): boolean {
   return numberedMealMarkerCount(body) > 0
+}
+
+/** Expand "two pasta" into two meal slots; re-index slotIndex per day. */
+function finalizeParsedMeals(meals: ParsedMealSlot[]): ParsedMealSlot[] {
+  const byDate = new Map<string, ParsedMealSlot[]>()
+
+  for (const meal of meals) {
+    const { count, phrase } = parseQuantityPhrase(
+      stripOrderingIntent(meal.customerPhrase)
+    )
+    const normalized = normalizeCustomerPhrase(phrase)
+    if (isVagueDishPhrase(normalized)) continue
+
+    const capped = Math.min(Math.max(count, 1), MAX_MEAL_QUANTITY)
+    const dateMeals = byDate.get(meal.dateYmd) ?? []
+    for (let i = 0; i < capped; i++) {
+      dateMeals.push({
+        ...meal,
+        customerPhrase: normalized,
+        slotIndex: dateMeals.length,
+      })
+    }
+    byDate.set(meal.dateYmd, dateMeals)
+  }
+
+  return [...byDate.values()].flat()
 }
 
 function parseNumberedMealList(body: string, base: Date): ParsedMealSlot[] {
@@ -506,17 +538,19 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
   )
   const phrases: string[] = []
   if (addForDayMatch) {
-    phrases.push(normalizeCustomerPhrase(addForDayMatch[1]!))
+    phrases.push(addForDayMatch[1]!.trim())
   } else if (addMatch) {
-    phrases.push(...splitMealPhrases(addMatch[1]!).map(normalizeCustomerPhrase))
+    phrases.push(...splitMealPhrases(addMatch[1]!))
   } else {
-    const cleaned = body
-      .replace(
-        /\b(add|update|for|tomorrow|tommorow|tomorow|today|please|thanks|thank you|my|meals?)\b/gi,
-        ' '
-      )
-      .replace(/\s+/g, ' ')
-      .trim()
+    const cleaned = stripOrderingIntent(
+      body
+        .replace(
+          /\b(add|update|for|tomorrow|tommorow|tomorow|today|please|thanks|thank you|my|meals?)\b/gi,
+          ' '
+        )
+        .replace(/\s+/g, ' ')
+        .trim()
+    )
     if (cleaned.length > 2) {
       const second = body.match(/(?:second one|2nd one|and second)\s+(.+)/i)
       if (second) {
@@ -524,17 +558,22 @@ function parseSimpleAdd(body: string, base: Date): ParsedMealSlot[] {
         if (first) phrases.push(first)
         phrases.push(second[1]!.trim())
       } else {
-        phrases.push(...splitMealPhrases(cleaned).map(normalizeCustomerPhrase))
+        phrases.push(...splitMealPhrases(cleaned))
       }
     }
   }
 
-  phrases.forEach((phrase, slotIndex) => {
-    const normalized = normalizeCustomerPhrase(phrase)
-    if (!isVagueDishPhrase(normalized)) {
-      meals.push({ dateYmd, dateSource, slotIndex, customerPhrase: normalized })
+  for (const phrase of phrases) {
+    const trimmedPhrase = phrase.trim()
+    if (trimmedPhrase.length > 1) {
+      meals.push({
+        dateYmd,
+        dateSource,
+        slotIndex: meals.length,
+        customerPhrase: trimmedPhrase,
+      })
     }
-  })
+  }
   return meals
 }
 
@@ -637,7 +676,7 @@ function normalizeAiExtraction(
   if (kind === 'UPDATE' && replace) {
     return { kind: 'UPDATE', meals, replace }
   }
-  const actionable = filterActionableMealPhrases(meals)
+  const actionable = filterActionableMealPhrases(finalizeParsedMeals(meals))
   if (actionable.length === 0) return null
   return { kind: 'ADD', meals: actionable }
 }
@@ -663,7 +702,8 @@ function parseWithRules(
 
   if (meals.length === 0) return null
 
-  const actionable = filterActionableMealPhrases(meals)
+  const expanded = finalizeParsedMeals(meals)
+  const actionable = filterActionableMealPhrases(expanded)
   if (actionable.length === 0) return null
 
   return {
@@ -735,7 +775,7 @@ export async function parseMealMessage(
 
   const numberedMeals = parseNumberedMealList(trimmed, base)
   if (numberedMealMarkerCount(trimmed) > 0 && numberedMeals.length > 0) {
-    const actionable = filterActionableMealPhrases(numberedMeals)
+    const actionable = filterActionableMealPhrases(finalizeParsedMeals(numberedMeals))
     if (actionable.length > 0) {
       return {
         extraction: { kind: 'ADD', meals: actionable },

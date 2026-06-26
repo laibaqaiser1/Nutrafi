@@ -24,6 +24,31 @@ const CONFIRM_SIGNALS =
 const NOT_MEAL_SIGNALS =
   /\b(payment|pay|bill|invoice|delivery|delivered|deliver|when will|what time|where is|track|refund|complaint|support|help me)\b/i
 
+const MENU_QUESTION =
+  /\b(menu|options|choices|recommend(?:ation)?s?|popular\s+(?:dishes|meals))\b/i
+
+/** Customer asking what dishes are available or how to choose from the menu. */
+export function isMenuQuestion(body: string): boolean {
+  const trimmed = body.trim()
+  if (!trimmed) return false
+
+  if (MENU_QUESTION.test(trimmed)) return true
+
+  return (
+    /\b(what|which)\s+(?:are\s+)?(?:the\s+)?(?:options|choices|dishes|meals)\b/i.test(
+      trimmed
+    ) ||
+    /\bwhat\s+(?:can|could|do)\s+i\s+(?:choose|select|order|pick|have)\b/i.test(
+      trimmed
+    ) ||
+    /\bhow\s+(?:can|do)\s+i\s+(?:choose|select|pick|order)\b/i.test(trimmed) ||
+    /\bshow\s+(?:me\s+)?(?:the\s+)?(?:menu|dishes|options|meals)\b/i.test(trimmed) ||
+    /\bwhat\s+(?:do\s+)?you\s+have\b/i.test(trimmed) ||
+    /\bwhat\s+.*\bavailable\b/i.test(trimmed) ||
+    /\blist\s+(?:of\s+)?(?:dishes|meals|food|menu)\b/i.test(trimmed)
+  )
+}
+
 const DELIVERY_QUESTION =
   /\b(when|what time|how long)\b[\s\S]{0,40}\b(deliver|delivered|delivery|arrive|arriving|coming|reach)\b/i
 
@@ -116,6 +141,18 @@ export async function classifyMealIntent(
           isMealPlanRelated: true,
           confidence: 0.95,
           reason: 'cancel while pending',
+        },
+        source: 'rules',
+      }
+    }
+
+    if (isMenuQuestion(trimmed)) {
+      return {
+        classification: {
+          intent: 'NOT_MEAL',
+          isMealPlanRelated: true,
+          confidence: 0.95,
+          reason: 'menu question during pending',
         },
         source: 'rules',
       }

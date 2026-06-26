@@ -6,7 +6,7 @@ import {
   logAgentAction,
   updateAgentRun,
 } from './audit-log'
-import { classifyMealIntent } from './classify-intent'
+import { classifyMealIntent, isMenuQuestion } from './classify-intent'
 import { findCustomerByPhoneExact } from './find-customer'
 import { handleMealPlanStatusQuery, isMealPlanStatusQuestion } from './meal-plan-status'
 import { handleSkipDayRequest, isSkipDayRequestNotUpdate } from './skip-day'
@@ -16,11 +16,19 @@ import {
   applyConversationTargetDate,
   rememberTargetDateForConversation,
   enforceTargetDateOnExtraction,
+  resolveConversationTargetDate,
 } from './conversation-target-date'
 import { handleMealDayFullError } from './handle-apply-error'
 import { replyAfterMealsApplied } from './meal-update-reply'
 import { isVagueDishPhrase, sanitizeDisplayPhrase } from './meal-phrases'
-import { resolveDishFromPhrase, candidateIdsForDisplay, loadCandidatesInOrder, suggestDishesForPhrase, suggestFallbackMenuDishes } from './dish-matcher'
+import {
+  resolveDishFromPhrase,
+  candidateIdsForDisplay,
+  loadCandidatesInOrder,
+  suggestDishesForPhrase,
+  suggestFallbackMenuDishes,
+  suggestPopularMenuDishes,
+} from './dish-matcher'
 import {
   createPendingAction,
   getOpenPendingAction,
@@ -48,6 +56,7 @@ import {
   farewellReply,
   greetingReply,
   mealsAddedConfirmation,
+  menuHelpReply,
   noCustomerReply,
   noMealPlanReply,
   openAiUnavailableReply,
@@ -305,6 +314,35 @@ export async function processInboundAgentMessage(
       conversationId: params.conversationId,
       phoneE164: params.phoneE164,
     })
+  }
+
+  if (isMenuQuestion(trimmed)) {
+    const suggestions = await suggestPopularMenuDishes()
+    const target = await resolveConversationTargetDate(
+      params.conversationId,
+      openPending ?? undefined
+    )
+    const dateHint = target ?? inferMealDateFromMessage(trimmed)
+    const replyBody = menuHelpReply({
+      suggestions,
+      dateYmd: dateHint?.dateYmd,
+      pendingReminder: pendingStillOpen,
+    })
+    await sendAgentReply({
+      runId: run.id,
+      phoneE164: params.phoneE164,
+      conversationId: params.conversationId,
+      body: replyBody,
+    })
+    await updateAgentRun(run.id, {
+      status: pendingStillOpen ? 'NEEDS_CONFIRMATION' : 'SKIPPED',
+      payload: { reason: 'menu_help', dateYmd: dateHint?.dateYmd },
+    })
+    return {
+      runId: run.id,
+      status: pendingStillOpen ? 'NEEDS_CONFIRMATION' : 'SKIPPED',
+      replyBody,
+    }
   }
 
   if (pendingStillOpen && !classification.isMealPlanRelated) {

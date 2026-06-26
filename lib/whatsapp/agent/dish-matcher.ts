@@ -10,7 +10,8 @@ import {
   stringSimilarity,
 } from './string-similarity'
 import type { DishCandidate, DishResolution } from './types'
-import { isVagueDishPhrase } from './meal-phrases'
+import { isVagueDishPhrase, normalizeCustomerPhrase } from './meal-phrases'
+import { parseQuantityPhrase, stripOrderingIntent } from './meal-quantities'
 
 interface MenuDish {
   id: number
@@ -182,6 +183,51 @@ export async function suggestFallbackMenuDishes(limit = 6): Promise<DishCandidat
   }))
 }
 
+/** Most-ordered active dishes; falls back to alphabetical menu sample. */
+export async function suggestPopularMenuDishes(limit = 6): Promise<DishCandidate[]> {
+  const popular = await prisma.mealPlanItem.groupBy({
+    by: ['dishId'],
+    where: { dishId: { not: null }, isSkipped: false },
+    _count: { dishId: true },
+    orderBy: { _count: { dishId: 'desc' } },
+    take: limit * 3,
+  })
+
+  const dishIds = popular
+    .map((row) => row.dishId)
+    .filter((id): id is number => id != null)
+
+  const result: DishCandidate[] = []
+  if (dishIds.length > 0) {
+    const dishes = await prisma.dish.findMany({
+      where: { id: { in: dishIds }, status: 'ACTIVE' },
+      select: { id: true, name: true },
+    })
+    const byId = new Map(dishes.map((d) => [d.id, d]))
+
+    for (const row of popular) {
+      if (!row.dishId) continue
+      const dish = byId.get(row.dishId)
+      if (!dish) continue
+      result.push({
+        dishId: dish.id,
+        name: dish.name,
+        score: row._count.dishId,
+      })
+      if (result.length >= limit) return result
+    }
+  }
+
+  const fallback = await suggestFallbackMenuDishes(limit)
+  const seen = new Set(result.map((d) => d.dishId))
+  for (const dish of fallback) {
+    if (seen.has(dish.dishId)) continue
+    result.push(dish)
+    if (result.length >= limit) break
+  }
+  return result
+}
+
 export async function suggestDishesForPhrase(
   phrase: string,
   limit = 6
@@ -330,9 +376,13 @@ export function candidateIdsForDisplay(candidates: DishCandidate[]): number[] {
 export async function resolveDishFromPhrase(
   customerPhrase: string
 ): Promise<DishResolution> {
-  if (isVagueDishPhrase(customerPhrase)) {
+  const searchPhrase = normalizeCustomerPhrase(
+    stripOrderingIntent(customerPhrase)
+  )
+
+  if (isVagueDishPhrase(searchPhrase)) {
     return {
-      customerPhrase,
+      customerPhrase: searchPhrase,
       status: 'no_match',
       confidence: 0,
       candidates: [],
@@ -342,10 +392,10 @@ export async function resolveDishFromPhrase(
   const cfg = whatsappAgentConfig()
   const dishes = await loadActiveDishes()
 
-  const exactMatch = findExactMenuMatch(customerPhrase, dishes)
+  const exactMatch = findExactMenuMatch(searchPhrase, dishes)
   if (exactMatch) {
     return {
-      customerPhrase,
+      customerPhrase: searchPhrase,
       status: 'resolved',
       confidence: 0.98,
       dishId: exactMatch.id,
@@ -360,10 +410,10 @@ export async function resolveDishFromPhrase(
     }
   }
 
-  const uniqueTokenMatch = findUniqueMenuMatchByTokens(customerPhrase, dishes)
+  const uniqueTokenMatch = findUniqueMenuMatchByTokens(searchPhrase, dishes)
   if (uniqueTokenMatch) {
     return {
-      customerPhrase,
+      customerPhrase: searchPhrase,
       status: 'resolved',
       confidence: 0.92,
       dishId: uniqueTokenMatch.id,
@@ -378,13 +428,13 @@ export async function resolveDishFromPhrase(
     }
   }
 
-  const candidates = shortlistDishes(customerPhrase, dishes)
+  const candidates = shortlistDishes(searchPhrase, dishes)
 
   if (candidates.length === 0) {
-    const fuzzy = findFuzzyBestMatch(customerPhrase, dishes)
+    const fuzzy = findFuzzyBestMatch(searchPhrase, dishes)
     if (fuzzy && fuzzy.score >= 0.72) {
       return {
-        customerPhrase,
+        customerPhrase: searchPhrase,
         status: 'resolved',
         confidence: fuzzy.score,
         dishId: fuzzy.dishId,
@@ -394,7 +444,7 @@ export async function resolveDishFromPhrase(
     }
     if (fuzzy) {
       return {
-        customerPhrase,
+        customerPhrase: searchPhrase,
         status: 'needs_confirm',
         confidence: fuzzy.score,
         dishId: fuzzy.dishId,
@@ -403,7 +453,7 @@ export async function resolveDishFromPhrase(
       }
     }
     return {
-      customerPhrase,
+      customerPhrase: searchPhrase,
       status: 'no_match',
       confidence: 0,
       candidates: [],
@@ -413,7 +463,7 @@ export async function resolveDishFromPhrase(
   if (candidates.length === 1) {
     const only = candidates[0]!
     return {
-      customerPhrase,
+      customerPhrase: searchPhrase,
       status: 'resolved',
       confidence: Math.max(only.score, 0.85),
       dishId: only.dishId,
@@ -423,12 +473,12 @@ export async function resolveDishFromPhrase(
   }
 
   const uniqueAmongShortlist = findUniqueCandidateByTokens(
-    customerPhrase,
+    searchPhrase,
     candidates
   )
   if (uniqueAmongShortlist) {
     return {
-      customerPhrase,
+      customerPhrase: searchPhrase,
       status: 'resolved',
       confidence: 0.9,
       dishId: uniqueAmongShortlist.dishId,
@@ -440,7 +490,7 @@ export async function resolveDishFromPhrase(
   let top = candidates[0]!
   let confidence = top.score
 
-  const ambiguous = isAmbiguousTop(candidates, customerPhrase)
+  const ambiguous = isAmbiguousTop(candidates, searchPhrase)
   const autoThreshold = cfg.dishAutoConfidence
 
   if (
@@ -450,7 +500,7 @@ export async function resolveDishFromPhrase(
     (ambiguous || confidence < autoThreshold)
   ) {
     const ai = await pickWithOpenAi(
-      customerPhrase,
+      searchPhrase,
       candidates,
       cfg.openAiKey,
       cfg.openAiModel
@@ -466,7 +516,7 @@ export async function resolveDishFromPhrase(
 
   if (confidence >= autoThreshold && !ambiguous) {
     return {
-      customerPhrase,
+      customerPhrase: searchPhrase,
       status: 'resolved',
       confidence,
       dishId: top.dishId,
@@ -477,7 +527,7 @@ export async function resolveDishFromPhrase(
 
   if (confidence >= cfg.dishMinConfidence || candidates.length > 0) {
     return {
-      customerPhrase,
+      customerPhrase: searchPhrase,
       status: 'needs_confirm',
       confidence,
       dishId: top.dishId,
@@ -487,7 +537,7 @@ export async function resolveDishFromPhrase(
   }
 
   return {
-    customerPhrase,
+    customerPhrase: searchPhrase,
     status: 'no_match',
     confidence,
     candidates,
@@ -501,6 +551,9 @@ export async function resolveDishFromReply(
   const trimmed = reply.trim()
   if (!trimmed || candidateDishIds.length === 0) return null
 
+  const { phrase } = parseQuantityPhrase(trimmed)
+  const matchText = normalizeCustomerPhrase(phrase || trimmed)
+
   const displayIds = candidateDishIds.slice(0, DISPLAY_CANDIDATE_LIMIT)
   const candidates = await loadCandidatesInOrder(displayIds)
 
@@ -510,7 +563,7 @@ export async function resolveDishFromReply(
     if (idx >= 0 && idx < candidates.length) {
       const picked = candidates[idx]!
       return {
-        customerPhrase: trimmed,
+        customerPhrase: matchText,
         status: 'resolved',
         confidence: 1,
         dishId: picked.dishId,
@@ -520,10 +573,10 @@ export async function resolveDishFromReply(
     }
   }
 
-  const uniqueToken = findUniqueCandidateByTokens(trimmed, candidates)
+  const uniqueToken = findUniqueCandidateByTokens(matchText, candidates)
   if (uniqueToken) {
     return {
-      customerPhrase: trimmed,
+      customerPhrase: matchText,
       status: 'resolved',
       confidence: 0.95,
       dishId: uniqueToken.dishId,
@@ -532,7 +585,7 @@ export async function resolveDishFromReply(
     }
   }
 
-  const best = scoreReplyAgainstCandidates(trimmed, candidates)
+  const best = scoreReplyAgainstCandidates(matchText, candidates)
   if (!best) return null
 
   const cfg = whatsappAgentConfig()
@@ -540,7 +593,7 @@ export async function resolveDishFromReply(
 
   if (best.score >= threshold) {
     return {
-      customerPhrase: trimmed,
+      customerPhrase: matchText,
       status: 'resolved',
       confidence: best.score,
       dishId: best.dishId,
@@ -550,7 +603,7 @@ export async function resolveDishFromReply(
   }
 
   return {
-    customerPhrase: trimmed,
+    customerPhrase: matchText,
     status: 'needs_confirm',
     confidence: best.score,
     dishId: best.dishId,
