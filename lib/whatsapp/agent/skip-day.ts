@@ -1,6 +1,5 @@
 import { prisma, withRetry } from '@/lib/prisma'
 import { mealPlanDateFromYmd, mealPlanDateYmd } from '@/lib/meal-plan-calendar-date'
-import { planEndYmd } from '@/lib/import-default-plan/suggest-start-date'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { getDefaultCustomerLocationId } from '@/lib/customer-location'

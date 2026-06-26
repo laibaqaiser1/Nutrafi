@@ -1,7 +1,6 @@
 import type { Dish } from '@/lib/generated/prisma/client'
 import { prisma, withRetry } from '@/lib/prisma'
 import { mealPlanDateFromYmd, mealPlanDateYmd, mealPlanDayBoundsUtc } from '@/lib/meal-plan-calendar-date'
-import { planEndYmd } from '@/lib/import-default-plan/suggest-start-date'
 import {
   normalizeMealPlanTimeSlotForKey,
   parseMealPlanTimeSlots,
@@ -300,13 +299,9 @@ export async function applyAgentMealItems(
   }
 
   const usedExistingRowIds = new Set<number>()
+  // Same contract cap as dashboard meal-plan APIs — totalMeals / remainingMeals, not startDate+days.
   const totalMealsCap =
     mealPlanRow.totalMeals ?? mealPlanRow.days * mealPlanRow.mealsPerDay
-  const planStart = mealPlanRow.startDate
-    ? mealPlanDateYmd(mealPlanRow.startDate)
-    : ''
-  const planEnd =
-    planStart && mealPlanRow.days > 0 ? planEndYmd(planStart, mealPlanRow.days) : null
 
   const results: AgentMealApplyResult[] = []
 
@@ -315,9 +310,6 @@ export async function applyAgentMealItems(
       async (tx) => {
         for (const data of items) {
           const ymd = data.dateYmd
-          if (planEnd && ymd > planEnd) {
-            throw new Error(`${ymd} is after the plan end date (${planEnd}).`)
-          }
 
           const scheduledOnDate = scheduledByDate.get(ymd) ?? 0
           const customerDayTimeSlot = resolveCustomerDayTimeSlot(
@@ -651,20 +643,9 @@ export async function skipAgentMealsForDay(
       customerId: true,
       mealsPerDay: true,
       timeSlots: true,
-      days: true,
-      startDate: true,
     },
   })
   if (!mealPlanRow) throw new Error('Meal plan not found')
-
-  const planStart = mealPlanRow.startDate
-    ? mealPlanDateYmd(mealPlanRow.startDate)
-    : ''
-  const planEnd =
-    planStart && mealPlanRow.days > 0 ? planEndYmd(planStart, mealPlanRow.days) : null
-  if (planEnd && dateYmd > planEnd) {
-    throw new Error(`${dateYmd} is after the plan end date (${planEnd}).`)
-  }
 
   const mealsPerDay = Math.max(1, mealPlanRow.mealsPerDay)
   const planTimeSlots = parseMealPlanTimeSlots(mealPlanRow.timeSlots)

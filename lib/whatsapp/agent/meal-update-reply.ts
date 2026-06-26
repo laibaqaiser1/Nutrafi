@@ -20,6 +20,12 @@ export async function replyAfterMealsApplied(params: {
   customerId?: number
   mealsPerDay?: number
   touchedDateYmds: string[]
+  /** When finishing a batch pending flow, confirm from slot state if DB summary lags. */
+  batchAppliedMeals?: Array<{
+    dateYmd: string
+    dishName: string | null
+    slotIndex: number
+  }>
 }): Promise<AgentProcessResult> {
   const uniqueDates = [...new Set(params.touchedDateYmds)]
 
@@ -30,6 +36,36 @@ export async function replyAfterMealsApplied(params: {
       select: { mealsPerDay: true },
     })
     mealsPerDay = plan?.mealsPerDay ?? 1
+  }
+
+  if (
+    params.batchAppliedMeals != null &&
+    params.batchAppliedMeals.length >= mealsPerDay &&
+    uniqueDates.length === 1
+  ) {
+    await prisma.whatsAppPendingAction.updateMany({
+      where: { conversationId: params.conversationId, status: 'OPEN' },
+      data: { status: 'CANCELLED' },
+    })
+
+    const fromDb = await getActiveMealsSummaryForDates(
+      params.mealPlanId,
+      uniqueDates
+    )
+    const allMeals = fromDb.length > 0 ? fromDb : params.batchAppliedMeals
+    const replyBody = mealsAddedConfirmation(allMeals)
+
+    await sendAgentReply({
+      runId: params.runId,
+      phoneE164: params.phoneE164,
+      conversationId: params.conversationId,
+      body: replyBody,
+    })
+    await updateAgentRun(params.runId, {
+      status: 'SUCCESS',
+      payload: { applied: allMeals },
+    })
+    return { runId: params.runId, status: 'SUCCESS', replyBody }
   }
 
   for (const dateYmd of uniqueDates) {

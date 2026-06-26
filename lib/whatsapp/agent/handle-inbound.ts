@@ -732,7 +732,7 @@ async function processAddMeals(params: {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Apply failed'
-      const dayFull = await handleApplyFailure({
+      return handleApplyFailure({
         runId: params.runId,
         conversationId: params.conversationId,
         phoneE164: params.phoneE164,
@@ -740,17 +740,6 @@ async function processAddMeals(params: {
         errorMessage: msg,
         fallbackDateYmd: params.parsedMeals[0]?.dateYmd,
       })
-      if (dayFull) return dayFull
-
-      const replyBody = errorReply(msg)
-      await sendAgentReply({
-        runId: params.runId,
-        phoneE164: params.phoneE164,
-        conversationId: params.conversationId,
-        body: replyBody,
-      })
-      await updateAgentRun(params.runId, { status: 'FAILED', errorMessage: msg })
-      return { runId: params.runId, status: 'FAILED', replyBody }
     }
   }
 

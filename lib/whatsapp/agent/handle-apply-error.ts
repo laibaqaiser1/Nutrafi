@@ -85,7 +85,7 @@ export async function handleApplyFailure(params: {
   mealPlanId: number
   errorMessage: string
   fallbackDateYmd?: string
-}): Promise<AgentProcessResult | null> {
+}): Promise<AgentProcessResult> {
   const dayFull = await handleMealDayFullError(params)
   if (dayFull) return dayFull
 
@@ -117,5 +117,17 @@ export async function handleApplyFailure(params: {
     return { runId: params.runId, status: 'NEEDS_CONFIRMATION', replyBody }
   }
 
-  return null
+  await cancelOpenPending(params.conversationId)
+  const replyBody = errorReply(params.errorMessage)
+  await sendAgentReply({
+    runId: params.runId,
+    phoneE164: params.phoneE164,
+    conversationId: params.conversationId,
+    body: replyBody,
+  })
+  await updateAgentRun(params.runId, {
+    status: 'FAILED',
+    errorMessage: params.errorMessage,
+  })
+  return { runId: params.runId, status: 'FAILED', replyBody }
 }

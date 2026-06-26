@@ -43,9 +43,13 @@ function applyQuantityResolutionToPending(params: {
   dishName: string | null | undefined
   reply: string
 }): void {
-  const { count, phrase } = parseQuantityPhrase(params.reply)
+  const trimmedReply = params.reply.trim()
+  const dishChoiceNumber = /^\d{1,2}$/.test(trimmedReply)
+  const { count, phrase } = dishChoiceNumber
+    ? { count: 1, phrase: params.slot.customerPhrase }
+    : parseQuantityPhrase(trimmedReply)
   const normalizedPhrase = normalizeCustomerPhrase(
-    phrase || params.reply.trim()
+    phrase || trimmedReply
   )
 
   params.slot.status = 'resolved'
@@ -138,10 +142,30 @@ async function applyResolvedPendingMeals(params: {
 
   try {
     const applied = await applyAgentMealItems(params.mealPlanId, applyItems)
+    if (applied.length === 0 && applyItems.length > 0) {
+      return handleApplyFailure({
+        runId: params.runId,
+        conversationId: params.conversationId,
+        phoneE164: params.phoneE164,
+        mealPlanId: params.mealPlanId,
+        errorMessage: 'Could not save your meal choice. Please try again.',
+        fallbackDateYmd: applyItems[0]?.dateYmd,
+      })
+    }
     for (const row of applied) {
-      const slot = params.ctx.meals.find(
-        (s) => s.dateYmd === row.dateYmd && s.slotIndex === row.slotIndex
-      )
+      const slot =
+        params.ctx.meals.find(
+          (s) =>
+            s.dateYmd === row.dateYmd &&
+            s.slotIndex === row.slotIndex &&
+            s.resolvedDishId === row.dishId
+        ) ??
+        params.ctx.meals.find(
+          (s) =>
+            s.dateYmd === row.dateYmd &&
+            s.slotIndex === row.slotIndex &&
+            s.status === 'resolved'
+        )
       if (slot) {
         slot.status = 'applied'
         slot.mealPlanItemId = row.mealPlanItemId
@@ -412,6 +436,23 @@ export async function handleFollowUpMessage(params: {
   })
   if (applyError) return applyError
 
+  const appliedSlot = ctx.meals[idx]
+  if (
+    appliedSlot &&
+    appliedSlot.status === 'resolved' &&
+    appliedSlot.resolvedDishId != null &&
+    appliedSlot.mealPlanItemId == null
+  ) {
+    return handleApplyFailure({
+      runId: params.runId,
+      conversationId: params.conversationId,
+      phoneE164: params.phoneE164,
+      mealPlanId,
+      errorMessage: 'Could not save your meal choice. Please try again.',
+      fallbackDateYmd: appliedSlot.dateYmd,
+    })
+  }
+
   const nextIdx = ctx.meals.findIndex((m) => m.status === 'waiting_dish')
   ctx.currentQuestionIndex = nextIdx >= 0 ? nextIdx : idx
   await updatePendingContext(pending.id, ctx)
@@ -438,13 +479,23 @@ export async function handleFollowUpMessage(params: {
   }
 
   await setPendingStatus(pending.id, 'COMPLETED')
+  const batchAppliedMeals = ctx.meals
+    .filter((m) => m.status === 'applied')
+    .sort((a, b) => a.slotIndex - b.slotIndex)
+    .map((m) => ({
+      dateYmd: m.dateYmd,
+      dishName: m.resolvedDishName ?? null,
+      slotIndex: m.slotIndex,
+    }))
   return replyAfterMealsApplied({
     runId: params.runId,
     conversationId: params.conversationId,
     phoneE164: params.phoneE164,
     mealPlanId,
     customerId: pending.customerId ?? undefined,
+    mealsPerDay: ctx.mealsPerDay,
     touchedDateYmds: [...new Set(ctx.meals.map((m) => m.dateYmd))],
+    batchAppliedMeals,
   })
 }
 
