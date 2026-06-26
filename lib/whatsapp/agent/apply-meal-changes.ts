@@ -72,13 +72,23 @@ function isActiveRow(row: { isSkipped: boolean; wrongDelivery: boolean }): boole
   return !row.isSkipped && !row.wrongDelivery
 }
 
-/** Empty / inactive placeholder rows can be filled; active meals with a dish cannot. */
+function rowHasAssignedDish(row: {
+  dishId: number | null
+  dishName: string | null
+}): boolean {
+  return row.dishId != null || Boolean(row.dishName?.trim())
+}
+
+/** Meal chosen for delivery — excludes empty/inactive placeholder slots. */
+function isScheduledMealRow(row: ExistingItemRow): boolean {
+  return isActiveRow(row) && rowHasAssignedDish(row)
+}
+
+/** Empty / inactive placeholder rows can be filled; rows with a dish cannot. */
 function isFillableEmptyRow(row: ExistingItemRow): boolean {
   if (row.wrongDelivery) return false
-  if (row.isSkipped) return true
   if (row.dishId != null) return false
-  const name = row.dishName?.trim()
-  return !name
+  return !row.dishName?.trim()
 }
 
 function groupExistingRowsByDateYmd(
@@ -202,13 +212,15 @@ export async function applyAgentMealItems(
 
   const rowsByDate = groupExistingRowsByDateYmd(existingRows)
   const planTimeSlots = parseMealPlanTimeSlots(mealPlanRow.timeSlots)
-  const activeByDate = new Map<string, number>()
+  const scheduledByDate = new Map<string, number>()
   let activeCount = 0
   for (const row of existingRows) {
     if (!isActiveRow(row)) continue
     activeCount++
-    const ymd = mealPlanDateYmd(row.date)
-    activeByDate.set(ymd, (activeByDate.get(ymd) ?? 0) + 1)
+    if (isScheduledMealRow(row)) {
+      const ymd = mealPlanDateYmd(row.date)
+      scheduledByDate.set(ymd, (scheduledByDate.get(ymd) ?? 0) + 1)
+    }
   }
 
   const usedExistingRowIds = new Set<number>()
@@ -231,7 +243,7 @@ export async function applyAgentMealItems(
             throw new Error(`${ymd} is after the plan end date (${planEnd}).`)
           }
 
-          const activeOnDate = activeByDate.get(ymd) ?? 0
+          const scheduledOnDate = scheduledByDate.get(ymd) ?? 0
           const customerDayTimeSlot = resolveCustomerDayTimeSlot(
             ymd,
             rowsByDate,
@@ -260,13 +272,16 @@ export async function applyAgentMealItems(
               existingRow = fillable
               timeSlot = fillable.timeSlot
             } else {
-              if (mealPlanRow.mealsPerDay > 0 && activeOnDate >= mealPlanRow.mealsPerDay) {
+              if (
+                mealPlanRow.mealsPerDay > 0 &&
+                scheduledOnDate >= mealPlanRow.mealsPerDay
+              ) {
                 throw new Error(
                   `${ymd} already has ${mealPlanRow.mealsPerDay} active meal(s).`
                 )
               }
 
-              slotIndex = activeOnDate
+              slotIndex = scheduledOnDate
               timeSlot = customerDayTimeSlot
               existingRow = undefined
             }
@@ -311,17 +326,22 @@ export async function applyAgentMealItems(
           if (existingRow) {
             usedExistingRowIds.add(existingRow.id)
             const wasActive = isActiveRow(existingRow)
+            const hadDish = rowHasAssignedDish(existingRow)
             const row = await tx.mealPlanItem.update({
               where: { id: existingRow.id },
               data: rowPayload,
             })
             const nowActive = isActiveRow(row)
+            const hasDish = rowHasAssignedDish(row)
             if (!wasActive && nowActive) {
               activeCount += 1
-              activeByDate.set(ymd, (activeByDate.get(ymd) ?? 0) + 1)
             } else if (wasActive && !nowActive) {
               activeCount -= 1
-              activeByDate.set(ymd, Math.max(0, (activeByDate.get(ymd) ?? 1) - 1))
+            }
+            if (!hadDish && hasDish) {
+              scheduledByDate.set(ymd, (scheduledByDate.get(ymd) ?? 0) + 1)
+            } else if (hadDish && !hasDish) {
+              scheduledByDate.set(ymd, Math.max(0, (scheduledByDate.get(ymd) ?? 1) - 1))
             }
             results.push({
               mealPlanItemId: row.id,
@@ -353,7 +373,9 @@ export async function applyAgentMealItems(
           usedExistingRowIds.add(row.id)
           if (isActiveRow(row)) {
             activeCount += 1
-            activeByDate.set(ymd, (activeByDate.get(ymd) ?? 0) + 1)
+            if (rowHasAssignedDish(row)) {
+              scheduledByDate.set(ymd, (scheduledByDate.get(ymd) ?? 0) + 1)
+            }
             const list = rowsByDate.get(ymd) ?? []
             list.push({
               id: row.id,

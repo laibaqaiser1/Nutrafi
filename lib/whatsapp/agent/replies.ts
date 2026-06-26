@@ -175,7 +175,7 @@ export function dayAlreadyHasMealsReply(
 ): string {
   const dateLabel = formatDateLabel(dateYmd)
   const lines = [
-    `You already have ${mealsPerDay} meal(s) set for ${dateLabel}:`,
+    `You already have ${existingMeals.length} meal(s) set for ${dateLabel}:`,
     '',
   ]
   for (const meal of existingMeals) {
