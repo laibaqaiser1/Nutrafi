@@ -129,35 +129,21 @@ function countActiveMealSlots(items: { isSkipped: boolean; wrongDelivery?: boole
   return items.filter(itemCountsForPlanSchedule).length
 }
 
-/** Days with at least one counting meal toward the plan day budget. */
-function countUniqueActiveDays(
-  items: { date: string; isSkipped: boolean; wrongDelivery?: boolean }[]
-): number {
-  const days = new Set<string>()
-  for (const item of items) {
-    if (itemCountsForPlanSchedule(item)) {
-      days.add(mealPlanDateYmd(item.date))
-    }
-  }
-  return days.size
-}
-
-/** Whether the plan can add another week (first day only). No day-count limit — meals / remaining balance only. */
-function canAddAnotherWeekOnPlan(plan: {
+/** Add day/week when scheduled meals are under cap and delivery balance remains. */
+function canScheduleMoreMealsOnPlan(plan: {
   mealPlanItems: { isSkipped: boolean; wrongDelivery?: boolean }[]
   totalMeals: number | null
   days: number
   mealsPerDay: number
   remainingMeals: number | null
 }): boolean {
-  const activeMealSlots = countActiveMealSlots(plan.mealPlanItems)
+  const scheduledMeals = countActiveMealSlots(plan.mealPlanItems)
   const totalMealsAllowed = plan.totalMeals ?? plan.days * plan.mealsPerDay
-  const capOk = activeMealSlots + plan.mealsPerDay <= totalMealsAllowed
-  const remainingOk =
+  return (
+    scheduledMeals < totalMealsAllowed &&
     plan.remainingMeals != null &&
-    plan.remainingMeals > 0 &&
-    activeMealSlots < totalMealsAllowed
-  return capOk || remainingOk
+    plan.remainingMeals > 0
+  )
 }
 
 /** Effective skip weekdays: explicit per-week draft, else plan default (`weeklySkipDays`). */
@@ -288,7 +274,11 @@ export default function MealPlanViewPage() {
   const [showDishDetails, setShowDishDetails] = useState(false)
   const [visibleDaysByWeek, setVisibleDaysByWeek] = useState<Record<number, string[]>>({})
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingExcel, setDownloadingExcel] = useState(false)
   const [downloadingWeekPdf, setDownloadingWeekPdf] = useState<number | null>(null)
+  const [downloadingWeekExcel, setDownloadingWeekExcel] = useState<number | null>(null)
+  const [planDownloadMenuOpen, setPlanDownloadMenuOpen] = useState(false)
+  const [weekDownloadMenuOpen, setWeekDownloadMenuOpen] = useState<number | null>(null)
   const [dayMenuOpen, setDayMenuOpen] = useState<{ week: number; date: string } | null>(null)
   const [weekMenuOpen, setWeekMenuOpen] = useState<number | null>(null)
   const [addingDay, setAddingDay] = useState(false)
@@ -366,9 +356,17 @@ export default function MealPlanViewPage() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement
-      if (!target.closest('.day-menu-container') && !target.closest('.week-menu-container') && !target.closest('.actions-menu-container')) {
+      if (
+        !target.closest('.day-menu-container') &&
+        !target.closest('.week-menu-container') &&
+        !target.closest('.week-download-menu-container') &&
+        !target.closest('.plan-download-menu-container') &&
+        !target.closest('.actions-menu-container')
+      ) {
         setDayMenuOpen(null)
         setWeekMenuOpen(null)
+        setPlanDownloadMenuOpen(false)
+        setWeekDownloadMenuOpen(null)
         setActionsMenuOpen(false)
       }
     }
@@ -822,55 +820,60 @@ export default function MealPlanViewPage() {
     }
   }
 
-  const handleDownloadPdf = async () => {
+  const downloadMealPlanExport = async (format: 'pdf' | 'xlsx', week?: number) => {
     if (!mealPlan) return
-    setDownloadingPdf(true)
+    if (week != null) {
+      if (format === 'pdf') setDownloadingWeekPdf(week)
+      else setDownloadingWeekExcel(week)
+    } else if (format === 'pdf') {
+      setDownloadingPdf(true)
+    } else {
+      setDownloadingExcel(true)
+    }
+
     try {
-      const res = await fetch(`/api/meal-plans/${mealPlan.id}/export`)
+      const params = new URLSearchParams({ format })
+      if (week != null) params.set('week', String(week))
+      const res = await fetch(`/api/meal-plans/${mealPlan.id}/export?${params}`)
       if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()
       const disposition = res.headers.get('Content-Disposition')
       const match = disposition?.match(/filename="?([^";\n]+)"?/)
-      const filename = match ? match[1] : `meal-plan-${mealPlan.id}.pdf`
+      const ext = format === 'pdf' ? 'pdf' : 'xlsx'
+      const fallback =
+        week != null
+          ? `meal-plan-${mealPlan.id}-week-${week}.${ext}`
+          : `meal-plan-${mealPlan.id}.${ext}`
+      const filename = match ? match[1] : fallback
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = filename
       a.click()
       URL.revokeObjectURL(url)
-      toast.success('PDF downloaded')
+      const label = format === 'pdf' ? 'PDF' : 'Excel'
+      toast.success(
+        week != null ? `Week ${week} ${label} downloaded` : `${label} downloaded`
+      )
     } catch (e) {
       console.error(e)
-      toast.error('Failed to download PDF')
+      toast.error(`Failed to download ${format === 'pdf' ? 'PDF' : 'Excel'}`)
     } finally {
-      setDownloadingPdf(false)
+      if (week != null) {
+        if (format === 'pdf') setDownloadingWeekPdf(null)
+        else setDownloadingWeekExcel(null)
+      } else if (format === 'pdf') {
+        setDownloadingPdf(false)
+      } else {
+        setDownloadingExcel(false)
+      }
     }
   }
 
-  const handleDownloadWeekPdf = async (week: number) => {
-    if (!mealPlan) return
-    setDownloadingWeekPdf(week)
-    try {
-      const res = await fetch(`/api/meal-plans/${mealPlan.id}/export?week=${week}`)
-      if (!res.ok) throw new Error('Export failed')
-      const blob = await res.blob()
-      const disposition = res.headers.get('Content-Disposition')
-      const match = disposition?.match(/filename="?([^";\n]+)"?/)
-      const filename = match ? match[1] : `meal-plan-${mealPlan.id}-week-${week}.pdf`
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
-      toast.success(`Week ${week} PDF downloaded`)
-    } catch (e) {
-      console.error(e)
-      toast.error('Failed to download week PDF')
-    } finally {
-      setDownloadingWeekPdf(null)
-    }
-  }
+  const handleDownloadPdf = () => downloadMealPlanExport('pdf')
+  const handleDownloadExcel = () => downloadMealPlanExport('xlsx')
+  const handleDownloadWeekPdf = (week: number) => downloadMealPlanExport('pdf', week)
+  const handleDownloadWeekExcel = (week: number) => downloadMealPlanExport('xlsx', week)
 
   const handleItemClick = (item: MealPlan['mealPlanItems'][0]) => {
     setSelectedItem(item)
@@ -1158,9 +1161,9 @@ export default function MealPlanViewPage() {
     try {
       const totalMealsAllowed = mealPlan.totalMeals || mealPlan.days * mealPlan.mealsPerDay
 
-      if (!canAddAnotherWeekOnPlan(mealPlan)) {
+      if (!canScheduleMoreMealsOnPlan(mealPlan)) {
         toast.warning(
-          `Cannot add another week. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`
+          `Cannot add another week. This plan has reached its limit of ${totalMealsAllowed} meals or has no remaining meals.`
         )
         setAddingWeek(false)
         return
@@ -1245,32 +1248,15 @@ export default function MealPlanViewPage() {
     
     setAddingDay(true)
     try {
-      console.log('[addDayToWeek] start', { planId: mealPlan.id, week })
-      // Check total days across all weeks - limit to plan days
-      const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
-      const maxDays = mealPlan.days || 22
-      const remainingDays = maxDays - totalDays
-      const totalMealsAllowedEarly = mealPlan.totalMeals || mealPlan.days * mealPlan.mealsPerDay
-      const activeEarly = countActiveMealSlots(mealPlan.mealPlanItems)
-      const allowExtraDayDespiteDayCount =
-        mealPlan.remainingMeals != null &&
-        mealPlan.remainingMeals > 0 &&
-        activeEarly < totalMealsAllowedEarly
-      console.log('[addDayToWeek] day budget', {
-        totalDays,
-        maxDays,
-        remainingDays,
-        allowExtraDayDespiteDayCount,
-        pass: remainingDays > 0 || allowExtraDayDespiteDayCount,
-      })
-
-      if (remainingDays <= 0 && !allowExtraDayDespiteDayCount) {
-        console.log('[addDayToWeek] FAIL remainingDays<=0 and no meal room bypass')
-        toast.warning(`Cannot add another day. The meal plan is limited to ${maxDays} active days.`)
+      const totalMealsAllowed = mealPlan.totalMeals ?? mealPlan.days * mealPlan.mealsPerDay
+      if (!canScheduleMoreMealsOnPlan(mealPlan)) {
+        toast.warning(
+          `Cannot add another day. This plan has reached its limit of ${totalMealsAllowed} meals or has no remaining meals.`
+        )
         setAddingDay(false)
         return
       }
-      
+
       // Days already in this calendar week (Mon–Sun) from meal items
       const weekDates = new Set<string>()
       mealPlan.mealPlanItems.forEach(item => {
@@ -1281,54 +1267,20 @@ export default function MealPlanViewPage() {
       })
       const currentDaysInWeek = weekDates.size
       const maxDaysInThisWeek = planWeekDayStringsOnOrAfterStart(mealPlan.startDate, week).length
-      console.log('[addDayToWeek] week calendar', {
-        currentDaysInWeek,
-        maxDaysInThisWeek,
-        passInWeek: currentDaysInWeek < maxDaysInThisWeek,
-      })
 
       if (currentDaysInWeek >= maxDaysInThisWeek) {
-        console.log('[addDayToWeek] FAIL currentDaysInWeek>=maxDaysInThisWeek')
         toast.warning('All days for this week are already added.')
         setAddingDay(false)
         return
       }
 
-      const dayBudgetForWeek = remainingDays > 0 ? remainingDays : allowExtraDayDespiteDayCount ? 1 : 0
-      const daysCanAddToWeek = Math.min(maxDaysInThisWeek - currentDaysInWeek, dayBudgetForWeek)
-      console.log('[addDayToWeek] daysCanAddToWeek', { dayBudgetForWeek, daysCanAddToWeek, pass: daysCanAddToWeek > 0 })
-
-      if (daysCanAddToWeek <= 0) {
-        console.log('[addDayToWeek] FAIL daysCanAddToWeek<=0', { remainingDays })
-        if (remainingDays <= 0) {
-          toast.warning(`Cannot add more days. The meal plan is limited to ${maxDays} days.`)
-        } else {
-          toast.warning(`Cannot add more days to this week.`)
-        }
-        setAddingDay(false)
-        return
-      }
-
-      const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
       const defaultTimeSlots = resolveMealTimeSlotTemplate(mealPlan)
-      let remainingSlots = Math.max(0, totalMealsAllowed - countActiveMealSlots(mealPlan.mealPlanItems))
-      console.log('[addDayToWeek] meal slots (before remainingMeals boost)', {
-        totalMealsAllowed,
-        activeMealSlots: countActiveMealSlots(mealPlan.mealPlanItems),
-        remainingSlots,
-        remainingMeals: mealPlan.remainingMeals,
-      })
-      if (
-        remainingSlots <= 0 &&
-        mealPlan.remainingMeals != null &&
-        mealPlan.remainingMeals > 0
-      ) {
-        remainingSlots = Math.min(mealPlan.remainingMeals, defaultTimeSlots.length)
-        console.log('[addDayToWeek] boosted remainingSlots from remainingMeals', { remainingSlots })
-      }
+      const remainingSlots = Math.max(
+        0,
+        totalMealsAllowed - countActiveMealSlots(mealPlan.mealPlanItems)
+      )
 
       if (remainingSlots <= 0) {
-        console.log('[addDayToWeek] FAIL remainingSlots<=0')
         toast.warning(
           `Cannot add another day. This would exceed the plan's limit of ${totalMealsAllowed} active meals (skipped days do not use a slot).`
         )
@@ -1338,9 +1290,7 @@ export default function MealPlanViewPage() {
 
       // Fill earliest missing calendar day in Mon–Sun on or after plan start
       const nextDay = nextMissingDayInPlanWeek(mealPlan.startDate, week, weekDates)
-      console.log('[addDayToWeek] nextMissingDayInPlanWeek', { nextDay: nextDay ? format(nextDay, 'yyyy-MM-dd') : null })
       if (!nextDay) {
-        console.log('[addDayToWeek] FAIL no nextDay')
         toast.warning('No free day left in this week.')
         setAddingDay(false)
         return
@@ -1348,10 +1298,6 @@ export default function MealPlanViewPage() {
       const nextDayDateStr = format(nextDay, 'yyyy-MM-dd')
 
       const timeSlotsForDay = defaultTimeSlots.slice(0, Math.min(defaultTimeSlots.length, remainingSlots))
-      console.log('[addDayToWeek] creating items', {
-        nextDayDateStr: format(nextDay, 'yyyy-MM-dd'),
-        slotsToCreate: timeSlotsForDay.length,
-      })
 
       // Create meal items for the new day (capped so total active meals never exceed the plan)
       const mealItemPromises = timeSlotsForDay.map((timeSlot) => {
@@ -1683,14 +1629,45 @@ export default function MealPlanViewPage() {
       <div className="flex justify-between items-center mb-3 lg:mb-6">
         <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Meal Plan Details</h1>
         <div className="flex flex-wrap gap-2 lg:p-4">
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            disabled={downloadingPdf}
-            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
-          >
-            {downloadingPdf ? 'Downloading…' : 'Download PDF'}
-          </button>
+          <div className="relative plan-download-menu-container">
+            <button
+              type="button"
+              onClick={() => setPlanDownloadMenuOpen((open) => !open)}
+              disabled={downloadingPdf || downloadingExcel}
+              className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 inline-flex items-center gap-1.5"
+            >
+              {downloadingPdf || downloadingExcel ? 'Downloading…' : 'Download meal plan'}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {planDownloadMenuOpen && (
+              <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg z-50 border border-gray-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlanDownloadMenuOpen(false)
+                    handleDownloadPdf()
+                  }}
+                  disabled={downloadingPdf}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50 border-b border-gray-100"
+                >
+                  {downloadingPdf ? 'Downloading PDF…' : 'Download PDF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlanDownloadMenuOpen(false)
+                    handleDownloadExcel()
+                  }}
+                  disabled={downloadingExcel}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {downloadingExcel ? 'Downloading Excel…' : 'Download Excel'}
+                </button>
+              </div>
+            )}
+          </div>
           <Link
             href={`/meal-plans/${mealPlan.id}/edit`}
             className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
@@ -1926,7 +1903,7 @@ export default function MealPlanViewPage() {
             <MealPlanViewImportControls importApi={mealPlanImport} />
           {(() => {
             if (!mealPlan) return null
-            const canAddMoreWeeks = canAddAnotherWeekOnPlan(mealPlan)
+            const canAddMoreWeeks = canScheduleMoreMealsOnPlan(mealPlan)
             
             return canAddMoreWeeks ? (
               <button
@@ -1989,30 +1966,66 @@ export default function MealPlanViewPage() {
                       <span className="font-bold">{weekTotal.calories} kcal</span>
                       {' '}• P: {weekTotal.protein.toFixed(1)}g | C: {weekTotal.carbs.toFixed(1)}g | F: {weekTotal.fats.toFixed(1)}g
                     </div>
-                    {/* Week download PDF + actions */}
+                    {/* Week download + actions */}
                     <div className="flex items-center gap-0.5 ml-2">
                       {mealPlan.startDate && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDownloadWeekPdf(week)
-                        }}
-                        disabled={downloadingWeekPdf === week}
-                        title="Download week PDF"
-                        aria-label="Download week PDF"
-                        className="p-1.5 rounded text-white hover:bg-white/20 transition-colors disabled:opacity-50"
-                      >
-                        {downloadingWeekPdf === week ? (
-                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
+                      <div className="relative week-download-menu-container">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setWeekDownloadMenuOpen((open) => (open === week ? null : week))
+                          }}
+                          disabled={downloadingWeekPdf === week || downloadingWeekExcel === week}
+                          title="Download meal plan"
+                          aria-label="Download meal plan"
+                          aria-expanded={weekDownloadMenuOpen === week}
+                          className="p-1.5 rounded text-white hover:bg-white/20 transition-colors disabled:opacity-50 inline-flex items-center gap-0.5"
+                        >
+                          {downloadingWeekPdf === week || downloadingWeekExcel === week ? (
+                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </>
+                          )}
+                        </button>
+                        {weekDownloadMenuOpen === week && (
+                          <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg z-50 border border-gray-200 overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setWeekDownloadMenuOpen(null)
+                                handleDownloadWeekPdf(week)
+                              }}
+                              disabled={downloadingWeekPdf === week}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50 border-b border-gray-100"
+                            >
+                              {downloadingWeekPdf === week ? 'Downloading PDF…' : 'Download PDF'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setWeekDownloadMenuOpen(null)
+                                handleDownloadWeekExcel(week)
+                              }}
+                              disabled={downloadingWeekExcel === week}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                              {downloadingWeekExcel === week ? 'Downloading Excel…' : 'Download Excel'}
+                            </button>
+                          </div>
                         )}
-                      </button>
+                      </div>
                       )}
                     <div className="relative week-menu-container">
                       <button
@@ -2226,10 +2239,6 @@ export default function MealPlanViewPage() {
                                 const isLastDay = date === sortedDates[sortedDates.length - 1]
                                 if (!isLastDay) return null
 
-                                const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
-                                const maxDays = mealPlan.days || 22
-                                const remainingDays = maxDays - totalDays
-
                                 const weekDatesSet = new Set<string>()
                                 mealPlan.mealPlanItems.forEach(item => {
                                   const itemWeek = getWeekNumber(item.date, mealPlan.startDate)
@@ -2244,20 +2253,8 @@ export default function MealPlanViewPage() {
                                 ).length
 
                                 const canAddDayInWeek = currentDaysInWeek < maxDaysInThisWeek
-                                const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
-                                const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-                                const dayBudgetAllows =
-                                  remainingDays > 0 ||
-                                  (mealPlan.remainingMeals != null &&
-                                    mealPlan.remainingMeals > 0 &&
-                                    activeMealSlots < totalMealsAllowed)
-                                const canAddDay = canAddDayInWeek && dayBudgetAllows
-
-                                const capOk = activeMealSlots < totalMealsAllowed
-                                const remainingOk =
-                                  mealPlan.remainingMeals != null && mealPlan.remainingMeals > 0
-                                const canAddMoreMeals = capOk || remainingOk
-                                const show = canAddDay && canAddMoreMeals
+                                const show =
+                                  canAddDayInWeek && canScheduleMoreMealsOnPlan(mealPlan)
 
                                 return show ? (
                                   <tr>
@@ -2288,41 +2285,7 @@ export default function MealPlanViewPage() {
                                   No days added to this week yet.
                                 </p>
                                 {(() => {
-                                  // Check if we can add a day
-                                  const totalDays = countUniqueActiveDays(mealPlan.mealPlanItems)
-                                  const maxDays = mealPlan.days || 22
-                                  const remainingDays = maxDays - totalDays
-                                  console.log('[Add Day empty week UI]', {
-                                    planId: mealPlan.id,
-                                    week,
-                                    totalDays,
-                                    maxDays,
-                                    remainingDays,
-                                    passRemainingDays: remainingDays > 0,
-                                  })
-                                  
-                                  const activeMealSlots = countActiveMealSlots(mealPlan.mealPlanItems)
-                                  const totalMealsAllowed = mealPlan.totalMeals || (mealPlan.days * mealPlan.mealsPerDay)
-                                  const capOk = activeMealSlots < totalMealsAllowed
-                                  const remainingOk =
-                                    mealPlan.remainingMeals != null && mealPlan.remainingMeals > 0
-                                  const canAddMoreMeals = capOk || remainingOk
-                                  const dayBudgetAllows =
-                                    remainingDays > 0 ||
-                                    (mealPlan.remainingMeals != null &&
-                                      mealPlan.remainingMeals > 0 &&
-                                      activeMealSlots < totalMealsAllowed)
-                                  console.log('[Add Day empty week UI] meal cap', {
-                                    activeMealSlots,
-                                    totalMealsAllowed,
-                                    capOk,
-                                    remainingMeals: mealPlan.remainingMeals,
-                                    remainingOk,
-                                    canAddMoreMeals,
-                                    dayBudgetAllows,
-                                  })
-                                  const show = dayBudgetAllows && canAddMoreMeals
-                                  console.log('[Add Day empty week UI] SHOW_BUTTON', show)
+                                  const show = canScheduleMoreMealsOnPlan(mealPlan)
 
                                   return show ? (
                                     <button
