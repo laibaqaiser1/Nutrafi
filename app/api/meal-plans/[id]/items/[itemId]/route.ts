@@ -6,6 +6,13 @@ import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
+import {
+  countChangeFields,
+  logMealPlanError,
+  logMealPlanEvent,
+  snapshotMealPlanCounts,
+} from '@/lib/meal-plan-logger'
+import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 
 const mealPlanItemUpdateSchema = z.object({
@@ -48,6 +55,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     if (!session || !sessionHasPermission(session, PK.moduleMealPlans)) {
@@ -71,6 +79,11 @@ export async function PATCH(
 
     const body = await request.json()
     const data = mealPlanItemUpdateSchema.parse(body)
+    const countsAffecting =
+      data.isSkipped !== undefined || data.wrongDelivery !== undefined
+    const countsBefore = countsAffecting
+      ? await snapshotMealPlanCounts(prisma, id)
+      : null
 
     let resolvedLocationId: number | null | undefined
     if (data.customerLocationId !== undefined) {
@@ -166,6 +179,17 @@ export async function PATCH(
         const remainingMeals = await syncMealPlanRemainingMeals(tx, id)
         return { updated, remainingMeals }
       })
+      if (countsAffecting) {
+        const countsAfter = await snapshotMealPlanCounts(prisma, id)
+        logMealPlanEvent({
+          event: 'meal_plan_item.updated',
+          ...countChangeFields(countsBefore, countsAfter, {
+            itemId,
+            action: data.wrongDelivery === true ? 'wrong_delivery' : 'wrong_delivery_cleared',
+            remainingMeals,
+          }),
+        })
+      }
       return NextResponse.json({ ...updated, remainingMeals })
     }
 
@@ -173,6 +197,21 @@ export async function PATCH(
       where: { id: itemId },
       data: updatePayload,
     })
+    if (countsAffecting) {
+      const countsAfter = await snapshotMealPlanCounts(prisma, id)
+      logMealPlanEvent({
+        event: 'meal_plan_item.updated',
+        ...countChangeFields(countsBefore, countsAfter, {
+          itemId,
+          action:
+            data.isSkipped === true
+              ? 'skip'
+              : data.isSkipped === false
+                ? 'unskip'
+                : 'item_update',
+        }),
+      })
+    }
     return NextResponse.json(updated)
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {
@@ -186,9 +225,10 @@ export async function PATCH(
         { status: 409 }
       )
     }
-    console.error('Error updating meal plan item:', error)
+    logMealPlanError('meal_plan_item.update_failed', error)
     return NextResponse.json({ error: 'Failed to update meal plan item' }, { status: 500 })
   }
+  })
 }
 
 // DELETE - Delete meal plan item
@@ -196,6 +236,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     const { id: idParam, itemId: itemIdParam } = await params
@@ -213,16 +254,29 @@ export async function DELETE(
       return NextResponse.json({ error: 'Meal plan item not found' }, { status: 404 })
     }
 
+    const countsBefore = await snapshotMealPlanCounts(prisma, id)
+
     // Delete the item
     await prisma.mealPlanItem.delete({
       where: { id: itemId },
     })
 
+    const countsAfter = await snapshotMealPlanCounts(prisma, id)
+    logMealPlanEvent({
+      event: 'meal_plan_item.deleted',
+      ...countChangeFields(countsBefore, countsAfter, {
+        itemId,
+        deletedCount: 1,
+        action: 'item_delete',
+      }),
+    })
+
     return NextResponse.json({ message: 'Meal plan item deleted successfully' })
   } catch (error) {
-    console.error('Error deleting meal plan item:', error)
+    logMealPlanError('meal_plan_item.delete_failed', error)
     return NextResponse.json({ error: 'Failed to delete meal plan item' }, { status: 500 })
   }
+  })
 }
 
 

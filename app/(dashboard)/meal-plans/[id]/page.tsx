@@ -129,6 +129,98 @@ function countActiveMealSlots(items: { isSkipped: boolean; wrongDelivery?: boole
   return items.filter(itemCountsForPlanSchedule).length
 }
 
+type MealPlanItemForStats = {
+  isSkipped: boolean
+  isDelivered: boolean
+  wrongDelivery?: boolean
+  dishId: string | null
+  dishName: string | null
+}
+
+type MealPlanMealStats = {
+  totalMeals: number
+  scheduled: number
+  active: number
+  inactive: number
+  delivered: number
+  skipped: number
+  wrongDelivery: number
+  remainingMeals: number | null
+  scheduleSlotsLeft: number
+  canScheduleMore: boolean
+}
+
+function computeMealPlanMealStats(plan: {
+  totalMeals: number | null
+  days: number
+  mealsPerDay: number
+  remainingMeals: number | null
+  mealPlanItems: MealPlanItemForStats[]
+}): MealPlanMealStats {
+  let skipped = 0
+  let wrongDelivery = 0
+  let delivered = 0
+  let active = 0
+  let inactive = 0
+
+  for (const item of plan.mealPlanItems) {
+    if (item.isSkipped) {
+      skipped += 1
+      continue
+    }
+    if (item.wrongDelivery) {
+      wrongDelivery += 1
+      continue
+    }
+    if (item.isDelivered) {
+      delivered += 1
+      continue
+    }
+    if (item.dishId || item.dishName) {
+      active += 1
+    } else {
+      inactive += 1
+    }
+  }
+
+  const scheduled = countActiveMealSlots(plan.mealPlanItems)
+  const totalMeals = plan.totalMeals ?? plan.days * plan.mealsPerDay
+
+  return {
+    totalMeals,
+    scheduled,
+    active,
+    inactive,
+    delivered,
+    skipped,
+    wrongDelivery,
+    remainingMeals: plan.remainingMeals,
+    scheduleSlotsLeft: Math.max(0, totalMeals - scheduled),
+    canScheduleMore: canScheduleMoreMealsOnPlan(plan),
+  }
+}
+
+function logMealPlanMealStats(
+  planId: string | number,
+  plan: Parameters<typeof computeMealPlanMealStats>[0],
+  context: string
+): MealPlanMealStats {
+  const stats = computeMealPlanMealStats(plan)
+  console.info(`[MealPlan #${planId}] ${context}`, {
+    totalMeals: stats.totalMeals,
+    scheduledUsed: stats.scheduled,
+    active: stats.active,
+    inactive: stats.inactive,
+    delivered: stats.delivered,
+    skipped: stats.skipped,
+    wrongDelivery: stats.wrongDelivery,
+    remainingToDeliver: stats.remainingMeals,
+    scheduleSlotsLeft: stats.scheduleSlotsLeft,
+    canAddDayOrWeek: stats.canScheduleMore,
+  })
+  return stats
+}
+
 /** Add day/week when scheduled meals are under cap and delivery balance remains. */
 function canScheduleMoreMealsOnPlan(plan: {
   mealPlanItems: { isSkipped: boolean; wrongDelivery?: boolean }[]
@@ -395,6 +487,7 @@ export default function MealPlanViewPage() {
         const data = await response.json()
         lastPersistedSkipJsonRef.current = null
         setMealPlan(data)
+        logMealPlanMealStats(id, data, 'loaded')
         const globalSkip = normalizeWeeklySkipDays(data.weeklySkipDays)
         const parsedByWeek = parseWeeklySkipDaysByWeekJson(data.weeklySkipDaysByWeek)
 
@@ -770,10 +863,12 @@ export default function MealPlanViewPage() {
     try {
       const response = await fetch(`/api/meal-plans/${mealPlan.id}/items/${itemId}`, { method: 'DELETE' })
       if (response.ok) {
+        const updatedItems = mealPlan.mealPlanItems.filter(item => item.id !== itemId)
         setMealPlan({
           ...mealPlan,
-          mealPlanItems: mealPlan.mealPlanItems.filter(item => item.id !== itemId),
+          mealPlanItems: updatedItems,
         })
+        logMealPlanMealStats(mealPlan.id, { ...mealPlan, mealPlanItems: updatedItems }, 'meal deleted')
         if (selectedItem?.id === itemId) {
           setShowModal(false)
           setSelectedItem(null)
@@ -798,13 +893,15 @@ export default function MealPlanViewPage() {
       const response = await fetch(`/api/meal-plans/${mealPlan.id}/items?date=${encodeURIComponent(dateStr)}`, { method: 'DELETE' })
       if (response.ok) {
         const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(selectedItem.date).getDay()]
+        const updatedItems = mealPlan.mealPlanItems.filter(item => {
+          const itemDate = new Date(item.date).toISOString().slice(0, 10)
+          return itemDate !== dateStr
+        })
         setMealPlan({
           ...mealPlan,
-          mealPlanItems: mealPlan.mealPlanItems.filter(item => {
-            const itemDate = new Date(item.date).toISOString().slice(0, 10)
-            return itemDate !== dateStr
-          }),
+          mealPlanItems: updatedItems,
         })
+        logMealPlanMealStats(mealPlan.id, { ...mealPlan, mealPlanItems: updatedItems }, 'day removed')
         setShowModal(false)
         setSelectedItem(null)
         toast.success(`${dayName} removed from schedule`)
@@ -1160,6 +1257,7 @@ export default function MealPlanViewPage() {
     setAddingWeek(true)
     try {
       const totalMealsAllowed = mealPlan.totalMeals || mealPlan.days * mealPlan.mealsPerDay
+      logMealPlanMealStats(mealPlan.id, mealPlan, 'add-week attempt')
 
       if (!canScheduleMoreMealsOnPlan(mealPlan)) {
         toast.warning(
@@ -1248,6 +1346,7 @@ export default function MealPlanViewPage() {
     
     setAddingDay(true)
     try {
+      logMealPlanMealStats(mealPlan.id, mealPlan, 'add-day attempt')
       const totalMealsAllowed = mealPlan.totalMeals ?? mealPlan.days * mealPlan.mealsPerDay
       if (!canScheduleMoreMealsOnPlan(mealPlan)) {
         toast.warning(

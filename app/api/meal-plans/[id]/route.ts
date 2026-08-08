@@ -10,6 +10,13 @@ import { applyMealPlanTimeSlotsToFutureItems } from '@/lib/meal-plan-propagate-t
 import { applyWeeklySkipPatternToExistingItems } from '@/lib/meal-plan-apply-weekly-skips'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { normalizeWeeklySkipDays, parseWeeklySkipDaysByWeekJson } from '@/lib/meal-plan-skip-days'
+import {
+  countChangeFields,
+  logMealPlanError,
+  logMealPlanEvent,
+  snapshotMealPlanCounts,
+} from '@/lib/meal-plan-logger'
+import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 
 /** Never cache: UI must show DB `remainingMeals` as stored (not a stale or recomputed value). */
@@ -139,6 +146,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     const { id: idParam } = await params
@@ -161,6 +169,8 @@ export async function PUT(
     if (!currentMealPlan) {
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
     }
+
+    const countsBefore = await snapshotMealPlanCounts(prisma, id)
 
     // Relational MealPlanUpdateInput (no scalar planId — use plan connect/disconnect)
     const updateData: Prisma.MealPlanUpdateInput = {}
@@ -297,6 +307,26 @@ export async function PUT(
       }
     }
 
+    const countsAfter = await snapshotMealPlanCounts(prisma, id)
+    logMealPlanEvent({
+      event: 'meal_plan.updated',
+      ...countChangeFields(countsBefore, countsAfter, {
+        totalMealsBefore: currentMealPlan.totalMeals,
+        totalMealsAfter: mealPlan.totalMeals,
+        remainingBefore: currentMealPlan.remainingMeals,
+        remainingAfter: mealPlan.remainingMeals,
+        daysBefore: currentMealPlan.days,
+        daysAfter: mealPlan.days,
+        mealsPerDayBefore: currentMealPlan.mealsPerDay,
+        mealsPerDayAfter: mealPlan.mealsPerDay,
+        statusBefore: currentMealPlan.status,
+        statusAfter: mealPlan.status,
+        propagatedTimeSlotsCount,
+        appliedWeeklySkipsCount,
+        appliedWeeklySkipsDeliveredCount,
+      }),
+    })
+
     return NextResponse.json({
       ...mealPlan,
       propagatedTimeSlotsCount,
@@ -307,16 +337,18 @@ export async function PUT(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
     }
-    console.error('Error updating meal plan:', error)
+    logMealPlanError('meal_plan.update_failed', error)
     return NextResponse.json({ error: 'Failed to update meal plan' }, { status: 500 })
   }
+  })
 }
 
 // DELETE - Remove meal plan (items cascade; payments unlinked so history is kept)
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     const { id: idParam } = await params
@@ -333,6 +365,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
     }
 
+    const countsBefore = await snapshotMealPlanCounts(prisma, id)
+
     await prisma.$transaction(async (tx) => {
       await tx.payment.updateMany({
         where: { mealPlanId: id },
@@ -341,9 +375,22 @@ export async function DELETE(
       await tx.mealPlan.delete({ where: { id } })
     })
 
+    logMealPlanEvent({
+      event: 'meal_plan.deleted',
+      planId: existing.id,
+      customerId: existing.customerId,
+      totalMeals: existing.totalMeals,
+      remainingMeals: existing.remainingMeals,
+      days: existing.days,
+      mealsPerDay: existing.mealsPerDay,
+      scheduledBefore: countsBefore?.scheduledCount,
+      deliveredBefore: countsBefore?.deliveredCount,
+    })
+
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Error deleting meal plan:', error)
+    logMealPlanError('meal_plan.delete_failed', error)
     return NextResponse.json({ error: 'Failed to delete meal plan' }, { status: 500 })
   }
+  })
 }

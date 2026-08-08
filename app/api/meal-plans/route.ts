@@ -4,6 +4,8 @@ import { sessionHasPermission } from '@/lib/permissions'
 import { PK } from '@/lib/permission-keys'
 import { prisma } from '@/lib/prisma'
 import { normalizeWeeklySkipDays } from '@/lib/meal-plan-skip-days'
+import { logMealPlanError, logMealPlanEvent } from '@/lib/meal-plan-logger'
+import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 export const dynamic = 'force-dynamic'
 
@@ -111,6 +113,7 @@ export async function GET(request: NextRequest) {
 
 // POST - Create meal plan and generate meal slots
 export async function POST(request: NextRequest) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     if (!session || !sessionHasPermission(session, PK.moduleMealPlans)) {
@@ -175,13 +178,26 @@ export async function POST(request: NextRequest) {
     // DO NOT create empty meal items here - meal items are created only when dishes are assigned
     // in step 4 of the form via the /api/meal-plans/[id]/items endpoint
 
+    logMealPlanEvent({
+      event: 'meal_plan.created',
+      planId: mealPlan.id,
+      customerId: mealPlan.customerId,
+      days: mealPlan.days,
+      mealsPerDay: mealPlan.mealsPerDay,
+      totalMeals: mealPlan.totalMeals,
+      remainingMeals: mealPlan.remainingMeals,
+      expectedMealCount: initialContractMeals,
+      gridTotalMeals,
+    })
+
     return NextResponse.json(mealPlan, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
     }
-    console.error('Error creating meal plan:', error)
+    logMealPlanError('meal_plan.create_failed', error)
     return NextResponse.json({ error: 'Failed to create meal plan' }, { status: 500 })
   }
+  })
 }
 

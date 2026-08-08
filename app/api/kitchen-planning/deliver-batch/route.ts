@@ -5,9 +5,16 @@ import { PK } from '@/lib/permission-keys'
 import { prisma } from '@/lib/prisma'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { deliverySnapshotsForItem } from '@/lib/customer-location'
+import {
+  logMealPlanError,
+  logMealPlanEvent,
+  snapshotMealPlanCounts,
+} from '@/lib/meal-plan-logger'
+import { runWithRequestContext } from '@/lib/request-context'
 
 // POST - Mark multiple meal plan items as delivered (batch)
 export async function POST(request: NextRequest) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     if (!session || !sessionHasPermission(session, PK.moduleKitchenPlanning)) {
@@ -34,6 +41,15 @@ export async function POST(request: NextRequest) {
     }
 
     const idsToUpdate = items.map((i) => i.id)
+    const affectedMealPlanIds = [...new Set(items.map((i) => i.mealPlanId))]
+    const beforeByPlan = new Map(
+      await Promise.all(
+        affectedMealPlanIds.map(async (planId) => {
+          const snap = await snapshotMealPlanCounts(prisma, planId)
+          return [planId, snap] as const
+        })
+      )
+    )
 
     await prisma.$transaction(async (tx) => {
       const deliveredAt = new Date()
@@ -55,14 +71,31 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    const affectedMealPlanIds = [...new Set(items.map((i) => i.mealPlanId))]
+    for (const planId of affectedMealPlanIds) {
+      const after = await snapshotMealPlanCounts(prisma, planId)
+      const before = beforeByPlan.get(planId)
+      logMealPlanEvent({
+        event: 'meal_plan_item.batch_delivered',
+        planId,
+        customerId: after?.customerId ?? before?.customerId,
+        totalMeals: after?.totalMeals ?? before?.totalMeals,
+        remainingMeals: after?.remainingMeals,
+        scheduledBefore: before?.scheduledCount,
+        scheduledAfter: after?.scheduledCount,
+        deliveredBefore: before?.deliveredCount,
+        deliveredAfter: after?.deliveredCount,
+        updatedItemCount: items.filter((i) => i.mealPlanId === planId).length,
+        action: 'batch_deliver',
+      })
+    }
 
     return NextResponse.json({
       updated: idsToUpdate.length,
       mealPlansUpdated: affectedMealPlanIds.length,
     })
   } catch (error) {
-    console.error('Error in batch deliver:', error)
+    logMealPlanError('meal_plan_item.batch_deliver_failed', error)
     return NextResponse.json({ error: 'Failed to mark meals as delivered' }, { status: 500 })
   }
+  })
 }

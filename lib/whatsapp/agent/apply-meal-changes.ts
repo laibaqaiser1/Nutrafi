@@ -7,6 +7,11 @@ import {
 } from '@/lib/meal-plan-time-slots'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import {
+  countChangeFields,
+  logMealPlanEvent,
+  snapshotMealPlanCounts,
+} from '@/lib/meal-plan-logger'
+import {
   deliveryTimeFromSlot,
   resolveDishDataForItem,
   type MealPlanItemCreateInput,
@@ -256,6 +261,8 @@ export async function applyAgentMealItems(
   })
   if (!mealPlanRow) throw new Error('Meal plan not found')
 
+  const countsBefore = await snapshotMealPlanCounts(prisma, mealPlanId)
+
   const defaultCustomerLocationId = await getDefaultCustomerLocationId(
     prisma,
     mealPlanRow.customerId
@@ -384,7 +391,29 @@ export async function applyAgentMealItems(
               mealPlanRow.remainingMeals > 0 &&
               activeCount <= totalMealsCap
             if (overCap && !allowWhenAtCapButContractLeft) {
+              logMealPlanEvent({
+                level: 'warn',
+                event: 'meal_plan.cap_rejected',
+                planId: mealPlanId,
+                customerId: mealPlanRow.customerId,
+                totalMeals: totalMealsCap,
+                remainingMeals: mealPlanRow.remainingMeals,
+                scheduledBefore: activeCount,
+                action: 'whatsapp_apply',
+              })
               throw new Error(`Plan allows at most ${totalMealsCap} active meals.`)
+            }
+            if (overCap && allowWhenAtCapButContractLeft) {
+              logMealPlanEvent({
+                level: 'warn',
+                event: 'meal_plan.cap_bypass_allowed',
+                planId: mealPlanId,
+                customerId: mealPlanRow.customerId,
+                totalMeals: totalMealsCap,
+                remainingMeals: mealPlanRow.remainingMeals,
+                scheduledBefore: activeCount,
+                action: 'whatsapp_apply',
+              })
             }
           }
 
@@ -505,6 +534,16 @@ export async function applyAgentMealItems(
       { timeout: 60_000 }
     )
   )
+
+  const countsAfter = await snapshotMealPlanCounts(prisma, mealPlanId)
+  logMealPlanEvent({
+    event: 'meal_plan.whatsapp_apply',
+    ...countChangeFields(countsBefore, countsAfter, {
+      inputItemCount: items.length,
+      resultCount: results.length,
+      action: 'whatsapp_apply',
+    }),
+  })
 
   return results
 }

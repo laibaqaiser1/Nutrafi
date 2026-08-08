@@ -8,6 +8,13 @@ import { prisma } from '@/lib/prisma'
 import { normalizeMealPlanItemDate } from '@/lib/meal-plan-calendar-date'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
+import {
+  countChangeFields,
+  logMealPlanError,
+  logMealPlanEvent,
+  snapshotMealPlanCounts,
+} from '@/lib/meal-plan-logger'
+import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 
 const mealPlanItemSchema = z.object({
@@ -50,6 +57,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     const { id: idParam } = await params
@@ -71,6 +79,8 @@ export async function POST(
     if (!mealPlanRow) {
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
     }
+
+    const countsBefore = await snapshotMealPlanCounts(prisma, id)
 
     let customerLocationId: number | null
     try {
@@ -96,12 +106,34 @@ export async function POST(
         mealPlanRow.remainingMeals > 0 &&
         activeCount <= totalMealsCap
       if (overCap && !allowWhenAtCapButContractLeft) {
+        logMealPlanEvent({
+          level: 'warn',
+          event: 'meal_plan.cap_rejected',
+          planId: id,
+          customerId: mealPlanRow.customerId,
+          totalMeals: totalMealsCap,
+          remainingMeals: mealPlanRow.remainingMeals,
+          scheduledBefore: activeCount,
+          action: 'item_create',
+        })
         return NextResponse.json(
           {
             error: `This plan allows at most ${totalMealsCap} active (non-skipped) meals. Skip unused days or increase the plan total.`,
           },
           { status: 400 }
         )
+      }
+      if (overCap && allowWhenAtCapButContractLeft) {
+        logMealPlanEvent({
+          level: 'warn',
+          event: 'meal_plan.cap_bypass_allowed',
+          planId: id,
+          customerId: mealPlanRow.customerId,
+          totalMeals: totalMealsCap,
+          remainingMeals: mealPlanRow.remainingMeals,
+          scheduledBefore: activeCount,
+          action: 'item_create',
+        })
       }
     }
 
@@ -213,14 +245,27 @@ export async function POST(
         ...updateData,
       },
     })
+
+    const countsAfter = await snapshotMealPlanCounts(prisma, id)
+    logMealPlanEvent({
+      event: 'meal_plan_item.created',
+      ...countChangeFields(countsBefore, countsAfter, {
+        itemId: created.id,
+        isSkipped: created.isSkipped,
+        createdCount: 1,
+        action: creatingSkipped ? 'item_create_skipped' : 'item_create',
+      }),
+    })
+
     return NextResponse.json(created)
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
     }
-    console.error('Error updating meal plan item:', error)
+    logMealPlanError('meal_plan_item.create_failed', error)
     return NextResponse.json({ error: 'Failed to update meal plan item' }, { status: 500 })
   }
+  })
 }
 
 // DELETE - Delete all meal plan items for a given date (remove day from schedule)
@@ -228,6 +273,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     if (!session || !sessionHasPermission(session, PK.moduleMealPlans)) {
@@ -255,6 +301,8 @@ export async function DELETE(
     const endOfDay = new Date(date)
     endOfDay.setHours(23, 59, 59, 999)
 
+    const countsBefore = await snapshotMealPlanCounts(prisma, id)
+
     const result = await prisma.mealPlanItem.deleteMany({
       where: {
         mealPlanId: id,
@@ -265,9 +313,19 @@ export async function DELETE(
       },
     })
 
+    const countsAfter = await snapshotMealPlanCounts(prisma, id)
+    logMealPlanEvent({
+      event: 'meal_plan_item.day_removed',
+      ...countChangeFields(countsBefore, countsAfter, {
+        deletedCount: result.count,
+        action: 'remove_day',
+      }),
+    })
+
     return NextResponse.json({ message: 'Day removed from schedule', count: result.count })
   } catch (error) {
-    console.error('Error deleting meal plan items by date:', error)
+    logMealPlanError('meal_plan_item.day_remove_failed', error)
     return NextResponse.json({ error: 'Failed to remove day' }, { status: 500 })
   }
+  })
 }

@@ -17,6 +17,13 @@ import {
   type MealPlanItemCreateInput,
 } from '@/lib/meal-plan-item-create-payload'
 import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
+import {
+  countChangeFields,
+  logMealPlanError,
+  logMealPlanEvent,
+  snapshotMealPlanCounts,
+} from '@/lib/meal-plan-logger'
+import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 
 const bulkItemSchema = z.object({
@@ -177,6 +184,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     const { id: idParam } = await params
@@ -190,6 +198,7 @@ export async function POST(
 
     const body = await request.json()
     const { items } = bulkSchema.parse(body)
+    const countsBefore = await snapshotMealPlanCounts(prisma, id)
 
     const mealPlanRow = await prisma.mealPlan.findUnique({
       where: { id },
@@ -283,9 +292,31 @@ export async function POST(
                 mealPlanRow.remainingMeals > 0 &&
                 activeCount <= totalMealsCap
               if (overCap && !allowWhenAtCapButContractLeft) {
+                logMealPlanEvent({
+                  level: 'warn',
+                  event: 'meal_plan.cap_rejected',
+                  planId: id,
+                  customerId: mealPlanRow.customerId,
+                  totalMeals: totalMealsCap,
+                  remainingMeals: mealPlanRow.remainingMeals,
+                  scheduledBefore: activeCount,
+                  action: 'bulk_save',
+                })
                 throw new Error(
                   `This plan allows at most ${totalMealsCap} active (non-skipped) meals.`
                 )
+              }
+              if (overCap && allowWhenAtCapButContractLeft) {
+                logMealPlanEvent({
+                  level: 'warn',
+                  event: 'meal_plan.cap_bypass_allowed',
+                  planId: id,
+                  customerId: mealPlanRow.customerId,
+                  totalMeals: totalMealsCap,
+                  remainingMeals: mealPlanRow.remainingMeals,
+                  scheduledBefore: activeCount,
+                  action: 'bulk_save',
+                })
               }
             }
 
@@ -398,13 +429,25 @@ export async function POST(
       )
     )
 
+    const countsAfter = await snapshotMealPlanCounts(prisma, id)
+    logMealPlanEvent({
+      event: 'meal_plan_item.bulk_saved',
+      ...countChangeFields(countsBefore, countsAfter, {
+        inputItemCount: items.length,
+        createdCount: Array.isArray(result.created) ? result.created.length : 0,
+        remainingMeals: result.remainingMeals,
+        action: 'bulk_save',
+      }),
+    })
+
     return NextResponse.json(result)
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
     }
     const message = error instanceof Error ? error.message : 'Failed to save items'
-    console.error('Error bulk creating meal plan items:', error)
+    logMealPlanError('meal_plan_item.bulk_save_failed', error)
     return NextResponse.json({ error: message }, { status: 400 })
   }
+  })
 }

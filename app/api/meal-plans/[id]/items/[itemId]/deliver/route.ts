@@ -6,12 +6,20 @@ import { parseIdParam } from '@/lib/parse-id'
 import { prisma } from '@/lib/prisma'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { deliverySnapshotsForItem } from '@/lib/customer-location'
+import {
+  countChangeFields,
+  logMealPlanError,
+  logMealPlanEvent,
+  snapshotMealPlanCounts,
+} from '@/lib/meal-plan-logger'
+import { runWithRequestContext } from '@/lib/request-context'
 
 // POST - Mark meal plan item as delivered
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     if (!session || !sessionHasPermission(session, PK.moduleMealPlans)) {
@@ -24,6 +32,8 @@ export async function POST(
     if (id === null || itemId === null) {
       return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
+
+    const countsBefore = await snapshotMealPlanCounts(prisma, id)
 
     const { mealPlanItem, remainingMeals } = await prisma.$transaction(async (tx) => {
       const existing = await tx.mealPlanItem.findFirst({
@@ -54,6 +64,16 @@ export async function POST(
       return { mealPlanItem: updated, remainingMeals: nextRemaining }
     })
 
+    const countsAfter = await snapshotMealPlanCounts(prisma, id)
+    logMealPlanEvent({
+      event: 'meal_plan_item.delivered',
+      ...countChangeFields(countsBefore, countsAfter, {
+        itemId,
+        remainingMeals,
+        action: 'mark_delivered',
+      }),
+    })
+
     return NextResponse.json({
       mealPlanItem,
       remainingMeals,
@@ -62,9 +82,10 @@ export async function POST(
     if (error instanceof Error && error.message === 'NOT_FOUND') {
       return NextResponse.json({ error: 'Meal item not found' }, { status: 404 })
     }
-    console.error('Error marking meal as delivered:', error)
+    logMealPlanError('meal_plan_item.deliver_failed', error)
     return NextResponse.json({ error: 'Failed to mark meal as delivered' }, { status: 500 })
   }
+  })
 }
 
 // DELETE - Unmark meal plan item as delivered
@@ -72,6 +93,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
+  return runWithRequestContext(request, async () => {
   try {
     const session = await getServerSession()
     if (!session || !sessionHasPermission(session, PK.moduleMealPlans)) {
@@ -84,6 +106,8 @@ export async function DELETE(
     if (id === null || itemId === null) {
       return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
+
+    const countsBefore = await snapshotMealPlanCounts(prisma, id)
 
     const { mealPlanItem, remainingMeals } = await prisma.$transaction(async (tx) => {
       const existing = await tx.mealPlanItem.findFirst({
@@ -113,6 +137,16 @@ export async function DELETE(
       return { mealPlanItem: updated, remainingMeals: nextRemaining }
     })
 
+    const countsAfter = await snapshotMealPlanCounts(prisma, id)
+    logMealPlanEvent({
+      event: 'meal_plan_item.undelivered',
+      ...countChangeFields(countsBefore, countsAfter, {
+        itemId,
+        remainingMeals,
+        action: 'unmark_delivered',
+      }),
+    })
+
     return NextResponse.json({
       mealPlanItem,
       remainingMeals,
@@ -121,7 +155,8 @@ export async function DELETE(
     if (error instanceof Error && error.message === 'NOT_FOUND') {
       return NextResponse.json({ error: 'Meal item not found' }, { status: 404 })
     }
-    console.error('Error unmarking meal as delivered:', error)
+    logMealPlanError('meal_plan_item.undeliver_failed', error)
     return NextResponse.json({ error: 'Failed to unmark meal as delivered' }, { status: 500 })
   }
+  })
 }
