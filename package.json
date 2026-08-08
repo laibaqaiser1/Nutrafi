@@ -30,6 +30,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@axiomhq/js": "^2.0.0",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.19.2",
     "adm-zip": "^0.5.16",

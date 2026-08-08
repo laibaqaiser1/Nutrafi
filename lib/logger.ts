@@ -1,8 +1,15 @@
 /**
- * Lightweight structured JSON logger for Vercel / Axiom.
- * One JSON object per line on stdout; optionally ships to Axiom when
- * AXIOM_TOKEN + AXIOM_DATASET are set.
+ * Structured JSON logger — console + optional Axiom via @axiomhq/js.
+ * See https://axiom.co/docs/guides/javascript
+ *
+ * Env:
+ * - AXIOM_TOKEN (required to ship) — API token with ingest (`xaat-...`)
+ * - AXIOM_DATASET (required to ship)
+ * - AXIOM_ORG_ID (optional) — for personal tokens only
+ * - AXIOM_EDGE (optional) — region host without scheme, e.g. eu-central-1.aws.edge.axiom.co
  */
+
+import { Axiom } from '@axiomhq/js'
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
@@ -14,6 +21,8 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
   warn: 30,
   error: 40,
 }
+
+let axiomClient: Axiom | null | undefined
 
 function configuredLevel(): LogLevel {
   const raw = (process.env.LOG_LEVEL || '').toLowerCase().trim()
@@ -49,44 +58,52 @@ export function serializeError(error: unknown): LogFields {
   return { errorMessage: String(error) }
 }
 
+function getAxiom(): Axiom | null {
+  if (axiomClient !== undefined) return axiomClient
+
+  const token = process.env.AXIOM_TOKEN?.trim()
+  if (!token) {
+    axiomClient = null
+    return null
+  }
+
+  const orgId = process.env.AXIOM_ORG_ID?.trim()
+  // Prefer AXIOM_EDGE (official). Also accept full URL in AXIOM_URL → strip scheme for `edge`.
+  let edge = process.env.AXIOM_EDGE?.trim()
+  if (!edge) {
+    const url = process.env.AXIOM_URL?.trim()
+    if (url) {
+      edge = url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    }
+  }
+
+  axiomClient = new Axiom({
+    token,
+    ...(orgId ? { orgId } : {}),
+    ...(edge ? { edge } : {}),
+    onError: () => {
+      // Never break the request path if Axiom is down
+    },
+  })
+  return axiomClient
+}
+
 /**
- * Fire-and-forget ship to Axiom ingest API.
- * Missing env → no-op. Failures never throw into the request path.
- *
- * Env:
- * - AXIOM_TOKEN (required) — API token with ingest permission
- * - AXIOM_DATASET (required) — dataset name
- * - AXIOM_ORG_ID (optional) — required for personal tokens
- * - AXIOM_URL (optional) — default https://api.axiom.co
- *   EU example: https://eu-central-1.aws.edge.axiom.co
+ * Ship one event to Axiom (batched SDK + flush for Vercel serverless).
+ * No-op if AXIOM_TOKEN / AXIOM_DATASET missing.
  */
 function shipToAxiom(payload: Record<string, unknown>): void {
-  const token = process.env.AXIOM_TOKEN?.trim()
   const dataset = process.env.AXIOM_DATASET?.trim()
-  if (!token || !dataset) return
+  const axiom = getAxiom()
+  if (!axiom || !dataset) return
 
-  const base = (process.env.AXIOM_URL || 'https://api.axiom.co').replace(/\/$/, '')
-  const orgId = process.env.AXIOM_ORG_ID?.trim()
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'User-Agent': 'nutrafi-logger/1.0',
-  }
-  if (orgId) {
-    headers['X-Axiom-Org-Id'] = orgId
-  }
-
-  // Tell Axiom our event time lives in `timestamp` (ISO-8601).
-  const url = `${base}/v1/ingest/${encodeURIComponent(dataset)}?timestamp-field=timestamp`
-
-  void fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify([payload]),
-  }).catch(() => {
+  try {
+    axiom.ingest(dataset, [payload])
+    // Flush so serverless invocations don't drop the batch when the request ends
+    void axiom.flush()
+  } catch {
     // Swallow — logging must not break the app
-  })
+  }
 }
 
 function emit(level: LogLevel, fields: LogFields): void {
