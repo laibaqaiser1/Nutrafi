@@ -136,3 +136,23 @@ export function countChangeFields(
     ...extras,
   }
 }
+
+/**
+ * Snapshot + log after the response path — do not await on write APIs.
+ * Count snapshots are several Neon round-trips and were making create/update feel slow.
+ */
+export function queueMealPlanCountLog(
+  planId: number,
+  event: string,
+  extras: LogFields = {}
+): void {
+  void (async () => {
+    const after = await snapshotMealPlanCounts(prisma, planId)
+    logMealPlanEvent({
+      event,
+      ...countChangeFields(null, after, extras),
+    })
+  })().catch((error) => {
+    logMealPlanError(`${event}_log_failed`, error, { planId, ...extras })
+  })
+}

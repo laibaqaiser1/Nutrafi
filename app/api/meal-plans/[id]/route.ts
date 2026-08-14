@@ -11,11 +11,20 @@ import { applyWeeklySkipPatternToExistingItems } from '@/lib/meal-plan-apply-wee
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { normalizeWeeklySkipDays, parseWeeklySkipDaysByWeekJson } from '@/lib/meal-plan-skip-days'
 import {
-  countChangeFields,
   logMealPlanError,
   logMealPlanEvent,
+  queueMealPlanCountLog,
   snapshotMealPlanCounts,
 } from '@/lib/meal-plan-logger'
+import { MealPlanHistoryAction } from '@/lib/meal-plan-history-actions'
+import {
+  queueMealPlanHistory,
+  sessionActorUserId,
+} from '@/lib/meal-plan-history'
+import {
+  buildMealPlanEditChanges,
+  summarizeMealPlanEditChanges,
+} from '@/lib/meal-plan-edit-changes'
 import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 
@@ -170,8 +179,6 @@ export async function PUT(
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
     }
 
-    const countsBefore = await snapshotMealPlanCounts(prisma, id)
-
     // Relational MealPlanUpdateInput (no scalar planId — use plan connect/disconnect)
     const updateData: Prisma.MealPlanUpdateInput = {}
 
@@ -307,24 +314,66 @@ export async function PUT(
       }
     }
 
-    const countsAfter = await snapshotMealPlanCounts(prisma, id)
-    logMealPlanEvent({
-      event: 'meal_plan.updated',
-      ...countChangeFields(countsBefore, countsAfter, {
-        totalMealsBefore: currentMealPlan.totalMeals,
-        totalMealsAfter: mealPlan.totalMeals,
-        remainingBefore: currentMealPlan.remainingMeals,
-        remainingAfter: mealPlan.remainingMeals,
-        daysBefore: currentMealPlan.days,
-        daysAfter: mealPlan.days,
-        mealsPerDayBefore: currentMealPlan.mealsPerDay,
-        mealsPerDayAfter: mealPlan.mealsPerDay,
-        statusBefore: currentMealPlan.status,
-        statusAfter: mealPlan.status,
+    const editChanges = buildMealPlanEditChanges(
+      {
+        totalMeals: currentMealPlan.totalMeals,
+        remainingMeals: currentMealPlan.remainingMeals,
+        days: currentMealPlan.days,
+        mealsPerDay: currentMealPlan.mealsPerDay,
+        status: currentMealPlan.status,
+        planType: currentMealPlan.planType,
+        planId: currentMealPlan.planId,
+        startDate: currentMealPlan.startDate,
+        endDate: currentMealPlan.endDate,
+        notes: currentMealPlan.notes,
+        timeSlots: currentMealPlan.timeSlots,
+        weeklySkipDays: currentMealPlan.weeklySkipDays ?? [],
+        weeklySkipDaysByWeek: currentMealPlan.weeklySkipDaysByWeek,
+      },
+      {
+        totalMeals: mealPlan.totalMeals,
+        remainingMeals: mealPlan.remainingMeals,
+        days: mealPlan.days,
+        mealsPerDay: mealPlan.mealsPerDay,
+        status: mealPlan.status,
+        planType: mealPlan.planType,
+        planId: mealPlan.planId,
+        startDate: mealPlan.startDate,
+        endDate: mealPlan.endDate,
+        notes: mealPlan.notes,
+        timeSlots: mealPlan.timeSlots,
+        weeklySkipDays: mealPlan.weeklySkipDays ?? [],
+        weeklySkipDaysByWeek: mealPlan.weeklySkipDaysByWeek,
+      },
+      {
         propagatedTimeSlotsCount,
         appliedWeeklySkipsCount,
         appliedWeeklySkipsDeliveredCount,
-      }),
+      }
+    )
+
+    queueMealPlanHistory({
+      mealPlanId: id,
+      action: MealPlanHistoryAction.planEdited,
+      actorUserId: sessionActorUserId(session),
+      summary: summarizeMealPlanEditChanges(editChanges),
+      details: { changes: editChanges },
+    })
+    queueMealPlanCountLog(id, 'meal_plan.updated', {
+      totalMealsBefore: currentMealPlan.totalMeals,
+      totalMealsAfter: mealPlan.totalMeals,
+      remainingBefore: currentMealPlan.remainingMeals,
+      remainingAfter: mealPlan.remainingMeals,
+      daysBefore: currentMealPlan.days,
+      daysAfter: mealPlan.days,
+      mealsPerDayBefore: currentMealPlan.mealsPerDay,
+      mealsPerDayAfter: mealPlan.mealsPerDay,
+      statusBefore: currentMealPlan.status,
+      statusAfter: mealPlan.status,
+      propagatedTimeSlotsCount,
+      appliedWeeklySkipsCount,
+      appliedWeeklySkipsDeliveredCount,
+      changes: editChanges,
     })
 
     return NextResponse.json({

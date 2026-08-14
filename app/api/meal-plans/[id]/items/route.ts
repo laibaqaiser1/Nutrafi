@@ -9,11 +9,15 @@ import { normalizeMealPlanItemDate } from '@/lib/meal-plan-calendar-date'
 import { parseMealPlanTimeSlots } from '@/lib/meal-plan-time-slots'
 import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
 import {
-  countChangeFields,
   logMealPlanError,
   logMealPlanEvent,
-  snapshotMealPlanCounts,
+  queueMealPlanCountLog,
 } from '@/lib/meal-plan-logger'
+import { MealPlanHistoryAction } from '@/lib/meal-plan-history-actions'
+import {
+  queueMealPlanHistory,
+  sessionActorUserId,
+} from '@/lib/meal-plan-history'
 import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 
@@ -79,8 +83,6 @@ export async function POST(
     if (!mealPlanRow) {
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
     }
-
-    const countsBefore = await snapshotMealPlanCounts(prisma, id)
 
     let customerLocationId: number | null
     try {
@@ -246,15 +248,27 @@ export async function POST(
       },
     })
 
-    const countsAfter = await snapshotMealPlanCounts(prisma, id)
-    logMealPlanEvent({
-      event: 'meal_plan_item.created',
-      ...countChangeFields(countsBefore, countsAfter, {
-        itemId: created.id,
-        isSkipped: created.isSkipped,
-        createdCount: 1,
-        action: creatingSkipped ? 'item_create_skipped' : 'item_create',
-      }),
+    const hasDish =
+      created.dishId != null ||
+      (typeof created.dishName === 'string' &&
+        created.dishName.trim() !== '' &&
+        created.dishName !== 'Not Assigned')
+    queueMealPlanHistory({
+      mealPlanId: id,
+      action: creatingSkipped ? MealPlanHistoryAction.skipped : MealPlanHistoryAction.itemAdded,
+      itemId: created.id,
+      actorUserId: sessionActorUserId(session),
+      summary: creatingSkipped
+        ? `Skipped meal row added`
+        : hasDish
+          ? `Active meal added`
+          : `Inactive meal slot added`,
+    })
+    queueMealPlanCountLog(id, 'meal_plan_item.created', {
+      itemId: created.id,
+      isSkipped: created.isSkipped,
+      createdCount: 1,
+      action: creatingSkipped ? 'item_create_skipped' : 'item_create',
     })
 
     return NextResponse.json(created)
@@ -301,8 +315,6 @@ export async function DELETE(
     const endOfDay = new Date(date)
     endOfDay.setHours(23, 59, 59, 999)
 
-    const countsBefore = await snapshotMealPlanCounts(prisma, id)
-
     const result = await prisma.mealPlanItem.deleteMany({
       where: {
         mealPlanId: id,
@@ -313,13 +325,15 @@ export async function DELETE(
       },
     })
 
-    const countsAfter = await snapshotMealPlanCounts(prisma, id)
-    logMealPlanEvent({
-      event: 'meal_plan_item.day_removed',
-      ...countChangeFields(countsBefore, countsAfter, {
-        deletedCount: result.count,
-        action: 'remove_day',
-      }),
+    queueMealPlanHistory({
+      mealPlanId: id,
+      action: MealPlanHistoryAction.dayRemoved,
+      actorUserId: sessionActorUserId(session),
+      summary: `Day removed · ${result.count} meal row(s) deleted`,
+    })
+    queueMealPlanCountLog(id, 'meal_plan_item.day_removed', {
+      deletedCount: result.count,
+      action: 'remove_day',
     })
 
     return NextResponse.json({ message: 'Day removed from schedule', count: result.count })

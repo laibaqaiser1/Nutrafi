@@ -1768,6 +1768,12 @@ export default function MealPlanViewPage() {
             )}
           </div>
           <Link
+            href={`/meal-plans/${mealPlan.id}/history`}
+            className="px-3 py-1.5 lg:px-4 lg:py-2 border border-gray-300 text-gray-800 rounded-md hover:bg-gray-50"
+          >
+            History
+          </Link>
+          <Link
             href={`/meal-plans/${mealPlan.id}/edit`}
             className="px-3 py-1.5 lg:px-4 lg:py-2 bg-nutrafi-primary text-white rounded-md hover:bg-nutrafi-dark"
           >
@@ -1862,6 +1868,12 @@ export default function MealPlanViewPage() {
             {mealPlan.totalMeals != null && (
               <p className="text-xs text-gray-500 mt-0.5">Total meals minus delivered (non-skipped) slots.</p>
             )}
+            <Link
+              href={`/meal-plans/${mealPlan.id}/history`}
+              className="inline-block mt-1 text-xs text-nutrafi-primary hover:underline"
+            >
+              View history
+            </Link>
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500">Status</label>

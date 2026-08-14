@@ -69,6 +69,11 @@ export type Plan = Prisma.PlanModel
  */
 export type MealPlan = Prisma.MealPlanModel
 /**
+ * Model MealPlanHistory
+ * Append-only meal plan timeline (counts after each event) for debugging balance / schedule drift.
+ */
+export type MealPlanHistory = Prisma.MealPlanHistoryModel
+/**
  * Model MealPlanItem
  * 
  */

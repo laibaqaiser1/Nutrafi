@@ -7,11 +7,14 @@ import { prisma } from '@/lib/prisma'
 import { syncMealPlanRemainingMeals } from '@/lib/meal-plan-balance'
 import { resolveCustomerLocationIdForWrite } from '@/lib/customer-location'
 import {
-  countChangeFields,
   logMealPlanError,
-  logMealPlanEvent,
-  snapshotMealPlanCounts,
+  queueMealPlanCountLog,
 } from '@/lib/meal-plan-logger'
+import { MealPlanHistoryAction } from '@/lib/meal-plan-history-actions'
+import {
+  queueMealPlanHistory,
+  sessionActorUserId,
+} from '@/lib/meal-plan-history'
 import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 
@@ -81,9 +84,6 @@ export async function PATCH(
     const data = mealPlanItemUpdateSchema.parse(body)
     const countsAffecting =
       data.isSkipped !== undefined || data.wrongDelivery !== undefined
-    const countsBefore = countsAffecting
-      ? await snapshotMealPlanCounts(prisma, id)
-      : null
 
     let resolvedLocationId: number | null | undefined
     if (data.customerLocationId !== undefined) {
@@ -171,23 +171,40 @@ export async function PATCH(
     const syncBalance = data.wrongDelivery !== undefined
 
     if (syncBalance) {
-      const { updated, remainingMeals } = await prisma.$transaction(async (tx) => {
-        const updated = await tx.mealPlanItem.update({
-          where: { id: itemId },
-          data: updatePayload,
-        })
-        const remainingMeals = await syncMealPlanRemainingMeals(tx, id)
-        return { updated, remainingMeals }
+      const historyAction =
+        data.wrongDelivery === true
+          ? MealPlanHistoryAction.wrongDelivery
+          : data.isSkipped === true
+            ? MealPlanHistoryAction.skipped
+            : MealPlanHistoryAction.itemUpdated
+      const { updated, remainingMeals } = await prisma.$transaction(
+        async (tx) => {
+          const updated = await tx.mealPlanItem.update({
+            where: { id: itemId },
+            data: updatePayload,
+          })
+          const remainingMeals = await syncMealPlanRemainingMeals(tx, id)
+          return { updated, remainingMeals }
+        },
+        { timeout: 60_000 }
+      )
+      queueMealPlanHistory({
+        mealPlanId: id,
+        action: historyAction,
+        itemId,
+        actorUserId: sessionActorUserId(session),
+        summary:
+          data.wrongDelivery === true
+            ? 'Marked wrong delivery'
+            : data.isSkipped === true
+              ? 'Meal skipped'
+              : 'Meal updated',
       })
       if (countsAffecting) {
-        const countsAfter = await snapshotMealPlanCounts(prisma, id)
-        logMealPlanEvent({
-          event: 'meal_plan_item.updated',
-          ...countChangeFields(countsBefore, countsAfter, {
-            itemId,
-            action: data.wrongDelivery === true ? 'wrong_delivery' : 'wrong_delivery_cleared',
-            remainingMeals,
-          }),
+        queueMealPlanCountLog(id, 'meal_plan_item.updated', {
+          itemId,
+          action: data.wrongDelivery === true ? 'wrong_delivery' : 'wrong_delivery_cleared',
+          remainingMeals,
         })
       }
       return NextResponse.json({ ...updated, remainingMeals })
@@ -197,19 +214,38 @@ export async function PATCH(
       where: { id: itemId },
       data: updatePayload,
     })
+    const historyAction =
+      data.isSkipped === true
+        ? MealPlanHistoryAction.skipped
+        : data.isSkipped === false
+          ? MealPlanHistoryAction.unskipped
+          : MealPlanHistoryAction.itemUpdated
+    queueMealPlanHistory({
+      mealPlanId: id,
+      action: historyAction,
+      itemId,
+      actorUserId: sessionActorUserId(session),
+      summary:
+        historyAction === MealPlanHistoryAction.skipped
+          ? 'Meal skipped'
+          : historyAction === MealPlanHistoryAction.unskipped
+            ? 'Meal unskipped'
+            : 'Meal updated',
+    })
     if (countsAffecting) {
-      const countsAfter = await snapshotMealPlanCounts(prisma, id)
-      logMealPlanEvent({
-        event: 'meal_plan_item.updated',
-        ...countChangeFields(countsBefore, countsAfter, {
-          itemId,
-          action:
-            data.isSkipped === true
-              ? 'skip'
-              : data.isSkipped === false
-                ? 'unskip'
-                : 'item_update',
-        }),
+      queueMealPlanCountLog(id, 'meal_plan_item.updated', {
+        itemId,
+        action:
+          data.isSkipped === true
+            ? 'skip'
+            : data.isSkipped === false
+              ? 'unskip'
+              : 'item_update',
+      })
+    } else {
+      queueMealPlanCountLog(id, 'meal_plan_item.updated', {
+        itemId,
+        action: 'item_update',
       })
     }
     return NextResponse.json(updated)
@@ -254,21 +290,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Meal plan item not found' }, { status: 404 })
     }
 
-    const countsBefore = await snapshotMealPlanCounts(prisma, id)
-
-    // Delete the item
     await prisma.mealPlanItem.delete({
       where: { id: itemId },
     })
 
-    const countsAfter = await snapshotMealPlanCounts(prisma, id)
-    logMealPlanEvent({
-      event: 'meal_plan_item.deleted',
-      ...countChangeFields(countsBefore, countsAfter, {
-        itemId,
-        deletedCount: 1,
-        action: 'item_delete',
-      }),
+    queueMealPlanHistory({
+      mealPlanId: id,
+      action: MealPlanHistoryAction.itemDeleted,
+      itemId,
+      actorUserId: sessionActorUserId(session),
+      summary: 'Meal row deleted',
+    })
+    queueMealPlanCountLog(id, 'meal_plan_item.deleted', {
+      itemId,
+      deletedCount: 1,
+      action: 'item_delete',
     })
 
     return NextResponse.json({ message: 'Meal plan item deleted successfully' })

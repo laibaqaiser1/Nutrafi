@@ -400,6 +400,7 @@ export const ModelName = {
   CustomerLocation: 'CustomerLocation',
   Plan: 'Plan',
   MealPlan: 'MealPlan',
+  MealPlanHistory: 'MealPlanHistory',
   MealPlanItem: 'MealPlanItem',
   Payment: 'Payment',
   WhatsAppConversation: 'WhatsAppConversation',
@@ -422,7 +423,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "permission" | "rolePermission" | "dish" | "mealPlanTemplate" | "mealPlanTemplateItem" | "customer" | "customerLocation" | "plan" | "mealPlan" | "mealPlanItem" | "payment" | "whatsAppConversation" | "whatsAppMessage" | "whatsAppAgentRun" | "whatsAppAgentAction" | "whatsAppPendingAction"
+    modelProps: "user" | "permission" | "rolePermission" | "dish" | "mealPlanTemplate" | "mealPlanTemplateItem" | "customer" | "customerLocation" | "plan" | "mealPlan" | "mealPlanHistory" | "mealPlanItem" | "payment" | "whatsAppConversation" | "whatsAppMessage" | "whatsAppAgentRun" | "whatsAppAgentAction" | "whatsAppPendingAction"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1166,6 +1167,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    MealPlanHistory: {
+      payload: Prisma.$MealPlanHistoryPayload<ExtArgs>
+      fields: Prisma.MealPlanHistoryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.MealPlanHistoryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.MealPlanHistoryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>
+        }
+        findFirst: {
+          args: Prisma.MealPlanHistoryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.MealPlanHistoryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>
+        }
+        findMany: {
+          args: Prisma.MealPlanHistoryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>[]
+        }
+        create: {
+          args: Prisma.MealPlanHistoryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>
+        }
+        createMany: {
+          args: Prisma.MealPlanHistoryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.MealPlanHistoryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>[]
+        }
+        delete: {
+          args: Prisma.MealPlanHistoryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>
+        }
+        update: {
+          args: Prisma.MealPlanHistoryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>
+        }
+        deleteMany: {
+          args: Prisma.MealPlanHistoryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.MealPlanHistoryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.MealPlanHistoryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>[]
+        }
+        upsert: {
+          args: Prisma.MealPlanHistoryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MealPlanHistoryPayload>
+        }
+        aggregate: {
+          args: Prisma.MealPlanHistoryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateMealPlanHistory>
+        }
+        groupBy: {
+          args: Prisma.MealPlanHistoryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MealPlanHistoryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.MealPlanHistoryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MealPlanHistoryCountAggregateOutputType> | number
+        }
+      }
+    }
     MealPlanItem: {
       payload: Prisma.$MealPlanItemPayload<ExtArgs>
       fields: Prisma.MealPlanItemFieldRefs
@@ -1892,6 +1967,39 @@ export const MealPlanScalarFieldEnum = {
 export type MealPlanScalarFieldEnum = (typeof MealPlanScalarFieldEnum)[keyof typeof MealPlanScalarFieldEnum]
 
 
+export const MealPlanHistoryScalarFieldEnum = {
+  id: 'id',
+  mealPlanId: 'mealPlanId',
+  createdAt: 'createdAt',
+  action: 'action',
+  summary: 'summary',
+  itemId: 'itemId',
+  actorUserId: 'actorUserId',
+  requestId: 'requestId',
+  details: 'details',
+  totalMeals: 'totalMeals',
+  remainingMeals: 'remainingMeals',
+  days: 'days',
+  mealsPerDay: 'mealsPerDay',
+  activeCount: 'activeCount',
+  inactiveCount: 'inactiveCount',
+  deliveredCount: 'deliveredCount',
+  skippedCount: 'skippedCount',
+  wrongDeliveryCount: 'wrongDeliveryCount',
+  scheduledCount: 'scheduledCount',
+  remainingBefore: 'remainingBefore',
+  remainingAfter: 'remainingAfter',
+  deliveredBefore: 'deliveredBefore',
+  deliveredAfter: 'deliveredAfter',
+  activeBefore: 'activeBefore',
+  activeAfter: 'activeAfter',
+  inactiveBefore: 'inactiveBefore',
+  inactiveAfter: 'inactiveAfter'
+} as const
+
+export type MealPlanHistoryScalarFieldEnum = (typeof MealPlanHistoryScalarFieldEnum)[keyof typeof MealPlanHistoryScalarFieldEnum]
+
+
 export const MealPlanItemScalarFieldEnum = {
   id: 'id',
   mealPlanId: 'mealPlanId',
@@ -2410,6 +2518,7 @@ export type GlobalOmitConfig = {
   customerLocation?: Prisma.CustomerLocationOmit
   plan?: Prisma.PlanOmit
   mealPlan?: Prisma.MealPlanOmit
+  mealPlanHistory?: Prisma.MealPlanHistoryOmit
   mealPlanItem?: Prisma.MealPlanItemOmit
   payment?: Prisma.PaymentOmit
   whatsAppConversation?: Prisma.WhatsAppConversationOmit

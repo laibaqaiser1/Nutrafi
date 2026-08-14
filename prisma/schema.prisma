@@ -206,6 +206,7 @@ model MealPlan {
   plan            Plan?          @relation(fields: [planId], references: [id])
   mealPlanItems   MealPlanItem[]
   payments        Payment[]
+  history         MealPlanHistory[]
   whatsappAgentRuns WhatsAppAgentRun[]
   whatsappPendingActions WhatsAppPendingAction[]
 
@@ -214,6 +215,46 @@ model MealPlan {
   @@index([endDate])
   @@index([status])
   @@index([planType])
+}
+
+/// Append-only meal plan timeline (counts after each event) for debugging balance / schedule drift.
+model MealPlanHistory {
+  id         Int      @id @default(autoincrement())
+  mealPlanId Int
+  createdAt  DateTime @default(now())
+
+  action      String
+  summary     String?
+  itemId      Int?
+  actorUserId Int?
+  requestId   String?
+  details     Json?
+
+  totalMeals         Int?
+  remainingMeals     Int?
+  days               Int?
+  mealsPerDay        Int?
+  activeCount        Int @default(0)
+  inactiveCount      Int @default(0)
+  deliveredCount     Int @default(0)
+  skippedCount       Int @default(0)
+  wrongDeliveryCount Int @default(0)
+  scheduledCount     Int @default(0)
+
+  remainingBefore Int?
+  remainingAfter  Int?
+  deliveredBefore Int?
+  deliveredAfter  Int?
+  activeBefore    Int?
+  activeAfter     Int?
+  inactiveBefore  Int?
+  inactiveAfter   Int?
+
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  @@index([mealPlanId, createdAt])
+  @@index([action, createdAt])
+  @@index([requestId])
 }
 
 model MealPlanItem {

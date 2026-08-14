@@ -23,6 +23,11 @@ import {
   logMealPlanEvent,
   snapshotMealPlanCounts,
 } from '@/lib/meal-plan-logger'
+import { MealPlanHistoryAction } from '@/lib/meal-plan-history-actions'
+import {
+  queueMealPlanHistory,
+  sessionActorUserId,
+} from '@/lib/meal-plan-history'
 import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 
@@ -428,6 +433,15 @@ export async function POST(
         { timeout: 60_000 }
       )
     )
+
+    const createdCount = Array.isArray(result.created) ? result.created.length : 0
+    queueMealPlanHistory({
+      mealPlanId: id,
+      action: MealPlanHistoryAction.bulkSaved,
+      actorUserId: sessionActorUserId(session),
+      summary: `Bulk save · ${createdCount} row(s) written`,
+      details: { inputItemCount: items.length, createdCount },
+    })
 
     const countsAfter = await snapshotMealPlanCounts(prisma, id)
     logMealPlanEvent({
