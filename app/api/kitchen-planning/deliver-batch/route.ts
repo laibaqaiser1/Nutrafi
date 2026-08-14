@@ -10,6 +10,11 @@ import {
   logMealPlanEvent,
   snapshotMealPlanCounts,
 } from '@/lib/meal-plan-logger'
+import { MealPlanHistoryAction } from '@/lib/meal-plan-history-actions'
+import {
+  queueMealPlanHistory,
+  sessionActorUserId,
+} from '@/lib/meal-plan-history'
 import { runWithRequestContext } from '@/lib/request-context'
 
 // POST - Mark multiple meal plan items as delivered (batch)
@@ -42,6 +47,8 @@ export async function POST(request: NextRequest) {
 
     const idsToUpdate = items.map((i) => i.id)
     const affectedMealPlanIds = [...new Set(items.map((i) => i.mealPlanId))]
+    const actorUserId = sessionActorUserId(session)
+
     const beforeByPlan = new Map(
       await Promise.all(
         affectedMealPlanIds.map(async (planId) => {
@@ -51,25 +58,40 @@ export async function POST(request: NextRequest) {
       )
     )
 
-    await prisma.$transaction(async (tx) => {
-      const deliveredAt = new Date()
-      for (const itemId of idsToUpdate) {
-        const snapshots = await deliverySnapshotsForItem(tx, itemId)
-        await tx.mealPlanItem.update({
-          where: { id: itemId },
-          data: {
-            isDelivered: true,
-            deliveredAt,
-            ...snapshots,
-          },
-        })
-      }
+    await prisma.$transaction(
+      async (tx) => {
+        const deliveredAt = new Date()
+        for (const itemId of idsToUpdate) {
+          const snapshots = await deliverySnapshotsForItem(tx, itemId)
+          await tx.mealPlanItem.update({
+            where: { id: itemId },
+            data: {
+              isDelivered: true,
+              deliveredAt,
+              ...snapshots,
+            },
+          })
+        }
 
-      const planIds = [...new Set(items.map((i) => i.mealPlanId))]
-      for (const mealPlanId of planIds) {
-        await syncMealPlanRemainingMeals(tx, mealPlanId)
-      }
-    })
+        for (const mealPlanId of affectedMealPlanIds) {
+          await syncMealPlanRemainingMeals(tx, mealPlanId)
+        }
+      },
+      { timeout: 60_000 }
+    )
+
+    for (const mealPlanId of affectedMealPlanIds) {
+      const planItemIds = items
+        .filter((i) => i.mealPlanId === mealPlanId)
+        .map((i) => i.id)
+      queueMealPlanHistory({
+        mealPlanId,
+        action: MealPlanHistoryAction.delivered,
+        actorUserId,
+        summary: `Meals delivered (${planItemIds.length})`,
+        details: { itemIds: planItemIds },
+      })
+    }
 
     for (const planId of affectedMealPlanIds) {
       const after = await snapshotMealPlanCounts(prisma, planId)

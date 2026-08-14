@@ -59,6 +59,7 @@ export const ModelName = {
   CustomerLocation: 'CustomerLocation',
   Plan: 'Plan',
   MealPlan: 'MealPlan',
+  MealPlanHistory: 'MealPlanHistory',
   MealPlanItem: 'MealPlanItem',
   Payment: 'Payment',
   WhatsAppConversation: 'WhatsAppConversation',
@@ -251,6 +252,39 @@ export const MealPlanScalarFieldEnum = {
 } as const
 
 export type MealPlanScalarFieldEnum = (typeof MealPlanScalarFieldEnum)[keyof typeof MealPlanScalarFieldEnum]
+
+
+export const MealPlanHistoryScalarFieldEnum = {
+  id: 'id',
+  mealPlanId: 'mealPlanId',
+  createdAt: 'createdAt',
+  action: 'action',
+  summary: 'summary',
+  itemId: 'itemId',
+  actorUserId: 'actorUserId',
+  requestId: 'requestId',
+  details: 'details',
+  totalMeals: 'totalMeals',
+  remainingMeals: 'remainingMeals',
+  days: 'days',
+  mealsPerDay: 'mealsPerDay',
+  activeCount: 'activeCount',
+  inactiveCount: 'inactiveCount',
+  deliveredCount: 'deliveredCount',
+  skippedCount: 'skippedCount',
+  wrongDeliveryCount: 'wrongDeliveryCount',
+  scheduledCount: 'scheduledCount',
+  remainingBefore: 'remainingBefore',
+  remainingAfter: 'remainingAfter',
+  deliveredBefore: 'deliveredBefore',
+  deliveredAfter: 'deliveredAfter',
+  activeBefore: 'activeBefore',
+  activeAfter: 'activeAfter',
+  inactiveBefore: 'inactiveBefore',
+  inactiveAfter: 'inactiveAfter'
+} as const
+
+export type MealPlanHistoryScalarFieldEnum = (typeof MealPlanHistoryScalarFieldEnum)[keyof typeof MealPlanHistoryScalarFieldEnum]
 
 
 export const MealPlanItemScalarFieldEnum = {

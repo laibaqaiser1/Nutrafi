@@ -12,7 +12,39 @@ import {
   logMealPlanEvent,
   snapshotMealPlanCounts,
 } from '@/lib/meal-plan-logger'
+import { MealPlanHistoryAction } from '@/lib/meal-plan-history-actions'
+import {
+  queueMealPlanHistory,
+  sessionActorUserId,
+} from '@/lib/meal-plan-history'
 import { runWithRequestContext } from '@/lib/request-context'
+
+const DELIVER_TX_OPTIONS = { timeout: 60_000 } as const
+
+function queueDeliverLog(params: {
+  planId: number
+  itemId: number
+  remainingMeals: number | null
+  event: 'meal_plan_item.delivered' | 'meal_plan_item.undelivered'
+  action: string
+}): void {
+  void (async () => {
+    const after = await snapshotMealPlanCounts(prisma, params.planId)
+    logMealPlanEvent({
+      event: params.event,
+      ...countChangeFields(null, after, {
+        itemId: params.itemId,
+        remainingMeals: params.remainingMeals,
+        action: params.action,
+      }),
+    })
+  })().catch((error) => {
+    logMealPlanError(`${params.event}_log_failed`, error, {
+      planId: params.planId,
+      itemId: params.itemId,
+    })
+  })
+}
 
 // POST - Mark meal plan item as delivered
 export async function POST(
@@ -32,8 +64,6 @@ export async function POST(
     if (id === null || itemId === null) {
       return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
-
-    const countsBefore = await snapshotMealPlanCounts(prisma, id)
 
     const { mealPlanItem, remainingMeals } = await prisma.$transaction(async (tx) => {
       const existing = await tx.mealPlanItem.findFirst({
@@ -62,16 +92,22 @@ export async function POST(
       const nextRemaining = (await syncMealPlanRemainingMeals(tx, id)) ?? updated.mealPlan.remainingMeals
 
       return { mealPlanItem: updated, remainingMeals: nextRemaining }
+    }, DELIVER_TX_OPTIONS)
+
+    queueMealPlanHistory({
+      mealPlanId: id,
+      action: MealPlanHistoryAction.delivered,
+      itemId,
+      actorUserId: sessionActorUserId(session),
+      summary: `Meal delivered · remaining ${remainingMeals ?? '—'}`,
     })
 
-    const countsAfter = await snapshotMealPlanCounts(prisma, id)
-    logMealPlanEvent({
+    queueDeliverLog({
+      planId: id,
+      itemId,
+      remainingMeals,
       event: 'meal_plan_item.delivered',
-      ...countChangeFields(countsBefore, countsAfter, {
-        itemId,
-        remainingMeals,
-        action: 'mark_delivered',
-      }),
+      action: 'mark_delivered',
     })
 
     return NextResponse.json({
@@ -107,8 +143,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid meal plan or item ID' }, { status: 400 })
     }
 
-    const countsBefore = await snapshotMealPlanCounts(prisma, id)
-
     const { mealPlanItem, remainingMeals } = await prisma.$transaction(async (tx) => {
       const existing = await tx.mealPlanItem.findFirst({
         where: { id: itemId, mealPlanId: id },
@@ -135,16 +169,22 @@ export async function DELETE(
       const nextRemaining = (await syncMealPlanRemainingMeals(tx, id)) ?? updated.mealPlan.remainingMeals
 
       return { mealPlanItem: updated, remainingMeals: nextRemaining }
+    }, DELIVER_TX_OPTIONS)
+
+    queueMealPlanHistory({
+      mealPlanId: id,
+      action: MealPlanHistoryAction.undelivered,
+      itemId,
+      actorUserId: sessionActorUserId(session),
+      summary: `Meal undelivered · remaining ${remainingMeals ?? '—'}`,
     })
 
-    const countsAfter = await snapshotMealPlanCounts(prisma, id)
-    logMealPlanEvent({
+    queueDeliverLog({
+      planId: id,
+      itemId,
+      remainingMeals,
       event: 'meal_plan_item.undelivered',
-      ...countChangeFields(countsBefore, countsAfter, {
-        itemId,
-        remainingMeals,
-        action: 'unmark_delivered',
-      }),
+      action: 'unmark_delivered',
     })
 
     return NextResponse.json({

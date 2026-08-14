@@ -5,6 +5,8 @@ import { PK } from '@/lib/permission-keys'
 import { prisma } from '@/lib/prisma'
 import { normalizeWeeklySkipDays } from '@/lib/meal-plan-skip-days'
 import { logMealPlanError, logMealPlanEvent } from '@/lib/meal-plan-logger'
+import { MealPlanHistoryAction } from '@/lib/meal-plan-history-actions'
+import { queueMealPlanHistory, sessionActorUserId } from '@/lib/meal-plan-history'
 import { runWithRequestContext } from '@/lib/request-context'
 import { z } from 'zod'
 export const dynamic = 'force-dynamic'
@@ -188,6 +190,13 @@ export async function POST(request: NextRequest) {
       remainingMeals: mealPlan.remainingMeals,
       expectedMealCount: initialContractMeals,
       gridTotalMeals,
+    })
+
+    queueMealPlanHistory({
+      mealPlanId: mealPlan.id,
+      action: MealPlanHistoryAction.planCreated,
+      actorUserId: sessionActorUserId(session),
+      summary: `Plan created · total ${initialContractMeals} · remaining ${initialContractMeals} · ${days} days × ${data.mealsPerDay} meals/day`,
     })
 
     return NextResponse.json(mealPlan, { status: 201 })
