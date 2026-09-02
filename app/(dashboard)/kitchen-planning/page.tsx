@@ -172,6 +172,8 @@ export default function KitchenPlanningPage() {
   const [kitchenTab, setKitchenTab] = useState<'scheduled' | 'needs'>('scheduled')
   const [needsRows, setNeedsRows] = useState<UnscheduledKitchenRow[]>([])
   const [needsLoading, setNeedsLoading] = useState(false)
+  const [chefExportMenuOpen, setChefExportMenuOpen] = useState(false)
+  const [chefExporting, setChefExporting] = useState(false)
 
   useEffect(() => {
     fetchKitchenPlanningData()
@@ -275,16 +277,17 @@ export default function KitchenPlanningPage() {
     setSelectedMeals(null)
   }
 
-  const handleExport = async (sheetType: 'chef' | 'rider') => {
+  const handleExport = async (sheetType: 'chef' | 'rider', exportFormat: 'xlsx' | 'pdf' = 'xlsx') => {
     try {
+      if (sheetType === 'chef') setChefExporting(true)
       const params = new URLSearchParams()
       if (filters.date) params.append('date', filters.date)
       if (filters.startTime) params.append('startTime', filters.startTime)
       if (filters.endTime) params.append('endTime', filters.endTime)
       if (filters.status) params.append('status', filters.status)
       params.append('sheet', sheetType)
+      params.append('format', exportFormat)
 
-      // Export actual data using template
       const response = await fetch(`/api/kitchen-planning/export?${params.toString()}`)
       if (response.ok) {
         const blob = await response.blob()
@@ -299,7 +302,8 @@ export default function KitchenPlanningPage() {
             : filters.endTime 
               ? `until-${filters.endTime}` 
               : 'all-times'
-        a.download = `kitchen-planning-${sheetType}-${filters.date}-${timeRange}.xlsx`
+        const ext = exportFormat === 'pdf' ? 'pdf' : 'xlsx'
+        a.download = `kitchen-planning-${sheetType}-${filters.date}-${timeRange}.${ext}`
         
         document.body.appendChild(a)
         a.click()
@@ -307,11 +311,27 @@ export default function KitchenPlanningPage() {
         document.body.removeChild(a)
       } else {
         console.error('Failed to export kitchen planning data')
+        toast.error('Failed to export kitchen planning data')
       }
     } catch (error) {
       console.error('Error exporting kitchen planning data:', error)
+      toast.error('Failed to export kitchen planning data')
+    } finally {
+      if (sheetType === 'chef') setChefExporting(false)
     }
   }
+
+  useEffect(() => {
+    if (!chefExportMenuOpen) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.chef-export-menu-container')) {
+        setChefExportMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [chefExportMenuOpen])
 
   // Format time string (HH:MM or HH:MM:SS) to 12-hour with AM/PM
   const formatTime12h = (timeStr: string | null): string => {
@@ -565,28 +585,65 @@ export default function KitchenPlanningPage() {
         <div className="flex gap-2 lg:gap-3">
           {kitchenTab === 'scheduled' && (
             <>
-          <button
-            onClick={() => handleExport('chef')}
-            disabled={loading || !data || (data.items.length === 0 && (!data.skippedDayRows || data.skippedDayRows.length === 0))}
-            className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded lg:rounded-lg hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 lg:gap-2"
-          >
-            <svg
-              className="w-4 h-4 lg:w-5 lg:h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="relative chef-export-menu-container">
+            <button
+              type="button"
+              onClick={() => setChefExportMenuOpen((open) => !open)}
+              disabled={
+                loading ||
+                chefExporting ||
+                !data ||
+                (data.items.length === 0 && (!data.skippedDayRows || data.skippedDayRows.length === 0))
+              }
+              className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-nutrafi-primary text-white rounded lg:rounded-lg hover:bg-nutrafi-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 lg:gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            Download Chef Sheet
-          </button>
+              <svg
+                className="w-4 h-4 lg:w-5 lg:h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              {chefExporting ? 'Downloading…' : 'Download Chef Sheet'}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {chefExportMenuOpen && (
+              <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg z-50 border border-gray-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChefExportMenuOpen(false)
+                    void handleExport('chef', 'pdf')
+                  }}
+                  disabled={chefExporting}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50 border-b border-gray-100"
+                >
+                  Download PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChefExportMenuOpen(false)
+                    void handleExport('chef', 'xlsx')
+                  }}
+                  disabled={chefExporting}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Download Excel
+                </button>
+              </div>
+            )}
+          </div>
           <button
-            onClick={() => handleExport('rider')}
+            onClick={() => handleExport('rider', 'xlsx')}
             disabled={loading || !data || (data.items.length === 0 && (!data.skippedDayRows || data.skippedDayRows.length === 0))}
             className="px-3 py-1.5 lg:px-4 lg:py-2 text-sm bg-black text-white rounded lg:rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 lg:gap-2 font-medium"
           >

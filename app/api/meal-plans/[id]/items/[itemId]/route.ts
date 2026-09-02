@@ -168,13 +168,19 @@ export async function PATCH(
       updatePayload.wrongDelivery = false
     }
 
-    const syncBalance = data.wrongDelivery !== undefined
+    // Only sync remaining when delivery balance actually changes:
+    // wrong-delivery flags, or skip of a meal that was already delivered (credits it back).
+    // Skipping an active (undelivered) meal must not change remainingMeals.
+    const skipCreditsDeliveredMeal =
+      data.isSkipped === true && item.isDelivered === true
+    const syncBalance =
+      data.wrongDelivery !== undefined || skipCreditsDeliveredMeal
 
     if (syncBalance) {
       const historyAction =
         data.wrongDelivery === true
           ? MealPlanHistoryAction.wrongDelivery
-          : data.isSkipped === true
+          : skipCreditsDeliveredMeal
             ? MealPlanHistoryAction.skipped
             : MealPlanHistoryAction.itemUpdated
       const { updated, remainingMeals } = await prisma.$transaction(
@@ -196,14 +202,21 @@ export async function PATCH(
         summary:
           data.wrongDelivery === true
             ? 'Marked wrong delivery'
-            : data.isSkipped === true
-              ? 'Meal skipped'
+            : skipCreditsDeliveredMeal
+              ? 'Meal skipped (credited remaining)'
               : 'Meal updated',
       })
       if (countsAffecting) {
         queueMealPlanCountLog(id, 'meal_plan_item.updated', {
           itemId,
-          action: data.wrongDelivery === true ? 'wrong_delivery' : 'wrong_delivery_cleared',
+          action:
+            data.wrongDelivery === true
+              ? 'wrong_delivery'
+              : data.wrongDelivery === false
+                ? 'wrong_delivery_cleared'
+                : skipCreditsDeliveredMeal
+                  ? 'skip_delivered'
+                  : 'item_update',
           remainingMeals,
         })
       }

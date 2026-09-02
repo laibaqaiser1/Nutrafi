@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth-helpers'
 import { getKitchenUnscheduledRows } from '@/lib/kitchen-unscheduled-rows'
 import { kitchenInstructionsExportText } from '@/lib/kitchen-planning-instructions'
+import { buildChefSheetPdfBuffer, type ChefPdfRow } from '@/lib/kitchen-chef-pdf'
+import { CHEF_EXCEL_COL_WIDTHS, CHEF_PDF_ROW } from '@/lib/kitchen-chef-sheet-layout'
 import { prisma, withRetry } from '@/lib/prisma'
 import { resolveItemDeliveryArea, resolveItemDeliveryAddress } from '@/lib/customer-location'
 import ExcelJS from 'exceljs'
@@ -41,9 +43,17 @@ export async function GET(request: NextRequest) {
     const endTime = searchParams.get('endTime')
     const status = searchParams.get('status') || 'active' // Default to 'active'
     const sheet = searchParams.get('sheet') || 'chef' // 'chef' or 'rider'
+    const exportFormat = (searchParams.get('format') || 'xlsx').toLowerCase() // 'xlsx' | 'pdf'
 
     if (!date) {
       return NextResponse.json({ error: 'date is required' }, { status: 400 })
+    }
+
+    if (exportFormat === 'pdf' && sheet !== 'chef') {
+      return NextResponse.json({ error: 'PDF export is only available for the chef sheet' }, { status: 400 })
+    }
+    if (exportFormat !== 'xlsx' && exportFormat !== 'pdf') {
+      return NextResponse.json({ error: 'format must be xlsx or pdf' }, { status: 400 })
     }
 
     const where: any = {
@@ -297,6 +307,11 @@ export async function GET(request: NextRequest) {
 
     // Date for export: "3 March 2026"
     const formatDateExport = (d: Date) => format(new Date(d), 'd MMMM yyyy')
+    /** PDF date: day / month / year each on its own line */
+    const formatDateExportPdf = (d: Date) => {
+      const date = new Date(d)
+      return `${format(date, 'd')}\n${format(date, 'MMMM')}\n${format(date, 'yyyy')}`
+    }
 
     // Contact number for export: from customer.phone, with fallback from first item's mealPlan.customer
     type ExportRow = AggregatedRow | SkippedDayRow
@@ -346,6 +361,55 @@ export async function GET(request: NextRequest) {
       if (t !== 0) return t
       return a.customerName.localeCompare(b.customerName)
     })
+
+    const timeRange = startTime && endTime
+      ? `${startTime}-${endTime}`
+      : startTime
+        ? `from-${startTime}`
+        : endTime
+          ? `until-${endTime}`
+          : 'all-times'
+
+    // Chef PDF — column widths/heights from templates/chef.pdf
+    if (sheet === 'chef' && exportFormat === 'pdf') {
+      const pdfRows: ChefPdfRow[] = allRows.map((rowData, index) => {
+        const groupItems = rowData.items as ItemWithOptionalDish[]
+        const instructions = kitchenInstructionsExportText(groupItems)
+        const dishText =
+          rowData.exportHighlight === 'skipped_day'
+            ? 'No meal for today'
+            : rowData.exportHighlight === 'paused'
+              ? 'Customer not available'
+              : dishNamesForCell(rowData.dishNames)
+        return {
+          sr: index + 1,
+          date: formatDateExportPdf(rowData.date),
+          deliveryTime: deliveryTimeForExport(rowData),
+          customerName: rowData.customerName,
+          instructions: rowData.exportHighlight === 'paused' ? '' : instructions,
+          dishNames: dishText,
+          contact: contactNoForRow(rowData),
+          address: rowData.customer.address || '',
+          highlight: rowData.exportHighlight,
+        }
+      })
+      const pdfBuffer = buildChefSheetPdfBuffer(pdfRows)
+      const filename = `kitchen-planning-chef-${date}-${timeRange}.pdf`
+      return new NextResponse(pdfBuffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      })
+    }
+
+    const applyChefSheetColumnLayout = (worksheet: ExcelJS.Worksheet) => {
+      CHEF_EXCEL_COL_WIDTHS.forEach((w, i) => {
+        worksheet.getColumn(i + 1).width = w
+      })
+      const headerRow = worksheet.getRow(2)
+      headerRow.height = CHEF_PDF_ROW.headerHeight
+    }
 
     // Load template for Rider sheet, create new for Chef sheet
     const workbook = new ExcelJS.Workbook()
@@ -441,6 +505,9 @@ export async function GET(request: NextRequest) {
           if (worksheet.rowCount > 2) {
             worksheet.spliceRows(3, worksheet.rowCount - 2)
           }
+
+          // Match templates/chef.pdf column proportions (template.xlsx widths differ)
+          applyChefSheetColumnLayout(worksheet)
           
           // Template columns: Sr.NO | Date | Delivery Time | Customer Name | Instructions | Dish Name | Contact Number | Delivery Address
           const chefLastCol = 8
@@ -481,8 +548,7 @@ export async function GET(request: NextRequest) {
           'Contact Number',
           'Delivery Address',
         ]
-        const chefWidths = [6, 14, 14, 22, 38, 28, 14, 32]
-        chefWidths.forEach((w, i) => worksheet.getColumn(i + 1).width = w)
+        applyChefSheetColumnLayout(worksheet)
 
         const chefLastCol = 8
         allRows.forEach((rowData, index) => {
@@ -541,14 +607,6 @@ export async function GET(request: NextRequest) {
     // Generate buffer
     const buffer = await workbook.xlsx.writeBuffer()
 
-    // Generate filename
-    const timeRange = startTime && endTime 
-      ? `${startTime}-${endTime}` 
-      : startTime 
-        ? `from-${startTime}` 
-        : endTime 
-          ? `until-${endTime}` 
-          : 'all-times'
     const filename = `kitchen-planning-${sheet}-${date}-${timeRange}.xlsx`
 
     // Return as downloadable file

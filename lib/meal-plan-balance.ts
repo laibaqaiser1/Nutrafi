@@ -3,7 +3,8 @@ import { logMealPlanEvent } from '@/lib/meal-plan-logger'
 
 /**
  * Remaining meals = totalMeals minus count of items delivered (non-skipped).
- * Call only from deliver/undeliver (and batch deliver) — not from GET/PUT meal plan.
+ * Call from deliver/undeliver, wrong-delivery, batch deliver, and skip only when
+ * the meal was already delivered (skip of an active meal does not change balance).
  */
 export async function remainingMealsFromDelivered(
   tx: Prisma.TransactionClient,
