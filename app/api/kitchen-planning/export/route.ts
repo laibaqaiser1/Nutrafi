@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Group by date + customer + time slot: same slot → one row with all dishes; different slots → one row each
-    type ExportHighlight = 'normal' | 'paused' | 'skipped_day'
+    type ExportHighlight = 'normal' | 'paused'
     type BaseRow = {
       date: Date
       timeSlot: string
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       customer: { fullName: string; phone: string | null; address: string | null; deliveryArea: string | null }
       dishNames: string
       isPaused: boolean
-      /** Drives row fill in Excel — do not rely on dish text alone (e.g. “No meal for today”). */
+      /** Drives row fill in Excel (paused vs normal). */
       exportHighlight: ExportHighlight
     }
     type AggregatedRow = BaseRow & { items: typeof items }
@@ -174,78 +174,6 @@ export async function GET(request: NextRequest) {
       return a.customerName.localeCompare(b.customerName)
     })
 
-    // Customers who have items on this date but ALL skipped (no meal for today)
-    const whereAll = {
-      date: {
-        gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
-        lt: new Date(new Date(date).setHours(23, 59, 59, 999)),
-      },
-      mealPlan: { status: 'ACTIVE' },
-    } as any
-    if (status === 'active') {
-      ;(whereAll as any).isDelivered = false
-      ;(whereAll as any).wrongDelivery = false
-    } else if (status === 'delivered') {
-      ;(whereAll as any).isDelivered = true
-    } else if (status === 'wrong_delivery') {
-      ;(whereAll as any).wrongDelivery = true
-    }
-    const allItemsForDate = await withRetry(() =>
-      prisma.mealPlanItem.findMany({
-        where: whereAll,
-        include: {
-          mealPlan: { include: { customer: true } },
-        },
-      })
-    )
-    let allFiltered = allItemsForDate
-    if (startTime || endTime) {
-      allFiltered = allFiltered.filter(item => {
-        const itemTime = item.timeSlot
-        if (startTime && endTime) return itemTime >= startTime && itemTime <= endTime
-        if (startTime) return itemTime >= startTime
-        if (endTime) return itemTime <= endTime
-        return true
-      })
-    }
-    // Full calendar day: anyone with at least one non-skipped item must not get a yellow "no meal" row.
-    // (Do not use `items` here — it drops no-dish rows and time-filtered rows and caused false yellow.)
-    const customerIdsWithNonSkippedMealToday = new Set(
-      allItemsForDate.filter((i) => !i.isSkipped).map((i) => String(i.mealPlan.customerId))
-    )
-    const byCustomerAll = new Map<string, typeof allFiltered>()
-    for (const item of allFiltered) {
-      const cid = String(item.mealPlan.customerId)
-      if (!byCustomerAll.has(cid)) byCustomerAll.set(cid, [])
-      byCustomerAll.get(cid)!.push(item)
-    }
-    type SkippedDayRow = BaseRow & { items: typeof allFiltered }
-    const skippedDayRows: SkippedDayRow[] = []
-    byCustomerAll.forEach((group, customerId) => {
-      if (customerIdsWithNonSkippedMealToday.has(customerId)) return
-      const allSkipped = group.every(i => i.isSkipped)
-      if (allSkipped && group.length > 0) {
-        const first = group[0]
-        const c = first.mealPlan.customer
-        skippedDayRows.push({
-          date: first.date,
-          timeSlot: first.timeSlot || '',
-          deliveryTime: first.deliveryTime || '',
-          customerName: c.fullName,
-          customer: resolvedCustomerForExport(first),
-          dishNames: 'No meal for today',
-          items: group,
-          isPaused: false,
-          exportHighlight: 'skipped_day',
-        })
-      }
-    })
-    skippedDayRows.sort((a, b) => {
-      const t = a.timeSlot.localeCompare(b.timeSlot)
-      if (t !== 0) return t
-      return a.customerName.localeCompare(b.customerName)
-    })
-
     // Chef sheet column 5 = Instructions: dark text (row fill stays yellow/white/red from exportHighlight).
     const CHEF_INSTRUCTIONS_COL = 5
     const FONT_INSTRUCTIONS_DARK_ARGB = 'FF111827'
@@ -260,8 +188,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Merge normal + skipped-day rows and sort by time then customer name
-    // Item shape for chef row math (skipped-day items don't have dish)
+    // Item shape for chef row math
     type ItemWithOptionalDish = {
       customNote: string | null
       ingredients: string | null
@@ -301,7 +228,7 @@ export async function GET(request: NextRequest) {
       return `${hour12}:${min} ${ampm}`
     }
 
-    // Delivery time for export: use deliveryTime, fallback to timeSlot (for skipped rows where deliveryTime may be empty)
+    // Delivery time for export: use deliveryTime, fallback to timeSlot
     const deliveryTimeForExport = (row: { deliveryTime: string; timeSlot: string }) =>
       formatTime12h(row.deliveryTime || row.timeSlot || '')
 
@@ -314,7 +241,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Contact number for export: from customer.phone, with fallback from first item's mealPlan.customer
-    type ExportRow = AggregatedRow | SkippedDayRow
+    type ExportRow = AggregatedRow
     const contactNoForRow = (rowData: ExportRow): string => {
       const fromCustomer = (rowData as { customer?: { phone?: string | null } }).customer?.phone
       if (fromCustomer != null && String(fromCustomer).trim() !== '') return String(fromCustomer).trim()
@@ -329,8 +256,6 @@ export async function GET(request: NextRequest) {
     // Normal rows: white fill cancels that inheritance (fonts/borders/wrap still come from the template).
     const FILL_NORMAL_DATA_ARGB = 'FFFFFFFF'
     const FILL_PAUSED_ARGB = 'FFFF6B6B'
-    // Avoid pure `FFFFFF00` (AARRGGBB): some consumers mis-read it as white because the RGB prefix is FFFFFF.
-    const FILL_SKIPPED_DAY_ARGB = 'FFFFD966' // golden yellow, unambiguous in OOXML
     const solidFill = (argb: string): ExcelJS.Fill => ({
       type: 'pattern',
       pattern: 'solid',
@@ -350,12 +275,9 @@ export async function GET(request: NextRequest) {
     const applyPausedRowStyle = (row: ExcelJS.Row, lastCol: number) => {
       setRowFill(row, lastCol, solidFill(FILL_PAUSED_ARGB))
     }
-    const applySkippedDayRowStyle = (row: ExcelJS.Row, lastCol: number) => {
-      setRowFill(row, lastCol, solidFill(FILL_SKIPPED_DAY_ARGB))
-    }
 
-    // Dish names in one cell, each on its own line (so cell doesn't overflow column)
-    const allRows: ExportRow[] = [...aggregated, ...skippedDayRows]
+    // Sheets omit “No meal for today” rows; kitchen panel still shows them via /api/kitchen-planning.
+    const allRows: ExportRow[] = [...aggregated]
     allRows.sort((a, b) => {
       const t = a.timeSlot.localeCompare(b.timeSlot)
       if (t !== 0) return t
@@ -376,11 +298,9 @@ export async function GET(request: NextRequest) {
         const groupItems = rowData.items as ItemWithOptionalDish[]
         const instructions = kitchenInstructionsExportText(groupItems)
         const dishText =
-          rowData.exportHighlight === 'skipped_day'
-            ? 'No meal for today'
-            : rowData.exportHighlight === 'paused'
-              ? 'Customer not available'
-              : dishNamesForCell(rowData.dishNames)
+          rowData.exportHighlight === 'paused'
+            ? 'Customer not available'
+            : dishNamesForCell(rowData.dishNames)
         return {
           sr: index + 1,
           date: formatDateExportPdf(rowData.date),
@@ -434,11 +354,9 @@ export async function GET(request: NextRequest) {
           allRows.forEach((rowData, index) => {
             const row = worksheet.getRow(startRow + index)
             const dishText =
-              rowData.exportHighlight === 'skipped_day'
-                ? 'No meal for today'
-                : rowData.exportHighlight === 'paused'
-                  ? 'Customer not available'
-                  : dishNamesForCell(rowData.dishNames)
+              rowData.exportHighlight === 'paused'
+                ? 'Customer not available'
+                : dishNamesForCell(rowData.dishNames)
             row.getCell(1).value = index + 1
             row.getCell(2).value = formatDateExport(rowData.date)
             row.getCell(3).value = deliveryTimeForExport(rowData)
@@ -448,7 +366,6 @@ export async function GET(request: NextRequest) {
             row.getCell(7).value = contactNoForRow(rowData)
             row.getCell(8).value = rowData.customer.address || ''
             if (rowData.exportHighlight === 'paused') applyPausedRowStyle(row, riderLastCol)
-            else if (rowData.exportHighlight === 'skipped_day') applySkippedDayRowStyle(row, riderLastCol)
             else applyNormalDataRowFill(row, riderLastCol)
           })
         }
@@ -473,11 +390,9 @@ export async function GET(request: NextRequest) {
         allRows.forEach((rowData, index) => {
           const row = worksheet.getRow(3 + index)
           const dishText =
-            rowData.exportHighlight === 'skipped_day'
-              ? 'No meal for today'
-              : rowData.exportHighlight === 'paused'
-                ? 'Customer not available'
-                : dishNamesForCell(rowData.dishNames)
+            rowData.exportHighlight === 'paused'
+              ? 'Customer not available'
+              : dishNamesForCell(rowData.dishNames)
           row.getCell(1).value = index + 1
           row.getCell(2).value = formatDateExport(rowData.date)
           row.getCell(3).value = deliveryTimeForExport(rowData)
@@ -487,7 +402,6 @@ export async function GET(request: NextRequest) {
           row.getCell(7).value = contactNoForRow(rowData)
           row.getCell(8).value = rowData.customer.address || ''
           if (rowData.exportHighlight === 'paused') applyPausedRowStyle(row, riderLastCol)
-          else if (rowData.exportHighlight === 'skipped_day') applySkippedDayRowStyle(row, riderLastCol)
           else applyNormalDataRowFill(row, riderLastCol)
         })
       }
@@ -515,11 +429,9 @@ export async function GET(request: NextRequest) {
             const groupItems = rowData.items as ItemWithOptionalDish[]
             const instructions = kitchenInstructionsExportText(groupItems)
             const dishText =
-              rowData.exportHighlight === 'skipped_day'
-                ? 'No meal for today'
-                : rowData.exportHighlight === 'paused'
-                  ? 'Customer not available'
-                  : dishNamesForCell(rowData.dishNames)
+              rowData.exportHighlight === 'paused'
+                ? 'Customer not available'
+                : dishNamesForCell(rowData.dishNames)
             const row = worksheet.getRow(startRow + index)
             row.getCell(1).value = index + 1
             row.getCell(2).value = formatDateExport(rowData.date)
@@ -530,7 +442,6 @@ export async function GET(request: NextRequest) {
             row.getCell(7).value = contactNoForRow(rowData)
             row.getCell(8).value = rowData.customer.address || ''
             if (rowData.exportHighlight === 'paused') applyPausedRowStyle(row, chefLastCol)
-            else if (rowData.exportHighlight === 'skipped_day') applySkippedDayRowStyle(row, chefLastCol)
             else applyNormalDataRowFill(row, chefLastCol)
             applyChefInstructionsDarkFont(row)
           })
@@ -555,11 +466,9 @@ export async function GET(request: NextRequest) {
           const groupItems = rowData.items as ItemWithOptionalDish[]
           const instructions = kitchenInstructionsExportText(groupItems)
           const dishText =
-            rowData.exportHighlight === 'skipped_day'
-              ? 'No meal for today'
-              : rowData.exportHighlight === 'paused'
-                ? 'Customer not available'
-                : dishNamesForCell(rowData.dishNames)
+            rowData.exportHighlight === 'paused'
+              ? 'Customer not available'
+              : dishNamesForCell(rowData.dishNames)
           const row = worksheet.getRow(2 + index)
           row.getCell(1).value = index + 1
           row.getCell(2).value = formatDateExport(rowData.date)
@@ -570,7 +479,6 @@ export async function GET(request: NextRequest) {
           row.getCell(7).value = contactNoForRow(rowData)
           row.getCell(8).value = rowData.customer.address || ''
           if (rowData.exportHighlight === 'paused') applyPausedRowStyle(row, chefLastCol)
-          else if (rowData.exportHighlight === 'skipped_day') applySkippedDayRowStyle(row, chefLastCol)
           else applyNormalDataRowFill(row, chefLastCol)
           applyChefInstructionsDarkFont(row)
         })
