@@ -14,6 +14,12 @@ export const NAV_MODULE_DEFINITIONS = [
   },
   { key: 'plans', name: 'Plans', href: '/plans', permissionKey: PK.modulePlans },
   { key: 'reports', name: 'Reports', href: '/reports', permissionKey: PK.moduleReports },
+  {
+    key: 'delivery-stats',
+    name: 'Delivery stats',
+    href: '/delivery-stats',
+    permissionKey: PK.moduleReports,
+  },
   { key: 'whatsapp', name: 'WhatsApp', href: '/whatsapp', permissionKey: PK.moduleCustomers },
   {
     key: 'whatsapp-agent',
