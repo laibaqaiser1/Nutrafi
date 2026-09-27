@@ -170,10 +170,9 @@ export function DateOrRangePicker({
     }
   }, [calendarOpen, presetOpen]);
 
-  const selectedLabel =
-    !isCustomMode && selectedPreset !== "custom"
-      ? presets.find((option) => option.value === selectedPreset)?.label
-      : null;
+  const selectedLabel = !isCustomMode
+    ? presets.find((option) => option.value === selectedPreset)?.label
+    : null;
 
   return (
     <div className="flex date-picker-container">
